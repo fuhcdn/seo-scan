@@ -362,7 +362,7 @@ class Handler(BaseHTTPRequestHandler):
                     return
         if path == "/success":
             # 付款後 redirect 成功頁（Stripe Checkout success_url）—— 以往 404 造成「俾咗錢見 error」
-            from urllib.parse import urlparse, parse_qs
+            # 注意：唔可以喺函數內局部 import parse_qs（會令成個 do_GET 視佢為 local → UnboundLocalError）
             q = parse_qs(urlparse(self.path).query)
             return self._send_success_page(q.get("order", [""])[0])
 
