@@ -1,0 +1,13 @@
+# SEO Scan — Git ignore (protect secrets)
+# 機密/執行期生成，一律唔入 repo
+secrets.env
+output/
+pipeline/out/
+pipeline/__pycache__/
+__pycache__/
+*.pyc
+run_err.log
+err*.log
+.env
+.DS_Store
+.venv/

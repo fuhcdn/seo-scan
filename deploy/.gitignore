@@ -1,0 +1,9 @@
+# SEO Scan — deploy bundle
+# 唔好 commit secrets.env 上去，佢有機密 key。
+secrets.env
+output/
+run_err.log
+err*.log
+__pycache__/
+*.pyc
+.DS_Store
