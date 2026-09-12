@@ -226,6 +226,26 @@
           <option value="subscriptions">定期購読増</option>
           <option value="other">その他</option>
         </select>
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">主要な製品・サービス（カンマ区切り）</div>
+        <input id="products" type="text" placeholder="例：住宅用エアコン修理・設置" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">ターゲット市場／サービスエリア</div>
+        <input id="market" type="text" placeholder="例：香港島" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">理想的な顧客／ターゲットオーディエンス</div>
+        <input id="customer" type="text" placeholder="例：30-55歳の住宅所有者" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:4px 0 4px;font-size:13px;color:var(--muted)">Webサイトで実現したい主要な顧客アクション</div>
+        <select id="primaryAction" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px;background:#fff;color:var(--ink)">
+          <option value="buy">オンライン購入</option>
+          <option value="book">予約</option>
+          <option value="enquire">お問い合わせ</option>
+          <option value="quote">見積もり依頼</option>
+          <option value="call">電話する</option>
+          <option value="trial">トライアル開始</option>
+          <option value="download">資料ダウンロード</option>
+          <option value="other">その他</option>
+        </select>
         <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">レポートをemailで受け取る(完全版PDFを納品)：</div>
         <input id="email" type="email" placeholder="you@example.com" required
                style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
@@ -402,6 +422,14 @@
     var company = document.getElementById('company') ? document.getElementById('company').value.trim() : '';
     var goalEl = document.getElementById('businessGoal');
     var goal = goalEl ? goalEl.value : '';
+    var productsEl = document.getElementById('products');
+    var products = productsEl ? productsEl.value.trim() : '';
+    var marketEl = document.getElementById('market');
+    var market = marketEl ? marketEl.value.trim() : '';
+    var customerEl = document.getElementById('customer');
+    var customer = customerEl ? customerEl.value.trim() : '';
+    var actionEl = document.getElementById('primaryAction');
+    var customerAction = actionEl ? actionEl.value : '';
     var note = document.getElementById('demoNote');
     function showNote(msg){ note.style.display='block'; note.textContent = msg; }
     var productId = (window.__selectedProduct || 'prod_seo_opportunity');
@@ -409,8 +437,11 @@
     var langOpt = sel ? sel.value.replace(/^\//,'') : '';
     var reportLanguage = (langOpt && ['en','zh-Hant','zh-Hans','ja','es'].indexOf(langOpt)!==-1) ? langOpt : 'en';
     if(!company){ showNote('会社名を入力してください'); document.getElementById('company').focus(); return; }
-    if(!em){ showNote('レポートを受取るメールを入力してください（完全版PDFが届きます）'); document.getElementById('email').focus(); return; }
-    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:'', main_products_or_services:'' };
+        if(!products){ showNote('主要な製品・サービスを入力してください'); document.getElementById('products').focus(); return; }
+        if(!market){ showNote('ターゲット市場またはサービスエリアを入力してください'); document.getElementById('market').focus(); return; }
+        if(!customer){ showNote('理想的な顧客像を入力してください'); document.getElementById('customer').focus(); return; }
+        if(!em){ showNote('レポートを受取るメールを入力してください（完全版PDFが届きます）'); document.getElementById('email').focus(); return; }
+        var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:market, main_products_or_services:products, ideal_customer_or_target_audience:customer, primary_customer_action:customerAction };
     fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(orderPayload)})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, json:d}; }); })
       .then(function(res){

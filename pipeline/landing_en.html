@@ -226,6 +226,26 @@
           <option value="subscriptions">Grow subscriptions</option>
           <option value="other">Other</option>
         </select>
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">Main products or services (comma separated)</div>
+        <input id="products" type="text" placeholder="e.g. Residential HVAC repair, installation" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">Target market / service area</div>
+        <input id="market" type="text" placeholder="e.g. Hong Kong Island" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">Ideal customer / target audience</div>
+        <input id="customer" type="text" placeholder="e.g. Homeowners aged 30-55" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:4px 0 4px;font-size:13px;color:var(--muted)">Primary customer action you want from the website</div>
+        <select id="primaryAction" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px;background:#fff;color:var(--ink)">
+          <option value="buy">Buy online</option>
+          <option value="book">Book an appointment</option>
+          <option value="enquire">Send an enquiry</option>
+          <option value="quote">Request a quote</option>
+          <option value="call">Call us</option>
+          <option value="trial">Start a trial</option>
+          <option value="download">Download a resource</option>
+          <option value="other">Other</option>
+        </select>
         <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">Receive the report by email (full PDF delivery):</div>
         <input id="email" type="email" placeholder="you@example.com" required
                style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
@@ -402,6 +422,14 @@
     var company = document.getElementById('company') ? document.getElementById('company').value.trim() : '';
     var goalEl = document.getElementById('businessGoal');
     var goal = goalEl ? goalEl.value : '';
+    var productsEl = document.getElementById('products');
+    var products = productsEl ? productsEl.value.trim() : '';
+    var marketEl = document.getElementById('market');
+    var market = marketEl ? marketEl.value.trim() : '';
+    var customerEl = document.getElementById('customer');
+    var customer = customerEl ? customerEl.value.trim() : '';
+    var actionEl = document.getElementById('primaryAction');
+    var customerAction = actionEl ? actionEl.value : '';
     var note = document.getElementById('demoNote');
     function showNote(msg){ note.style.display='block'; note.textContent = msg; }
     var productId = (window.__selectedProduct || 'prod_seo_opportunity');
@@ -409,8 +437,11 @@
     var langOpt = sel ? sel.value.replace(/^\//,'') : '';
     var reportLanguage = (langOpt && ['en','zh-Hant','zh-Hans','ja','es'].indexOf(langOpt)!==-1) ? langOpt : 'en';
     if(!company){ showNote('Please enter your company name'); document.getElementById('company').focus(); return; }
-    if(!em){ showNote('Please enter the email to receive the report (full PDF goes here)'); document.getElementById('email').focus(); return; }
-    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:'', main_products_or_services:'' };
+        if(!products){ showNote('Please list your main products or services'); document.getElementById('products').focus(); return; }
+        if(!market){ showNote('Please enter your target market or service area'); document.getElementById('market').focus(); return; }
+        if(!customer){ showNote('Please describe your ideal customer'); document.getElementById('customer').focus(); return; }
+        if(!em){ showNote('Please enter the email to receive the report (full PDF goes here)'); document.getElementById('email').focus(); return; }
+        var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:market, main_products_or_services:products, ideal_customer_or_target_audience:customer, primary_customer_action:customerAction };
     fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(orderPayload)})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, json:d}; }); })
       .then(function(res){

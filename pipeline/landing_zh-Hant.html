@@ -226,6 +226,26 @@
           <option value="subscriptions">提升訂閱</option>
           <option value="other">其他</option>
         </select>
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">主要產品或服務（用逗號分隔）</div>
+        <input id="products" type="text" placeholder="例如：住宅冷氣維修、安裝" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">目標市場／服務地區</div>
+        <input id="market" type="text" placeholder="例如：港島" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">理想客戶／目標客群</div>
+        <input id="customer" type="text" placeholder="例如：30-55歲業主" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:4px 0 4px;font-size:13px;color:var(--muted)">你想網站帶嚟嘅主要客戶動作</div>
+        <select id="primaryAction" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px;background:#fff;color:var(--ink)">
+          <option value="buy">網上購買</option>
+          <option value="book">預約</option>
+          <option value="enquire">查詢</option>
+          <option value="quote">索取報價</option>
+          <option value="call">打電話</option>
+          <option value="trial">開始試用</option>
+          <option value="download">下載資源</option>
+          <option value="other">其他</option>
+        </select>
         <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">收報告 email（交付完整 PDF）：</div>
         <input id="email" type="email" placeholder="you@example.com" required
                style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
@@ -402,6 +422,14 @@
     var company = document.getElementById('company') ? document.getElementById('company').value.trim() : '';
     var goalEl = document.getElementById('businessGoal');
     var goal = goalEl ? goalEl.value : '';
+    var productsEl = document.getElementById('products');
+    var products = productsEl ? productsEl.value.trim() : '';
+    var marketEl = document.getElementById('market');
+    var market = marketEl ? marketEl.value.trim() : '';
+    var customerEl = document.getElementById('customer');
+    var customer = customerEl ? customerEl.value.trim() : '';
+    var actionEl = document.getElementById('primaryAction');
+    var customerAction = actionEl ? actionEl.value : '';
     var note = document.getElementById('demoNote');
     function showNote(msg){ note.style.display='block'; note.textContent = msg; }
     var productId = (window.__selectedProduct || 'prod_seo_opportunity');
@@ -409,8 +437,11 @@
     var langOpt = sel ? sel.value.replace(/^\//,'') : '';
     var reportLanguage = (langOpt && ['en','zh-Hant','zh-Hans','ja','es'].indexOf(langOpt)!==-1) ? langOpt : 'en';
     if(!company){ showNote('請輸入公司名稱'); document.getElementById('company').focus(); return; }
-    if(!em){ showNote('請輸入收報告嘅 email（完整 PDF 會送到呢度）'); document.getElementById('email').focus(); return; }
-    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:'', main_products_or_services:'' };
+        if(!products){ showNote('請列出你嘅主要產品或服務'); document.getElementById('products').focus(); return; }
+        if(!market){ showNote('請輸入你嘅目標市場或服務地區'); document.getElementById('market').focus(); return; }
+        if(!customer){ showNote('請描述你嘅理想客戶'); document.getElementById('customer').focus(); return; }
+        if(!em){ showNote('請輸入收報告嘅 email（完整 PDF 會送到呢度）'); document.getElementById('email').focus(); return; }
+        var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:market, main_products_or_services:products, ideal_customer_or_target_audience:customer, primary_customer_action:customerAction };
     fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(orderPayload)})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, json:d}; }); })
       .then(function(res){

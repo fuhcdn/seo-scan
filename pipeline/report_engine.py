@@ -545,7 +545,7 @@ def _css():
     """
 
 
-def build_report(order, research, findings, tier, lang="en"):
+def build_report(order, research, findings, actions=None, tier="ENTRY_REPORT", lang="en"):
     """組裝完整 HTML 報告。order=訂單 dict, research=research.json,
     findings=list[dict]（D2 schema）, tier=ENTRY_REPORT/PREMIUM_REPORT, lang. """
     u = lang
@@ -701,7 +701,7 @@ def build_report(order, research, findings, tier, lang="en"):
     {premium_sections}
 
     <h2>{esc(_u(u,'top5'))}</h2>
-    <ol>{''.join(f'<li><strong>{esc(f.get("priority","P2"))}</strong> — {esc(f.get("title",""))}: {esc(f.get("recommended_action",""))}</li>' for f in findings[:5])}</ol>
+    {_render_action_ledger(actions, findings, u)}
 
     <h2>{esc(_u(u,'plan90'))}</h2>
     {plan}
@@ -723,6 +723,27 @@ def build_report(order, research, findings, tier, lang="en"):
     <p class="disc">{esc(_u(u,'disclaimer'))}</p>
     </body></html>"""
     return html
+
+
+def _render_action_ledger(actions, findings, lang):
+    """Render the action ledger (owner/effort/acceptance/validation) as a readable table,
+    or a concise list of material findings when no structured action ledger is passed."""
+    E = lambda k: _u(lang, k, )
+    acts = actions or []
+    if acts:
+        rows = "".join(
+            f"<tr><td>{esc(a.get('action_id',''))}</td><td>{esc(a.get('title',''))}</td>"
+            f"<td>{esc(a.get('priority','P1'))}</td><td>{esc(a.get('owner',''))}</td>"
+            f"<td>{esc(a.get('effort',''))}</td><td>{esc(a.get('acceptance_criteria',''))}</td>"
+            f"<td>{esc(a.get('validation_method',''))}</td><td>{esc(a.get('review_window',''))}</td></tr>"
+            for a in acts)
+        return f"""<table><tr><th>ID</th><th>Action</th><th>Priority</th><th>Owner</th><th>Effort</th>
+          <th>Acceptance</th><th>Validate</th><th>Review</th></tr>{rows}</table>"""
+    # fallback: list material findings (never raw logs)
+    lvs = "".join(
+        f"<li><strong>{esc(f.get('priority','P1'))}</strong> — {esc(f.get('title',''))}"
+        f"<span class='src'> [{esc(f.get('claim_label',''))}]</span></li>" for f in findings[:8])
+    return f"<ul>{lvs or '<li>Awaiting customer-specific action items.</li>'}</ul>"
 
 
 def run_qa(research, findings, tier, lang, order=None):

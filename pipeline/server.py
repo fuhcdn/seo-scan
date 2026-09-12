@@ -509,6 +509,8 @@ class Handler(BaseHTTPRequestHandler):
             biz_goal = (body.get("primary_business_goal") or "").strip()
             market_area = (body.get("primary_market_or_service_area") or "").strip()
             main_offers = (body.get("main_products_or_services") or "").strip()
+            ideal_customer = (body.get("ideal_customer_or_target_audience") or "").strip()
+            customer_action = (body.get("primary_customer_action") or "").strip()
             competitors = (body.get("known_competitors") or "") or []
             notes = (body.get("notes_or_constraints") or "").strip()
 
@@ -564,6 +566,8 @@ class Handler(BaseHTTPRequestHandler):
                 "primary_business_goal": biz_goal,
                 "primary_market_or_service_area": market_area,
                 "main_products_or_services": main_offers,
+                "ideal_customer_or_target_audience": ideal_customer,
+                "primary_customer_action": customer_action,
                 "known_competitors": competitors if isinstance(competitors, list) else [competitors],
                 "notes_or_constraints": notes,
                 "status_file": status_file,

@@ -243,6 +243,26 @@ SKELETON = """<!DOCTYPE html>
           <option value="subscriptions">{{GOAL_SUBS}}</option>
           <option value="other">{{GOAL_OTHER}}</option>
         </select>
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">{{PRODUCTS_NOTE}}</div>
+        <input id="products" type="text" placeholder="{{PRODUCTS_PLACEHOLDER}}" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">{{MARKET_NOTE}}</div>
+        <input id="market" type="text" placeholder="{{MARKET_PLACEHOLDER}}" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">{{CUSTOMER_NOTE}}</div>
+        <input id="customer" type="text" placeholder="{{CUSTOMER_PLACEHOLDER}}" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:4px 0 4px;font-size:13px;color:var(--muted)">{{ACTION_NOTE}}</div>
+        <select id="primaryAction" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px;background:#fff;color:var(--ink)">
+          <option value="buy">{{ACTION_BUY}}</option>
+          <option value="book">{{ACTION_BOOK}}</option>
+          <option value="enquire">{{ACTION_ENQUIRE}}</option>
+          <option value="quote">{{ACTION_QUOTE}}</option>
+          <option value="call">{{ACTION_CALL}}</option>
+          <option value="trial">{{ACTION_TRIAL}}</option>
+          <option value="download">{{ACTION_DOWNLOAD}}</option>
+          <option value="other">{{ACTION_OTHER}}</option>
+        </select>
         <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">{{EMAIL_NOTE}}</div>
         <input id="email" type="email" placeholder="you@example.com" required
                style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
@@ -419,6 +439,14 @@ SKELETON = """<!DOCTYPE html>
     var company = document.getElementById('company') ? document.getElementById('company').value.trim() : '';
     var goalEl = document.getElementById('businessGoal');
     var goal = goalEl ? goalEl.value : '';
+    var productsEl = document.getElementById('products');
+    var products = productsEl ? productsEl.value.trim() : '';
+    var marketEl = document.getElementById('market');
+    var market = marketEl ? marketEl.value.trim() : '';
+    var customerEl = document.getElementById('customer');
+    var customer = customerEl ? customerEl.value.trim() : '';
+    var actionEl = document.getElementById('primaryAction');
+    var customerAction = actionEl ? actionEl.value : '';
     var note = document.getElementById('demoNote');
     function showNote(msg){ note.style.display='block'; note.textContent = msg; }
     var productId = (window.__selectedProduct || 'prod_seo_opportunity');
@@ -426,8 +454,11 @@ SKELETON = """<!DOCTYPE html>
     var langOpt = sel ? sel.value.replace(/^\\//,'') : '';
     var reportLanguage = (langOpt && ['en','zh-Hant','zh-Hans','ja','es'].indexOf(langOpt)!==-1) ? langOpt : 'en';
     if(!company){ showNote('{{COMPANY_REQ}}'); document.getElementById('company').focus(); return; }
-    if(!em){ showNote('{{EMAIL_REQ}}'); document.getElementById('email').focus(); return; }
-    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:'', main_products_or_services:'' };
+        if(!products){ showNote('{{PRODUCTS_REQ}}'); document.getElementById('products').focus(); return; }
+        if(!market){ showNote('{{MARKET_REQ}}'); document.getElementById('market').focus(); return; }
+        if(!customer){ showNote('{{CUSTOMER_REQ}}'); document.getElementById('customer').focus(); return; }
+        if(!em){ showNote('{{EMAIL_REQ}}'); document.getElementById('email').focus(); return; }
+        var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:market, main_products_or_services:products, ideal_customer_or_target_audience:customer, primary_customer_action:customerAction };
     fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(orderPayload)})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, json:d}; }); })
       .then(function(res){
@@ -491,6 +522,25 @@ EN = dict(base("en"), SEL_EN="selected", **{
     "COMPANY_NOTE": "Company name (for the report cover):",
     "COMPANY_PLACEHOLDER": "e.g. Acme LLC",
     "COMPANY_REQ": "Please enter your company name",
+    "PRODUCTS_NOTE": "Main products or services (comma separated)",
+    "PRODUCTS_PLACEHOLDER": "e.g. Residential HVAC repair, installation",
+    "PRODUCTS_REQ": "Please list your main products or services",
+    "MARKET_NOTE": "Target market / service area",
+    "MARKET_PLACEHOLDER": "e.g. Hong Kong Island",
+    "MARKET_REQ": "Please enter your target market or service area",
+    "CUSTOMER_NOTE": "Ideal customer / target audience",
+    "CUSTOMER_PLACEHOLDER": "e.g. Homeowners aged 30-55",
+    "CUSTOMER_REQ": "Please describe your ideal customer",
+    "ACTION_NOTE": "Primary customer action you want from the website",
+    "ACTION_BUY": "Buy online",
+    "ACTION_BOOK": "Book an appointment",
+    "ACTION_ENQUIRE": "Send an enquiry",
+    "ACTION_QUOTE": "Request a quote",
+    "ACTION_CALL": "Call us",
+    "ACTION_TRIAL": "Start a trial",
+    "ACTION_DOWNLOAD": "Download a resource",
+    "ACTION_OTHER": "Other",
+
     "GOAL_NOTE": "Your primary business goal:",
     "GOAL_LEADS": "Get more leads",
     "GOAL_SALES": "Increase sales / revenue",
@@ -570,6 +620,25 @@ ZH_HANT = dict(base("zh-Hant"),
     "COMPANY_NOTE": "公司名稱（用嚟印喺報告封面）：",
     "COMPANY_PLACEHOLDER": "例如：Acme 有限公司",
     "COMPANY_REQ": "請輸入公司名稱",
+    "PRODUCTS_NOTE": "主要產品或服務（用逗號分隔）",
+    "PRODUCTS_PLACEHOLDER": "例如：住宅冷氣維修、安裝",
+    "PRODUCTS_REQ": "請列出你嘅主要產品或服務",
+    "MARKET_NOTE": "目標市場／服務地區",
+    "MARKET_PLACEHOLDER": "例如：港島",
+    "MARKET_REQ": "請輸入你嘅目標市場或服務地區",
+    "CUSTOMER_NOTE": "理想客戶／目標客群",
+    "CUSTOMER_PLACEHOLDER": "例如：30-55歲業主",
+    "CUSTOMER_REQ": "請描述你嘅理想客戶",
+    "ACTION_NOTE": "你想網站帶嚟嘅主要客戶動作",
+    "ACTION_BUY": "網上購買",
+    "ACTION_BOOK": "預約",
+    "ACTION_ENQUIRE": "查詢",
+    "ACTION_QUOTE": "索取報價",
+    "ACTION_CALL": "打電話",
+    "ACTION_TRIAL": "開始試用",
+    "ACTION_DOWNLOAD": "下載資源",
+    "ACTION_OTHER": "其他",
+
     "GOAL_NOTE": "你嘅主要業務目標：",
     "GOAL_LEADS": "攞更多潛在客戶",
     "GOAL_SALES": "提升銷售 / 收入",
@@ -645,6 +714,25 @@ ZH_HANS = dict(base("zh-Hans"), SEL_ZHS="selected", **{
     "COMPANY_NOTE": "公司名称（用于报告封面）：",
     "COMPANY_PLACEHOLDER": "例如：Acme 有限公司",
     "COMPANY_REQ": "请输入公司名称",
+    "PRODUCTS_NOTE": "主要产品或服务（用逗号分隔）",
+    "PRODUCTS_PLACEHOLDER": "例如：住宅空调维修、安装",
+    "PRODUCTS_REQ": "请列出您的主要产品或服务",
+    "MARKET_NOTE": "目标市场/服务地区",
+    "MARKET_PLACEHOLDER": "例如：港岛",
+    "MARKET_REQ": "请输入您的目标市场或服务地区",
+    "CUSTOMER_NOTE": "理想客户/目标客群",
+    "CUSTOMER_PLACEHOLDER": "例如：30-55岁业主",
+    "CUSTOMER_REQ": "请描述您的理想客户",
+    "ACTION_NOTE": "您希望网站带来的主要客户动作",
+    "ACTION_BUY": "网上购买",
+    "ACTION_BOOK": "预约",
+    "ACTION_ENQUIRE": "咨询",
+    "ACTION_QUOTE": "索取报价",
+    "ACTION_CALL": "打电话",
+    "ACTION_TRIAL": "开始试用",
+    "ACTION_DOWNLOAD": "下载资源",
+    "ACTION_OTHER": "其他",
+
     "GOAL_NOTE": "您的主要业务目标：",
     "GOAL_LEADS": "获取更多潜在客户",
     "GOAL_SALES": "提升销售/收入",
@@ -720,6 +808,25 @@ JA = dict(base("ja"), SEL_JA="selected", **{
     "COMPANY_NOTE": "会社名（レポート表紙に使用）：",
     "COMPANY_PLACEHOLDER": "例：Acme合同会社",
     "COMPANY_REQ": "会社名を入力してください",
+    "PRODUCTS_NOTE": "主要な製品・サービス（カンマ区切り）",
+    "PRODUCTS_PLACEHOLDER": "例：住宅用エアコン修理・設置",
+    "PRODUCTS_REQ": "主要な製品・サービスを入力してください",
+    "MARKET_NOTE": "ターゲット市場／サービスエリア",
+    "MARKET_PLACEHOLDER": "例：香港島",
+    "MARKET_REQ": "ターゲット市場またはサービスエリアを入力してください",
+    "CUSTOMER_NOTE": "理想的な顧客／ターゲットオーディエンス",
+    "CUSTOMER_PLACEHOLDER": "例：30-55歳の住宅所有者",
+    "CUSTOMER_REQ": "理想的な顧客像を入力してください",
+    "ACTION_NOTE": "Webサイトで実現したい主要な顧客アクション",
+    "ACTION_BUY": "オンライン購入",
+    "ACTION_BOOK": "予約",
+    "ACTION_ENQUIRE": "お問い合わせ",
+    "ACTION_QUOTE": "見積もり依頼",
+    "ACTION_CALL": "電話する",
+    "ACTION_TRIAL": "トライアル開始",
+    "ACTION_DOWNLOAD": "資料ダウンロード",
+    "ACTION_OTHER": "その他",
+
     "GOAL_NOTE": "主なビジネス目標：",
     "GOAL_LEADS": "リード獲得",
     "GOAL_SALES": "売上・収益向上",
@@ -795,6 +902,25 @@ ES = dict(base("es"), SEL_ES="selected", **{
     "COMPANY_NOTE": "Nombre de la empresa (para la portada del informe):",
     "COMPANY_PLACEHOLDER": "p. ej., Acme S.L.",
     "COMPANY_REQ": "Introduzca el nombre de su empresa",
+    "PRODUCTS_NOTE": "Principales productos o servicios (separados por coma)",
+    "PRODUCTS_PLACEHOLDER": "p. ej. Reparación de aire acondicionado",
+    "PRODUCTS_REQ": "Enumere sus principales productos o servicios",
+    "MARKET_NOTE": "Mercado objetivo / área de servicio",
+    "MARKET_PLACEHOLDER": "p. ej. Isla de Hong Kong",
+    "MARKET_REQ": "Introduzca su mercado objetivo o área de servicio",
+    "CUSTOMER_NOTE": "Cliente ideal / audiencia objetivo",
+    "CUSTOMER_PLACEHOLDER": "p. ej. Propietarios de 30-55 años",
+    "CUSTOMER_REQ": "Describa su cliente ideal",
+    "ACTION_NOTE": "Acción principal que espera del sitio web",
+    "ACTION_BUY": "Comprar en línea",
+    "ACTION_BOOK": "Reservar cita",
+    "ACTION_ENQUIRE": "Enviar consulta",
+    "ACTION_QUOTE": "Solicitar cotización",
+    "ACTION_CALL": "Llamar",
+    "ACTION_TRIAL": "Iniciar prueba",
+    "ACTION_DOWNLOAD": "Descargar recurso",
+    "ACTION_OTHER": "Otro",
+
     "GOAL_NOTE": "Su objetivo comercial principal:",
     "GOAL_LEADS": "Obtener más clientes potenciales",
     "GOAL_SALES": "Aumentar ventas/ingresos",

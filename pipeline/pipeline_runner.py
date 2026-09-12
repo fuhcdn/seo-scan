@@ -207,8 +207,9 @@ def step_payment_verified(status, order):
     # 佢確認 paid 先放行；未接真 Stripe 時係 placeholder（見函式內 @Yan 註明）。
     verified = _verify_stripe_payment(ref)
     if not verified.get("verified"):
+        _safe = {k: v for k, v in verified.items() if k != "status"}
         mark_step(status, "payment_verified", "failed",
-                  payment_ref=ref, error=verified.get("note"), **verified)
+                  payment_ref=ref, error=verified.get("note"), **_safe)
         raise RuntimeError(f"payment_not_verified: {verified.get('note')}")
     mark_step(status, "payment_verified", "done",
               payment_ref=ref,
@@ -294,49 +295,14 @@ def step_research(status, order):
 
 
 def _build_findings(status, order, research):
-    """由 research + order 建立 tier 深度嘅 findings 清單（D2 schema）。
-
-    ENTRY: 3-5 戰略 finding + 10-20 actions（深度較低）
-    PREMIUM: 5-8 戰略 finding + 25-75 actions（深度較高）
-    每條 finding 有 evidence_id + label + priorità（無 evidence 唔准入）。
-    """
+    """90/100 STANDARD: classify research into material customer-specific findings,
+    rejecting system-log/generic observations, and build action ledger."""
+    import quality_gate as _qg
     tier = order.get("report_tier") or status.get("report_tier") or "ENTRY_REPORT"
-    is_premium = tier == "PREMIUM_REPORT"
-    ledger = research.get("evidence_ledger") or []
-    # 由 ledger 轉做 findings —— 每條 material evidence 帶住 label/confidence/scope。
-    # 呢度係 deterministic（唔靠 AI），只反映真觀察；深度由 tier 控制 finding 總數/深度。
-    findings = []
-    for e in ledger:
-        if e.get("label") == "NOT VERIFIABLE WITH PUBLIC DATA":
-            continue
-        findings.append({
-            "priority": "P1",
-            "category": "SEO",
-            "title": e.get("claim", "")[:80],
-            "claim": e.get("claim", ""),
-            "claim_label": e.get("label", "INFERENCE"),
-            "evidence_ids": [e["evidence_id"]],
-            "affected_scope": e.get("scope", "site"),
-            "business_reason": ("Public-web observation. Validate with the "
-                                "customer's business context before prioritising."),
-            "recommended_action": ("Validate this observation through the "
-                                   "public-data checklist, then plan the concrete fix."),
-            "owner": "SEO / Marketing",
-            "effort": "Medium" if is_premium else "Small",
-            "confidence": e.get("confidence", "Medium"),
-            "confidence_rationale": e.get("direct_observation", "")[:200],
-            "dependencies": [],
-            "acceptance_criteria": "Confirmed via the corresponding public source and customer context.",
-            "validation_method": "Search Console / GA4 / CRM where access is provided.",
-            "limitations": "Public research only; private data not verified.",
-        })
-    # cap by tier depth
-    cap = 40 if is_premium else 15
-    findings = findings[:cap]
-    if not findings:
-        # 一個觀察都無 → QA 會擋落嚟（I2 fail-safe），呢度唔作弊
-        return findings
-    return findings
+    findings, actions, rejected = _qg.classify_findings(research, status, tier)
+    status["rejected_findings_count"] = len(rejected)
+    status["action_count"] = len(actions)
+    return findings, actions, rejected
 
 
 def step_report(status, audit_path=None):
@@ -358,7 +324,41 @@ def step_report(status, audit_path=None):
         if not research:
             research = step_research(status, order)
 
-        findings = _build_findings(status, order, research)
+        findings, actions, rejected = _build_findings(status, order, research)
+
+        # ---- 90/100 QUALITY STANDARD gate ----
+        import quality_gate as _qg
+        # 1) intake validation (block normal report if required fields absent)
+        intake_ok, intake_missing = _qg.validate_intake(order)
+        if not intake_ok:
+            mark_step(status, "report", "failed",
+                      note="intake_fail: required business context missing",
+                      intake_missing=intake_missing)
+            save_status(status)
+            return _qg_path_noop(status, research, "intake", intake_missing)
+
+        # 2) research minimums per tier
+        min_ok, min_gaps = _qg.research_minimum_satisfied(research, tier)
+        if not min_ok:
+            mark_step(status, "report", "failed",
+                      note="research_minimum not met",
+                      research_gaps=min_gaps)
+            save_status(status)
+            return _insufficient_evidence_pdf(status, research, ["research insufficient: " + "; ".join(min_gaps)])
+
+        # 3) scorecard (draft) + hard-fail
+        qres = _qg.score_report(research, findings, actions, tier, lang, order=order)
+        status["draft_score"] = qres["score"]
+        status["draft_scorecard"] = qres["scorecard"]
+        status["hard_fail"] = qres["hard_fail"]
+        if qres["hard_fail"] or qres["score"] < 90:
+            mark_step(status, "report", "failed",
+                      draft_score=qres["score"], hard_fail=qres["hard_fail"],
+                      note="90/100 gate not met; not delivering")
+            save_status(status)
+            # transparent fail-safe if evidence insufficient (score < 90 likely due thin evidence)
+            issues = qres["hard_fail"] or ["score below 90 (draft " + str(qres["score"]) + ")"]
+            return _insufficient_evidence_pdf(status, research, issues)
 
         # I1 QA gate（唔過就唔出 PDF）
         qa_ok, qa_issues = _re.run_qa(research, findings, tier, lang, order=order)
@@ -371,7 +371,7 @@ def step_report(status, audit_path=None):
             # 產生 fail-safe 文件
             return _insufficient_evidence_pdf(status, research, qa_issues)
 
-        html = _re.build_report(order, research, findings, tier, lang)
+        html = _re.build_report(order, research, findings, actions, tier, lang)
         domain = safe_domain(order.get("url", "demo"))
         order_tag = safe_token(status.get("order_id")) or safe_token(domain)
         os.makedirs(REPORT_OUT, exist_ok=True)
@@ -394,6 +394,29 @@ def step_report(status, audit_path=None):
     except Exception as e:
         mark_step(status, "report", "failed", error=f"{type(e).__name__}: {e}")
         raise
+
+
+def _qg_path_noop(status, research, kind, payload):
+    """Render the correct fail-safe output for intake/context insufficiency.
+    Returns a write-only path (no PDF) so deliver is blocked."""
+    import quality_gate as _qg
+    from html import escape as _e
+    if kind == "intake":
+        html = _qg.insufficient_business_context_html(dict(status), payload)
+    else:
+        html = _qg.insufficient_evidence_html(research or {})
+    os.makedirs(REPORT_OUT, exist_ok=True)
+    order = dict(status)
+    domain = safe_domain(order.get("url", "demo"))
+    order_tag = safe_token(status.get("order_id")) or safe_token(domain)
+    html_path = os.path.join(REPORT_OUT, f"{domain}_{order_tag}_insufficient_context.html")
+    with open(html_path, "w", encoding="utf-8") as fh:
+        fh.write(html)
+    status["report_html"] = html_path
+    status["report_pdf"] = None
+    status["insufficient_context"] = True
+    save_status(status)
+    return None
 
 
 def _insufficient_evidence_pdf(status, research, qa_issues):
@@ -692,6 +715,7 @@ def run_pipeline(order):
     for k in ("url", "report_language", "selected_product_id", "report_tier",
               "company_name", "primary_business_goal",
               "primary_market_or_service_area", "main_products_or_services",
+              "ideal_customer_or_target_audience", "primary_customer_action",
               "known_competitors", "notes_or_constraints"):
         if order.get(k) is not None:
             status[k] = order[k]
@@ -789,6 +813,7 @@ def main():
             for k in ("report_language", "selected_product_id", "report_tier",
                       "company_name", "primary_business_goal",
                       "primary_market_or_service_area", "main_products_or_services",
+                      "ideal_customer_or_target_audience", "primary_customer_action",
                       "known_competitors", "notes_or_constraints"):
                 if k in saved and not order.get(k):
                     order[k] = saved[k]

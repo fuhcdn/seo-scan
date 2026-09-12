@@ -18,3 +18,5 @@ err*.log
 deploy/secrets.env
 secrets.env.bak
 *.env.bak
+pipeline/research/
+research/
