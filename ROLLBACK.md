@@ -13,7 +13,7 @@
 | Production branch | `master` |
 | Redesign branch | `redesign/quiet-authority` |
 | Remote repository | `https://github.com/fuhcdn/seo-scan.git`（已確認 push 成功；token 不記錄於此）|
-| Staging environment | 未建立（尚未 deploy staging——design 開始前需建立）|
+| Staging environment | **已建立 2026-09-12**：VPS `/deploy/seo-staging/`，container `seo-staging-seo-staging-1`，port **8080**（隔離 production 8000）。Traefik hostname `staging.seoscanaudit.com`（label 已設；DNS 未指——可用 `http://VPS:8080/` 直接測試）。|
 
 ## 2. Backup identifiers
 
@@ -112,7 +112,7 @@ Redesign 只改**視覺層**：warm-white 背景、深海軍藍字、靛藍 CTA�
 唔准 hard-code 價、呃客 fake data、claim 未存在 access。
 
 ## 10. 未完成 / 風險
-- **Staging environment 未建立** —— design 開始前必須建（見 REDESIGN checklist）
+- ~~**Staging environment 未建立**~~ → **已建立**（見第 1 節；DNS `staging.seoscanaudit.com` 未指，可用 `VPS:8080` 測試）
 - **Known baseline limitation**：`/robots.txt` 同 `/sitemap.xml` **未 serve**（server.py 無對應 route，回 404 JSON）。呢個係 baseline 已有狀態（非 regression）。屬「redesign 可改嘅 SEO metadata 改善項」，但要喺 staging 做，唔好喺 baseline 直接加。
 - 現有 session 冇 database，restore 單純 JSON 覆蓋，風險低但須先備份「壞 state」
 - 有 `CHECKOUT_TEST_PRICE`（$0.5 測試 mode）喺 secrets，屬正考慮中；正式價應轉返（見 baseline 決定）
