@@ -233,8 +233,11 @@ def run_research(order, max_pages=12):
         "limitations": limitations,
     }
     # ---- Stage C: real SERP observations (public DuckDuckGo HTML, no exact-rank claims) ----
+    tier = order.get("report_tier") or "ENTRY_REPORT"
+    is_premium = tier == "PREMIUM_REPORT"
+    max_serp = 8 if is_premium else 3
     try:
-        serp_obs = run_serp_observations(order, max_queries=3)
+        serp_obs = run_serp_observations(order, max_queries=max_serp)
         if serp_obs:
             merge_serp(research, serp_obs, ledger)
             research["evidence_ledger"] = ledger.to_list()
@@ -287,18 +290,37 @@ def run_serp_observations(order, max_queries=3, timeout=20):
     唔會 claim 確切排名（無 verified rank source）——淨係記錄結果類型 pattern。
     Return: list[dict] observations."""
     brand = (order.get("company_name") or "").strip().split()[0] if (order.get("company_name") or "").strip() else ""
-    products = (order.get("main_products_or_services") or "").strip()
+    products_raw = (order.get("main_products_or_services") or "").strip()
     area = (order.get("primary_market_or_service_area") or "").strip()
-    base_queries = []
+    action = (order.get("primary_customer_action") or "").strip()
+    # 拆 products 做獨立詞（第一個產品為主，兼顧多服務情況）
+    product_terms = [p.strip() for p in products_raw.split(",") if p.strip()][:4]
+
+    query_bank = []
     if brand:
-        base_queries.append(f'"{brand}"')
-    if brand and products:
-        base_queries.append(f"{brand} {products.split(',')[0].strip() if products else ''} ")
-    if products and area:
-        base_queries.append(f"{products.split(',')[0].strip() if products else ''} {area}")
-    if not base_queries:
-        base_queries = [products or area or brand or ""]
-    base_queries = [q.replace("  ", " ").strip() for q in base_queries if q.strip()][:max_queries]
+        query_bank.append(f'"{brand}"')
+    if brand and product_terms:
+        query_bank.append(f"{brand} {product_terms[0]}")
+        query_bank.append(f"{brand} {product_terms[0]} {area}")
+    for pt in product_terms:
+        query_bank.append(f"{pt}")
+        if area:
+            query_bank.append(f"{pt} {area}")
+    if action:
+        if product_terms:
+            query_bank.append(f"{product_terms[0]} {action}")
+        elif brand:
+            query_bank.append(f"{brand} {action}")
+    # fallback
+    if not query_bank:
+        query_bank = [products_raw or area or brand or ""]
+    # dedupe + trim to requested count
+    seen = set(); uniq = []
+    for q in query_bank:
+        q = q.replace("  ", " ").strip()
+        if q and q.lower() not in seen:
+            seen.add(q.lower()); uniq.append(q)
+    base_queries = uniq[:max_queries]
 
     observations = []
     for q in base_queries:
