@@ -53,10 +53,14 @@ LANDING_OUT      = os.path.join(_HERE, "landing_page.html")
 
 
 def render_landing(output_path=None):
-    """用 config 嘅價格填 landing 模板，輸出可 serve 嘅 landing_page.html。
+    """用 config 嘅價格填 landing 模板（legacy，唔再 serve production）。
 
-    Round5：render 後會檢查輸出唔可以係示範模式（DEMO_MODE=false），
-    防止真後端被 template 嘅 demo 兜返貼提 —— 撞到 demo 會 raise，唔出檔。
+    QUIET AUTHORITY REDESIGN (2026-09-12)：真正 landing 源頭係
+    `generate_languages.py`（新設計，6 檔）。此函數使用舊
+    `landing_page.template.html`（舊設計，含過期 placeholder/urgency），
+    為咗唔會意外覆寫新設計，**預設輸出去 legacy backup 檔**而唔係
+    `landing_page.html`。若有人明確要求寫去 main EN landing，會 raise，
+    防止 silent revert 成個 redesign。
 
     Return: 寫好嘅檔案路徑（寫唔到 / 發現 demo 模式就會 raise）。"""
     with open(LANDING_TEMPLATE, "r", encoding="utf-8") as fh:
@@ -75,7 +79,13 @@ def render_landing(output_path=None):
             "請修正 landing_page.template.html 用真實 /api/scan 嘅 runScan，"
             "確認 var DEMO_MODE = false; 先可以 render。")
 
-    out = output_path or LANDING_OUT
+    # 防覆寫：呢個 legacy render 唔准 overwrite 新 design 嘅 main landing。
+    out = output_path or os.path.join(_HERE, "landing_page.legacy-render.html")
+    if os.path.abspath(out) == os.path.abspath(LANDING_OUT):
+        raise RuntimeError(
+            "render_landing() 輸出只可去 legacy backup 檔（landing_page.legacy-render.html），"
+            "唔可以寫去 landing_page.html —— 嗰個係 Quiet Authority 新設計（generate_languages.py）嘅真源。"
+            "要用新設計請行 `python3 generate_languages.py`。")
     os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
     with open(out, "w", encoding="utf-8") as fh:
         fh.write(html)

@@ -29,6 +29,12 @@ SKELETON = """<!DOCTYPE html>
 <link rel="alternate" hreflang="ja" href="{{BASE_URL}}/ja" />
 <link rel="alternate" hreflang="es" href="{{BASE_URL}}/es" />
 <link rel="alternate" hreflang="x-default" href="{{BASE_URL}}/" />
+<meta property="og:type" content="website" />
+<meta property="og:title" content="{{TITLE}}" />
+<meta property="og:description" content="{{META_DESC}}" />
+<meta property="og:url" content="{{BASE_URL}}/{{URL_PATH}}" />
+<meta property="og:site_name" content="SEO Scan.ai" />
+<meta name="twitter:card" content="summary" />
 <style>
   :root{
     --bg:#F7F7F5; --ink:#0B1220; --navy:#0B1220; --muted:#657085;
@@ -512,7 +518,7 @@ EN = dict(base("en"), SEL_EN="selected", **{
     "PRICE_EYEBROW": "Choose your report", "PRICE_H2": "Two evidence-led reports. One clear path.", "PRICE_SUB": "Choose a report, choose your language, pay securely. Your PDF is delivered to your email.",
     "PRICE_UNIT": "/ once",
     "CARD1_TITLE": "SEO Opportunity Diagnostic", "CARD1_WHO": "For business owners who need to know which SEO work deserves attention over the next 90 days.",
-    "CARD1_1": "Evidence-led website and search review", "CARD1_2": "3–5 priority findings", "CARD1_3": "Top-five action plan", "CARD1_4": "Business-readable executive summary", "CARD1_5": "90-day roadmap", "CARD1_6": "Public-data validation checklist", "CARD1_CTA": "Choose Report",
+    "CARD1_1": "Evidence-led website and search review", "CARD1_2": "3–5 priority findings", "CARD1_3": "Top priority action plan", "CARD1_4": "Business-readable executive summary", "CARD1_5": "90-day roadmap", "CARD1_6": "Public-data validation checklist", "CARD1_CTA": "Choose Report",
     "CARD2_BADGE": "Best for teams ready to execute", "CARD2_TITLE": "SEO Growth Blueprint", "CARD2_WHO": "For teams that need a more complete action system for content, marketing and development.",
     "CARD2_1": "Deeper strategy and architecture assessment", "CARD2_2": "Topic, intent and page-purpose map", "CARD2_3": "Detailed prioritised action ledger", "CARD2_4": "Content opportunity briefs", "CARD2_5": "Developer-ready implementation briefs", "CARD2_6": "90-day roadmap with owners and validation plan", "CARD2_CTA": "Choose Report",
     "PRICE_FOOT": "Both reports delivered as a professional PDF in your chosen language.",
