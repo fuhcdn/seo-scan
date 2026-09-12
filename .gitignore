@@ -10,4 +10,11 @@ run_err.log
 err*.log
 .env
 .DS_Store
-.venv/
+.venv/.git-token
+.git-token
+.cloudflare_token
+*.pem
+*.key
+deploy/secrets.env
+secrets.env.bak
+*.env.bak

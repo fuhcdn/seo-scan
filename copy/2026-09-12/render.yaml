@@ -34,4 +34,4 @@ services:
       - key: OPENROUTER_API_KEY
         sync: false
       - key: PUBLIC_URL
-        value: https://seoscanaudit.com   # 填你實際 render URL
+        value: https://seo-scan.onrender.com   # 填你實際 render URL

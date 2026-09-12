@@ -4,7 +4,14 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>AI SEO 審計報告 — 免費 Scan 你網站 | 即刻睇 Top 問題</title>
-<meta name="description" content="免費 scan 你網站，即刻得到 SEO 總分同 Top 5 問題。完整 AI 審計報告(US${{PRICE_USD}})一步發掘所有 SEO 隱患，10 分鐘自動交付。" />
+<meta name="description" content="免費 scan 你網站，即刻得到 SEO 總分同 Top 5 問題。完整 AI 審計報告一步發掘所有 SEO 隱患，約 10 分鐘自動交付。" />
+<link rel="canonical" href="https://seoscanaudit.com/zh-Hant" />
+<link rel="alternate" hreflang="en" href="https://seoscanaudit.com/" />
+<link rel="alternate" hreflang="zh-Hant" href="https://seoscanaudit.com/zh-Hant" />
+<link rel="alternate" hreflang="zh-Hans" href="https://seoscanaudit.com/zh-Hans" />
+<link rel="alternate" hreflang="ja" href="https://seoscanaudit.com/ja" />
+<link rel="alternate" hreflang="es" href="https://seoscanaudit.com/es" />
+<link rel="alternate" hreflang="x-default" href="https://seoscanaudit.com/" />
 <style>
   :root{
     --ink:#0f172a; --muted:#64748b; --brand:#2563eb; --brand-dark:#1d4ed8;
@@ -12,13 +19,19 @@
     --amber:#d97706; --red:#dc2626; --shadow:0 10px 30px -12px rgba(15,23,42,.18);
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang HK","Microsoft JhengHei",sans-serif;
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang HK","Microsoft JhengHei","Microsoft YaHei","Hiragino Sans","Noto Sans SC","Noto Sans JP","Noto Sans",sans-serif;
     color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
   .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
   header{background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 60%,#3b82f6 100%);color:#fff;padding:64px 0 56px}
-  .nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;font-size:14px}
+  .nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;font-size:14px;gap:12px;flex-wrap:wrap}
   .logo{font-weight:800;letter-spacing:.3px}
   .logo span{color:#bfdbfe}
+  .nav-links{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+  .nav-links a{color:#334155;text-decoration:none;font-weight:600}
+  .langbox select{appearance:none;background:#fff;border:1px solid var(--line);border-radius:999px;
+    padding:7px 30px 7px 14px;font-size:13px;color:var(--ink);cursor:pointer;font-weight:600;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0l5 6 5-6z' fill='%2364748b'/></svg>");
+    background-repeat:no-repeat;background-position:right 12px center;outline:none}
   .hero{text-align:center;padding:24px 0 8px}
   .badge{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
     padding:5px 14px;border-radius:999px;font-size:13px;margin-bottom:22px}
@@ -33,8 +46,6 @@
   .scanbox button{border:none;cursor:pointer;background:var(--brand);color:#fff;font-weight:700;
     padding:14px 22px;border-radius:10px;font-size:15px;white-space:nowrap;transition:background .2s}
   .scanbox button:hover{background:var(--brand-dark)}
-  .demoTag{display:inline-block;background:var(--amber);color:#fff;font-size:11px;font-weight:800;
-    padding:3px 9px;border-radius:999px;margin-left:8px;vertical-align:middle;letter-spacing:.3px}
   .ta{font-size:13px;color:#bfdbfe;margin-top:14px}
   .quick{color:#bfdbfe;font-size:13px;margin-top:6px}
   .quick b{color:#fff;cursor:pointer;text-decoration:underline}
@@ -45,7 +56,9 @@
   section{padding:64px 0}
   .h2{font-size:clamp(22px,3vw,30px);font-weight:800;text-align:center;margin-bottom:10px;letter-spacing:-.3px}
   .h2sub{text-align:center;color:var(--muted);max-width:520px;margin:0 auto 40px}
-  /* CV (免費vs付費) */
+  .trustbar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:10px 0 18px}
+  .trustbar span{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);
+    color:#e2e8f0;padding:5px 12px;border-radius:99px;font-size:12px}
   .cv{display:grid;grid-template-columns:1fr 1.2fr;gap:20px;max-width:860px;margin:0 auto}
   .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
   .card .tag{font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase}
@@ -68,21 +81,13 @@
   .promo{background:#fffbeb;border:1px solid #fde68a;color:#92400e;text-align:center;font-size:14px;
     padding:10px 16px;border-radius:12px;margin-top:18px}
   .promo b{color:#b45309}
-  /* features */
   .feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;max-width:920px;margin:0 auto}
   .feat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px}
   .feat .ico{font-size:26px;margin-bottom:10px}
   .feat h4{font-size:16px;font-weight:700;margin-bottom:6px}
   .feat p{font-size:14px;color:var(--muted)}
-  /* social proof */
-  .proof{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px;max-width:920px;margin:0 auto}
-  .quote{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px}
-  .quote p{font-size:15px;font-style:italic}
-  .quote .who{margin-top:14px;font-size:13px;font-weight:700;color:var(--muted)}
-  .stars{color:#f59e0b;letter-spacing:2px;font-size:15px}
   footer{background:#0f172a;color:#94a3b8;padding:34px 0;text-align:center;font-size:13px}
   footer a{color:#cbd5e1;text-decoration:underline}
-  /* result panel */
   .result{display:none;max-width:620px;margin:22px auto 0;background:#fff;border:1px solid var(--line);
     border-radius:16px;padding:24px;box-shadow:var(--shadow);text-align:left}
   .result h3{font-size:18px;margin-bottom:12px}
@@ -101,17 +106,27 @@
     color:#94a3b8;font-size:14px;cursor:pointer}
   .unlock{background:var(--brand);color:#fff;border:none;cursor:pointer;font-weight:800;padding:18px;
     border-radius:12px;font-size:17px;width:100%;margin-top:18px}
+  .money{font-variant-numeric:tabular-nums}
   @media(max-width:700px){.scanbox{flex-direction:column}.scanbox button{width:100%}.cv{grid-template-columns:1fr}.ribbon{right:14px}}
 </style>
 </head>
-<body>
+<body id="top">
 
 <!-- NAV -->
 <nav class="wrap nav">
   <div class="logo">SEO<span>Scan</span>.ai</div>
-  <div style="display:flex;gap:18px">
-    <a href="#how" style="color:#bfdbfe;text-decoration:none">點運作</a>
-    <a href="#pricing" style="color:#bfdbfe;text-decoration:none">收費</a>
+  <div class="nav-links">
+    <a href="#how">點運作</a>
+    <a href="#pricing">收費</a>
+    <span class="langbox">
+      <select id="langSel" onchange="if(this.value){location.href=this.value}">
+        <option value="/en" >English</option>
+        <option value="/zh-Hant" selected>繁體中文</option>
+        <option value="/zh-Hans" >简体中文</option>
+        <option value="/ja" >日本語</option>
+        <option value="/es" >Español</option>
+      </select>
+    </span>
   </div>
 </nav>
 
@@ -119,13 +134,13 @@
 <header>
   <div class="wrap hero">
     <span class="badge">🤖 AI SEO 審計 · 免費 Scan 即睇</span>
-    <div class="trustbar" style="margin:10px 0 18px;font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:10px;justify-content:center;">
-      <span style="background:var(--bg2,#f4f4f7);padding:5px 12px;border-radius:99px;border:1px solid var(--line)">✅ 跟 Google Search Essentials 標準</span>
-      <span style="background:var(--bg2,#f4f4f7);padding:5px 12px;border-radius:99px;border:1px solid var(--line)">✅ Ahrefs×Semrush 審計方法</span>
-      <span style="background:var(--bg2,#f4f4f7);padding:5px 12px;border-radius:99px;border:1px solid var(--line)">✅ Core Web Vitals 官方指標</span>
+    <div class="trustbar">
+      <span>✅ 跟 Google Search Essentials 標準</span>
+      <span>✅ Ahrefs×Semrush 審計方法</span>
+      <span>✅ Core Web Vitals 官方指標</span>
     </div>
     <h1>你網站嘅 SEO，<br /><em>即刻免費 Scan</em>，睇到 Top 問題</h1>
-    <p class="sub">貼你網站 URL，30 秒內得到 SEO 總分 + Top 5 問題。完整 AI 審計報告教你點樣修 —— 唔使再估。</p>
+    <p class="sub">貼你網站 URL，幾秒內得到 SEO 總分 + Top 5 問題。完整 AI 審計報告教你點樣修 —— 唔使再估。</p>
 
     <div class="scanbox">
       <input id="url" type="url" placeholder="貼你網站 URL，例如 mybusiness.com" required />
@@ -133,7 +148,7 @@
     </div>
 
     <div class="result" id="result">
-      <h3>Scan 結果：<span id="rurl" style="color:var(--brand)"></span></h3>
+      <h3>Scan 結果： <span id="rurl" style="color:var(--brand)"></span></h3>
       <div class="demoNote" id="demoNote" style="display:none"></div>
       <div class="score">
         <div class="ring"><span id="rscore">—</span></div>
@@ -146,20 +161,24 @@
         <div class="row"><span class="lv md">中</span>輸入 URL 後撳「免費 Scan」睇真數據 Top 問題</div>
       </div>
       <div id="locked" style="margin-top:8px">
-        <div class="lockrow"><span>🔒 完整 <span class="fixCount">—</span> 項修復清單（Scan 後更新）</span><b>Locked</b></div>
+        <div class="lockrow"><span>🔒 完整 <span class='fixCount'>—</span> 項修復清單（Scan 後更新）</span><b>Locked</b></div>
         <div class="lockrow"><span>🔒 同競爭對手對比分析</span><b>Locked</b></div>
         <div class="lockrow"><span>🔒 AI 逐步修復指引 + 優先次序</span><b>Locked</b></div>
         <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">收報告 email（交付完整 PDF）：</div>
         <input id="email" type="email" placeholder="you@example.com" required
-               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:14px" />
-        <button class="unlock" onclick="startCheckout()">解鎖完整報告 — US${{EARLY_PRICE_USD}}</button>
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:12px">
+          <input id="consent" type="checkbox" required style="width:16px;height:16px;accent-color:var(--brand)" />
+          我同意將 email 僅用於交付本報告（見私隱政策），可隨時取消訂閱。
+        </label>
+        <button class="unlock" onclick="startCheckout()">解鎖完整報告 — US$397</button>
         <div style="margin:10px 0 2px;font-size:12px;color:#16a34a;font-weight:600">🛡️ 7 日放心保證：交付前全額退 · 交付後免費重審</div>
-        <div style="font-size:11px;color:var(--muted)">付款後 10 分鐘內自動交付到 email</div>
+        <div style="font-size:11px;color:var(--muted)">付款後約 10 分鐘內自動交付到 email</div>
       </div>
     </div>
 
     <div class="ta">🔒 100% 免費 · 無需註冊 · 掃一次即刻睇</div>
-    <div class="quick">想試？　
+    <div class="quick">想試？
       <b onclick="document.getElementById('url').value='restaurant-hk.com'">restaurant-hk.com</b></div>
 
     <div class="stats">
@@ -177,34 +196,34 @@
     <p class="h2sub">唔使註冊、唔使信用卡。貼 URL 就得。</p>
     <div class="feats">
       <div class="feat"><div class="ico">1️⃣</div><h4>貼上 URL</h4><p>一個輸入框，貼你網站網址，撳「免費 Scan」。</p></div>
-      <div class="feat"><div class="ico">2️⃣</div><h4>即刻睇總分 + Top 5</h4><p>30 秒內得到 SEO 健康總分同最嚴重嘅 5 個問題。</p></div>
-      <div class="feat"><div class="ico">3️⃣</div><h4>完整報告先 US${{PRICE_USD}}</h4><p>有信心中意先解鎖完整修復清單。付款即時交付。</p></div>
+      <div class="feat"><div class="ico">2️⃣</div><h4>即刻睇總分 + Top 5</h4><p>幾秒內得到 SEO 健康總分同最嚴重嘅 5 個問題。</p></div>
+      <div class="feat"><div class="ico">3️⃣</div><h4>完整報告先 US$397</h4><p>有信心中意先解鎖完整修復清單。付款即時交付。</p></div>
     </div>
   </div>
 </section>
 
-<!-- PRICING / CV -->
+<!-- PRICING -->
 <section id="pricing" style="background:#fff">
   <div class="wrap">
-    <div class="h2">免費 Scan vs 完整 AI 報告</div>
-    <p class="h2sub">免費版證明價值，完整版幫你執好個網站。</p>
-    <div class="cv">
+    <div class="h2">免費證明價值，完整版幫你執好個網站</div>
+    <p class="h2sub">先免費 scan 你個網站——見到真問題先決定。「點改」留俾完整版。</p>
+    <div class="cv" style="gap:18px;align-items:stretch">
       <div class="card">
         <div class="tag">免費</div>
         <h3>Free Scan</h3>
-        <div class="price">US$0</div>
+        <div class="price money">US$0</div>
         <ul>
           <li>SEO 健康總分</li>
           <li>Top 5 最嚴重問題</li>
+          <li>網站類型識別</li>
           <li>即時睇即時攞</li>
-          <li>無需註冊</li>
         </ul>
         <a class="cta-btn ghost" href="#how" style="text-decoration:none">↑ 免費 Scan</a>
       </div>
       <div class="card pro" style="border:2px solid var(--brand);position:relative">
         <div class="tag" style="background:var(--brand);color:#fff">完整版 · 最受歡迎</div>
         <h3>Full AI SEO Audit</h3>
-        <div class="price"><del style="font-size:16px;color:var(--muted);margin-right:8px">US${{REGULAR_PRICE_USD}}</del> <span style="color:var(--brand)">US${{EARLY_PRICE_USD}}</span> <small>/ 一次</small></div>
+        <div class="price money"><del style="font-size:16px;color:var(--muted);margin-right:8px">US$497</del> <span style="color:var(--brand)">US$397</span> <small>/ 一次</small></div>
         <div class="promo" style="font-size:12px;color:var(--muted);margin:2px 0 12px">首 50 位創始價（只限早鳥，名額派完即止）</div>
         <ul class="lock">
           <li>完整 SEO 問題修復清單（數量因網站而異）</li>
@@ -214,12 +233,12 @@
           <li>付款後 10 分鐘內自動交付</li>
           <li>7 日放心保證：交付前可退 · 交付後免費重審</li>
         </ul>
-        <button class="cta-btn" onclick="document.getElementById('url').scrollIntoView({behavior:'smooth'});document.getElementById('url').focus()">免費 Scan 後解鎖 — US${{EARLY_PRICE_USD}}</button>
+        <button class="cta-btn" onclick="document.getElementById('url').scrollIntoView({behavior:'smooth'});document.getElementById('url').focus()">免費 Scan 後解鎖 — US$397</button>
       </div>
       <div class="card">
         <div class="tag">進階</div>
         <h3>Growth Audit</h3>
-        <div class="price">US${{GROWTH_PRICE_USD}} <small>/ 一次</small></div>
+        <div class="price money">US$997 <small>/ 一次</small></div>
         <ul class="lock">
           <li>完整版全部内容</li>
           <li>4 條錢頁 page-level 深挖</li>
@@ -247,7 +266,7 @@
   <div class="wrap" style="max-width:640px;text-align:center">
     <div style="font-size:40px;margin-bottom:8px">⏳</div>
     <div class="h2" style="font-size:26px;margin-bottom:6px">先免費 scan，見到真問題先決定</div>
-    <p style="color:var(--muted);margin-bottom:22px">首 50 位創始價 US${{EARLY_PRICE_USD}}（原價 US${{REGULAR_PRICE_USD}}）—— 額滿即回復正價。而家免費 scan，中意先解鎖。</p>
+    <p style="color:var(--muted);margin-bottom:22px">首 50 位創始價 US$397（原價 US$497）—— 額滿即回復正價。而家免費 scan，中意先解鎖。</p>
     <a class="scanbox" href="#top" style="text-decoration:none;cursor:pointer;justify-content:center;background:var(--brand);color:#fff;font-weight:800" onclick="document.getElementById('url').focus()">
       免費 Scan 我網站 →
     </a>
@@ -263,8 +282,6 @@
 </footer>
 
 <script>
-  // Round5：模板已接上真實 scan 後端 (server.py，POST /api/scan) → 攞真數據。
-  // 唔再係 demo —— render_landing() 會檢查 `var DEMO_MODE = false;` 兜底防回歸。
   var DEMO_MODE = false;
 
   function runScan(){
@@ -295,11 +312,9 @@
         if(hint) hint.textContent = (data.score != null) ? ((data.score >= 80 ? '✅ 健康網站' : (data.score >= 50 ? '⚠️ 值得改進' : '🔴 好多問題'))) : '未能讀取診斷';
         document.getElementById('rurl').textContent = clean;
 
-        // Round4/5：動態 fix_count —— 用 scan 返嘅真數據取代硬編碼嘅「42」。
         var fc = (data.fix_count != null) ? data.fix_count : (data.fix_list || []).length;
         document.querySelectorAll('.fixCount').forEach(function(el){ el.textContent = fc; });
 
-        // 真數據 Top 5 問題（Round5：欄位 id 保留喺 HTML，唔再靠亂插）
         var top = (data.top_issues || []).slice(0,5);
         var list = document.getElementById('toplistResult');
         if(!list){ list = document.createElement('div'); list.id='toplistResult'; document.querySelector('.toplist').appendChild(list); }
@@ -317,7 +332,6 @@
           if(c.className && String(c.className).indexOf('row') !== -1 && !c.id){ toplist.removeChild(c); }
         });
 
-        // Round5：動態統計 —— 每成功 scan 一次，網站已 Scan 數 +1（真行為，唔係假數）。
         if(typeof window.__scanTotal === 'number'){
           window.__scanTotal += 1;
           var sc = document.getElementById('scanCount');
@@ -330,8 +344,7 @@
         document.getElementById('demoNote').textContent = '⚠️ 連唔到 scan 後端：' + e;
       });
   }
-  // Round7：解鎖流程 —— 先 POST /api/order 攞 order_id（同時收 customer_email），
-  // 再帶 order_id 打 /api/create-checkout，令付款後可以接返張單。
+
   function startCheckout(){
     var u = document.getElementById('url').value.trim();
     var em = document.getElementById('email') ? document.getElementById('email').value.trim() : '';
@@ -339,7 +352,6 @@
     function showNote(msg){ note.style.display='block'; note.textContent = msg; }
     if(!em){ showNote('⚠️ 請輸入收報告嘅 email（完整 PDF 會寄去呢度）'); document.getElementById('email').focus(); return; }
 
-    // Step 1: 建立訂單，攞 order_id + status_url
     fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'},
            body: JSON.stringify({url:u, customer_email:em})})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, json:d}; }); })
@@ -349,13 +361,12 @@
           showNote('⚠️ 落單失敗：' + (d.error || '未知錯誤')); return;
         }
         var orderId = d.order_id;
-        // Step 2: 帶 order_id 打 create-checkout
         fetch('/api/create-checkout', {method:'POST', headers:{'Content-Type':'application/json'},
-               body: JSON.stringify({url:u, order_id:orderId, price_usd:{{EARLY_PRICE_USD}}})})
+               body: JSON.stringify({url:u, order_id:orderId, price_usd:397})})
           .then(function(r){ return r.json(); })
           .then(function(cd){
             if(cd.redirect_url){ window.location.href = cd.redirect_url; return; }
-            showNote('💰 訂單已建立（' + orderId + '）。付款系統準備中 —— 呢個係預留步伐（checkout_placeholder）。@Yan 接完真 Stripe 之後，撳「解鎖」會自動跳去 Stripe 付款頁。');
+            showNote('💰 訂單已建立（' + orderId + '）。付款系統準備中 —— 呢個係預留步伐（checkout_placeholder）。接完真 Stripe 之後，撳「解鎖」會自動跳去 Stripe 付款頁。');
             document.getElementById('result').scrollIntoView({behavior:'smooth', block:'center'});
           })
           .catch(function(e){ showNote('⚠️ 連唔到結帳伺服器：' + e); });
@@ -365,7 +376,6 @@
       });
   }
 
-  // Round5：網站已 Scan 動態計數（由 0 起，成功 scan 一次 +1）。好評率未有真實數據 → 誠實顯示「待接入」。
   window.__scanTotal = 0;
   var sc = document.getElementById('scanCount');
   if(sc) sc.textContent = window.__scanTotal;

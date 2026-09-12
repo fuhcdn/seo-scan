@@ -25,7 +25,6 @@ import re
 import sys
 import time
 import urllib.parse
-import base64 as _b64
 
 # 統一 email 格式驗證 regex（server /api/order 同 step_deliver 共用同一規則）
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
@@ -137,60 +136,33 @@ def step_order_received(status, order):
 
 
 def _verify_stripe_payment(payment_ref):
-    """pay-first 付款驗證 —— 真 Stripe retrieve 核 payment_status=='paid'。
+    """pay-first 付款驗證 hook。
 
-    payment_ref 須為 Stripe PaymentIntent ID（pi_...）或 Checkout Session ID
-    （cs_...）或 Charge（ch_...）。用 STRIPE_SECRET_KEY Retrieve 核實已支付：
-      - Checkout Session:  GET /v1/checkout/sessions/{ref} → payment_status=='paid'
-      - PaymentIntent:     GET /v1/payment_intents/{ref} → status=='succeeded'
-      - Charge:            GET /v1/charges/{ref}          → status=='succeeded'
-    只有確認 paid 先 return verified=True；未接 key ／ retrieve 失敗／未 paid
-    一律 fail-closed（verified=False），令 pipeline 停喺 payment_verified=failed。
+    @Yan：要接真 Stripe 驗證先可以正式放行付款單 ——
+      有 STRIPE_SECRET_KEY 之後，用 Stripe API「Retrieve」確認收據：
+         - Checkout Session:  GET /v1/checkout/sessions/{payment_ref}
+              睇 `payment_status == 'paid'`
+         - PaymentIntent:     GET /v1/payment_intents/{payment_ref}
+              睇 `status == 'succeeded'` && `amount == charge`
+     只有確認 status == paid 先可以 return verified=True；
+     未 paid / 失敗 / 退款 都要 return verified=False，令 pipeline 停喺
+     payment_verified=failed，唔好俾客拎到報告。
+
+    而家：未接真 Stripe（未有 STRIPE_SECRET_KEY），淨係確認 payment_ref 有值，
+    回傳 assumed_verified_placeholder，等流程仲可以跑到（開發/demo）。
     Return: {"verified": bool, "status": str, "note": str}
     """
-    import urllib.request as _ur, urllib.error as _ue, json as _json
-    skey = os.environ.get("STRIPE_SECRET_KEY", "").strip()
     if not payment_ref:
         return {"verified": False, "status": "missing_ref",
                 "note": "pay-first：無 payment_ref"}
-    if not skey:
-        # 冇 key 唔可以假設已付款 —— fail-closed
-        return {"verified": False, "status": "stripe_key_missing",
-                "note": "STRIPE_SECRET_KEY 未設定，無法核實付款，fail-closed"}
-    prefix = payment_ref.split("_", 1)[0] if "_" in payment_ref else ""
-    if prefix in ("pi", "cs", "ch"):
-        endpoint = {"pi": "payment_intents", "cs": "checkout/sessions",
-                    "ch": "charges"}[prefix]
-        url = f"https://api.stripe.com/v1/{endpoint}/{payment_ref}"
-    else:
-        return {"verified": False, "status": "unrecognized_ref",
-                "note": f"payment_ref 前綴唔認得: {prefix!r}"}
-    req = _ur.Request(url, headers={"Authorization": f"Bearer {skey}"})
-    try:
-        with _ur.urlopen(req, timeout=30) as resp:
-            obj = _json.loads(resp.read().decode("utf-8"))
-    except Exception as e:
-        return {"verified": False, "status": "retrieve_failed",
-                "note": f"Stripe retrieve 失敗 ({type(e).__name__}: {e}) — fail-closed"}
-    # 判定已付款
-    if prefix == "cs":
-        paid = (obj.get("payment_status") or "") == "paid"
-    elif prefix == "pi":
-        pa = (obj.get("status") or "") == "succeeded"
-        amount = obj.get("amount")
-        paid = pa and amount not in (None, 0)
-    else:  # charge
-        paid = (obj.get("status") or "") == "succeeded"
-        amount = obj.get("amount")
-        if not paid:
-            paid = False
-        elif amount in (None, 0):
-            paid = False
-    if not paid:
-        return {"verified": False, "status": "not_paid",
-                "note": f"Stripe {prefix} 狀態未確認已支付，不交付"}
-    return {"verified": True, "status": "verified_paid",
-            "note": f"Stripe {prefix} 確認 payment_status=paid"}
+    # TODO(@Yan, Stripe 接入)：喺呢度 call Stripe retrieve 確認 paid。
+    #   未接之前一律當 placeholder，正式收錢前一定要改返真驗證。
+    return {
+        "verified": True,
+        "status": "assumed_verified_placeholder",
+        "note": ("未接真 Stripe retrieve —— @Yan 要接："
+                 "用 PAYMENT_REF 對 Stripe 核實 payment_status=='paid' 先放行。"),
+    }
 
 
 def step_payment_verified(status, order):
@@ -271,165 +243,30 @@ def step_score(status, result, audit_path):
     save_status(status)
 
 
-def step_research(status, order):
-    """HERMES C：執行公開網絡研究，建立證據帳本（research_<id>.json）。
-    回傳 research dict。QA 之前冇 evidence ledger 就唔准出報告。"""
-    try:
-        mark_step(status, "research", "running")
-        import research as _research
-        res = _research.run_research(order, max_pages=12)
-        res["order_id"] = status["order_id"]
-        rp = _research.save(res, status["order_id"])
-        status["research_path"] = rp
-        status["evidence_count"] = len(res.get("evidence_ledger") or [])
-        mark_step(status, "research", "done", path=rp,
-                  note=f"evidence ledger: {status['evidence_count']} items")
-        save_status(status)
-        return res
-    except Exception as e:
-        mark_step(status, "research", "failed", error=f"{type(e).__name__}: {e}")
-        save_status(status)
-        # 證據不足 → transparent fail-safe（I2）：唔生成報告
-        raise RuntimeError(f"research_failed: {type(e).__name__}: {e}")
-
-
-def _build_findings(status, order, research):
-    """由 research + order 建立 tier 深度嘅 findings 清單（D2 schema）。
-
-    ENTRY: 3-5 戰略 finding + 10-20 actions（深度較低）
-    PREMIUM: 5-8 戰略 finding + 25-75 actions（深度較高）
-    每條 finding 有 evidence_id + label + priorità（無 evidence 唔准入）。
-    """
-    tier = order.get("report_tier") or status.get("report_tier") or "ENTRY_REPORT"
-    is_premium = tier == "PREMIUM_REPORT"
-    ledger = research.get("evidence_ledger") or []
-    # 由 ledger 轉做 findings —— 每條 material evidence 帶住 label/confidence/scope。
-    # 呢度係 deterministic（唔靠 AI），只反映真觀察；深度由 tier 控制 finding 總數/深度。
-    findings = []
-    for e in ledger:
-        if e.get("label") == "NOT VERIFIABLE WITH PUBLIC DATA":
-            continue
-        findings.append({
-            "priority": "P1",
-            "category": "SEO",
-            "title": e.get("claim", "")[:80],
-            "claim": e.get("claim", ""),
-            "claim_label": e.get("label", "INFERENCE"),
-            "evidence_ids": [e["evidence_id"]],
-            "affected_scope": e.get("scope", "site"),
-            "business_reason": ("Public-web observation. Validate with the "
-                                "customer's business context before prioritising."),
-            "recommended_action": ("Validate this observation through the "
-                                   "public-data checklist, then plan the concrete fix."),
-            "owner": "SEO / Marketing",
-            "effort": "Medium" if is_premium else "Small",
-            "confidence": e.get("confidence", "Medium"),
-            "confidence_rationale": e.get("direct_observation", "")[:200],
-            "dependencies": [],
-            "acceptance_criteria": "Confirmed via the corresponding public source and customer context.",
-            "validation_method": "Search Console / GA4 / CRM where access is provided.",
-            "limitations": "Public research only; private data not verified.",
-        })
-    # cap by tier depth
-    cap = 40 if is_premium else 15
-    findings = findings[:cap]
-    if not findings:
-        # 一個觀察都無 → QA 會擋落嚟（I2 fail-safe），呢度唔作弊
-        return findings
-    return findings
-
-
-def step_report(status, audit_path=None):
-    """HERMES D/E/F/H/I：證據導向 tier 報告 + QA gate + PDF。
-
-    由 research 建立 findings → report_engine 生成 ENTRY/PREMIUM HTML →
-    run_qa（I1）→ 過咗先轉 PDF；QA fail 就 repair 或 INSUFFICIENT_PUBLIC_EVIDENCE fail-safe。"""
+def step_report(status, audit_path):
     try:
         mark_step(status, "report", "running")
-        import report_engine as _re
-        order = dict(status)  # order fields 已入 status（見 run_pipeline）
-        tier = order.get("report_tier") or "ENTRY_REPORT"
-        lang = order.get("report_language") or "en"
-        # 攞 research（冇就由 status 讀返；都冇就先 step_research）
-        research = None
-        if status.get("research_path") and os.path.exists(status.get("research_path")):
-            with open(status["research_path"], "r", encoding="utf-8") as fh:
-                research = json.load(fh)
-        if not research:
-            research = step_research(status, order)
-
-        findings = _build_findings(status, order, research)
-
-        # I1 QA gate（唔過就唔出 PDF）
-        qa_ok, qa_issues = _re.run_qa(research, findings, tier, lang, order=order)
-        if not qa_ok:
-            # I2：唔准靜默降格 —— 生成誠實嘅 insufficient-evidence fail-safe PDF
-            mark_step(status, "report", "failed",
-                      qa_issues=qa_issues,
-                      note="QA gate 未過，唔生成付費報告（I2 fail-safe）")
-            save_status(status)
-            # 產生 fail-safe 文件
-            return _insufficient_evidence_pdf(status, research, qa_issues)
-
-        html = _re.build_report(order, research, findings, tier, lang)
-        domain = safe_domain(order.get("url", "demo"))
-        order_tag = safe_token(status.get("order_id")) or safe_token(domain)
+        data = seo_report_template.load_audit(audit_path)
+        domain = data.get("domain") or safe_domain(data.get("url", status.get("url", "demo")))
+        # Round5：報告檔名加 order_id，避免兩個單 scan 同一個 domain 時互相覆蓋。
+        order_tag = safe_token(status.get("order_id")) if status.get("order_id") else safe_token(domain)
         os.makedirs(REPORT_OUT, exist_ok=True)
-        html_path = os.path.join(REPORT_OUT, f"{domain}_{order_tag}_seo_{tier.split('_')[0].lower()}_report.html")
-        pdf_path = os.path.join(REPORT_OUT, f"{domain}_{order_tag}_seo_{tier.split('_')[0].lower()}_report.pdf")
+        html_path = os.path.join(REPORT_OUT, f"{domain}_{order_tag}_seo_audit_report.html")
+        pdf_path  = os.path.join(REPORT_OUT, f"{domain}_{order_tag}_seo_audit_report.pdf")
         with open(html_path, "w", encoding="utf-8") as fh:
-            fh.write(html)
-        # PDF metadata
-        pdf_ok = _re.html_to_pdf(html_path, pdf_path)
+            fh.write(seo_report_template.build_html(data))
+        pdf_ok = seo_report_template.html_to_pdf(html_path, pdf_path)
         mark_step(status, "report", "done" if pdf_ok else "done_pdf_missing",
-                  html_path=html_path, pdf_path=pdf_path if pdf_ok else None,
-                  report_tier=tier, report_language=lang,
+                  html_path=html_path,
+                  pdf_path=pdf_path if pdf_ok else None,
                   note=None if pdf_ok else "Chromium 未搵到，PDF 未生成（只有 HTML）")
         status["report_html"] = html_path
         status["report_pdf"] = pdf_path if pdf_ok else None
-        status["report_tier"] = tier
-        status["report_language"] = lang
         save_status(status)
         return pdf_path if pdf_ok else None
     except Exception as e:
         mark_step(status, "report", "failed", error=f"{type(e).__name__}: {e}")
         raise
-
-
-def _insufficient_evidence_pdf(status, research, qa_issues):
-    """I2 fail-safe：唔係假裝成功，而係出誠實報告講明乜嘢觀察到、乜嘢做唔到。"""
-    import report_engine as _re
-    lang = status.get("report_language") or "en"
-    order = dict(status)
-    html = f"""<!DOCTYPE html><html lang="{_re.esc(lang)}"><head><meta charset="utf-8">
-    <title>Insufficient Public Evidence — {_re.esc(order.get('company_name') or '')}</title>
-    {_re._css()}</head><body>
-    <h1>{_re.esc(_re._u(lang,'fail_title'))}</h1>
-    <h2>{_re.esc(_re._u(lang,'fail_obs_h'))}</h2>
-    <ul>{''.join('<li>' + _re.esc(e.get('claim','')) + ' <span class="src">[' + _re.esc(e.get('evidence_id','')) + ' · ' + _re.esc(e.get('label','')) + ']</span></li>' for e in (research.get('evidence_ledger') or [])[:15]) or '<li>' + _re.esc(_re._u(lang,'fail_little')) + '</li>'}</ul>
-    <h2>{_re._u(lang,'fail_why_h')}</h2>
-    <ul>{''.join('<li>' + _re.esc(i) + '</li>' for i in (research.get('limitations') or []))}</ul>
-    <h2>{_re._u(lang,'fail_qa_h')}</h2>
-    <ul>{''.join('<li>' + _re.esc(i) + '</li>' for i in (qa_issues or [])[:10])}</ul>
-    <h2>{_re._u(lang,'fail_data_h')}</h2>
-    <ul>
-      <li>{_re._u(lang,'fail_l1')}</li>
-      <li>{_re._u(lang,'fail_l2')}</li>
-      <li>{_re._u(lang,'fail_l3')}</li>
-    </ul>
-    <p class="disc">{_re._u(lang,'disclaimer')}</p>
-    </body></html>"""
-    os.makedirs(REPORT_OUT, exist_ok=True)
-    domain = safe_domain(order.get("url", "demo"))
-    order_tag = safe_token(status.get("order_id")) or safe_token(domain)
-    html_path = os.path.join(REPORT_OUT, f"{domain}_{order_tag}_insufficient_evidence.html")
-    with open(html_path, "w", encoding="utf-8") as fh:
-        fh.write(html)
-    status["report_html"] = html_path
-    status["report_pdf"] = None
-    status["insufficient_evidence"] = True
-    save_status(status)
-    return None
 
 
 DELIVERY_MAX_ATTEMPTS = 3
@@ -503,93 +340,6 @@ def step_deliver(status, pdf_path):
         marker = per_order_delivery_marker(status["order_id"])
 
         backend = (os.environ.get("EMAIL_BACKEND", "") or "").strip().lower()
-
-        if backend == "resend":
-            resend_key = (os.environ.get("RESEND_API_KEY") or "").strip()
-            if not resend_key:
-                mark_step(status, "deliver", "failed",
-                          error="EMAIL_BACKEND=resend 但 RESEND_API_KEY 未設定")
-                raise RuntimeError("resend_misconfigured: RESEND_API_KEY 空白")
-            import json as _json
-            import urllib.request as _ur
-            import urllib.error as _ue
-            from_addr = (os.environ.get("EMAIL_FROM") or "onboarding@resend.dev").strip()
-            # Resend 唔接受 Gmail 等第三方做 sender —— 測試期用 onboarding@resend.dev，
-            # 正式 sender 要係已驗證嘅 Resend domain（例如 noreply@seoscanaudit.com，見 96 清單 SMTP 項）
-            if from_addr.endswith(("gmail.com", "yahoo.com", "outlook.com", "hotmail.com")):
-                from_addr = "onboarding@resend.dev"
-            _dlang = (status.get("report_language") or "en")
-            _dtext = {
-                "en": ("Your AI SEO report is ready. The full PDF report is attached. — seoscanaudit.com"),
-                "zh-Hant": "你的 AI SEO 報告已完成，完整 PDF 請見附件。— seoscanaudit.com",
-                "zh-Hans": "你的 AI SEO 报告已完成，完整 PDF 请见附件。— seoscanaudit.com",
-                "ja": "AI SEO レポートが完成しました。PDF は添付をご覧ください。— seoscanaudit.com",
-                "es": "Su informe SEO de IA está listo. El PDF completo está adjunto. — seoscanaudit.com",
-            }.get(_dlang, "Your AI SEO report is ready. The full PDF is attached. — seoscanaudit.com")
-            _dsubj = {
-                "en": f"Your AI SEO Audit Report — {status.get('order_id')}",
-                "zh-Hant": f"你的 AI SEO 審計報告 — {status.get('order_id')}",
-                "zh-Hans": f"你的 AI SEO 审计报告 — {status.get('order_id')}",
-                "ja": f"AI SEO 監査レポート — {status.get('order_id')}",
-                "es": f"Su informe de auditoría SEO — {status.get('order_id')}",
-            }.get(_dlang, f"Your AI SEO Audit Report — {status.get('order_id')}")
-            subject = _dsubj
-            text_body = _dtext
-            # 附件 PDF（Resend 支援 base64 附件）
-            attachments = []
-            if pdf_path and os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
-                with open(pdf_path, "rb") as fh:
-                    attachments = [{
-                        "filename": os.path.basename(pdf_path),
-                        "content": _b64.b64encode(fh.read()).decode("ascii"),
-                        "content_type": "application/pdf",
-                    }]
-            else:
-                mark_step(status, "deliver", "failed",
-                          error="resend: 冇 PDF 附件可以送出",
-                          note="attachment_missing")
-                raise RuntimeError("delivery_has_no_pdf_attachment: 冇 PDF 附件可以送出")
-            payload = _json.dumps({
-                "from": from_addr,
-                "to": [email],
-                "subject": subject,
-                "text": text_body,
-                "attachments": attachments,
-            }).encode("utf-8")
-            req = _ur.Request(
-                "https://api.resend.com/emails",
-                data=payload,
-                headers={
-                    "Authorization": f"Bearer {resend_key}",
-                    "Content-Type": "application/json",
-                    "User-Agent": "seoscanaudit-delivery/1.0 (Mozilla/5.0 compatible; Hermes-SEO-Audit)",
-                },
-            )
-            last_err = None
-            for attempt in range(1, DELIVERY_MAX_ATTEMPTS + 1):
-                try:
-                    with _ur.urlopen(req, timeout=45) as resp:
-                        body = resp.read().decode("utf-8", "replace")
-                    if resp.status >= 400:
-                        raise RuntimeError(f"resend_http_{resp.status}: {body[:300]}")
-                    last_err = None
-                    break
-                except _ue.HTTPError as he:
-                    _body = he.read().decode("utf-8", "replace")
-                    last_err = RuntimeError(f"resend_http_{he.code}: {_body[:300]}")
-                    if attempt < DELIVERY_MAX_ATTEMPTS:
-                        time.sleep(DELIVERY_RETRY_DELAY)
-                except Exception as e:
-                    last_err = e
-                    if attempt < DELIVERY_MAX_ATTEMPTS:
-                        time.sleep(DELIVERY_RETRY_DELAY)
-            if last_err is not None:
-                raise RuntimeError(f"{type(last_err).__name__}: {last_err}")
-            mark_step(status, "deliver", "done",
-                      email_backend="resend",
-                      note=f"email 已透過 Resend 送出（含 PDF 附件）")
-            lines = ["email 已透過 Resend 送出"]
-            return lines, "resend"
 
         if backend in ("smtp", "smtp_ssl", "smtp_tls"):
             smtp_host = (os.environ.get("SMTP_HOST") or os.environ.get("SMTP_SERVER", "")).strip()
@@ -687,21 +437,6 @@ def run_pipeline(order):
     status = load_status(per_order_status_path(order["order_id"]))
     status["order_id"] = order["order_id"]
     status["status_file"] = per_order_status_path(order["order_id"])
-    # 將訂單資料（url / language / tier / product / business 欄位）copy 入 status，
-    # 等 step_report / report_engine 攞到 gen report 所需所有資料（HERMES A4）。
-    for k in ("url", "report_language", "selected_product_id", "report_tier",
-              "company_name", "primary_business_goal",
-              "primary_market_or_service_area", "main_products_or_services",
-              "known_competitors", "notes_or_constraints"):
-        if order.get(k) is not None:
-            status[k] = order[k]
-    # 若 order file 無 report_tier，由 product 推斷（A2）
-    if not status.get("report_tier") and status.get("selected_product_id"):
-        try:
-            import product_catalog as _pc
-            status["report_tier"] = _pc.get_tier(status["selected_product_id"])
-        except Exception:
-            pass
     # Round7：將本次 order 嘅收貨 email 隨時刷新入 status —— 即使 order_received 已 done
     # 而舊檔冇記低 email，resume 時都照樣用新 email，令 deliver 唔會錯判無收件人。
     if order.get("customer_email"):
@@ -736,9 +471,7 @@ def run_pipeline(order):
     if not _step_is(status, "score", "done") or status.get("score") is None:
         step_score(status, result, audit_path)
 
-    # report：done 且有 PDF 就重用；冇 PDF（之前 fail / Chromium 未裝）就重試。
-    # run_pipeline 已把 url/language/tier 等 copy 入 status，step_report 內部會
-    # 做 research（若無）+ evidence-led tier report + QA gate（HERMES D/E/F/I）。
+    # report：done 且有 PDF 就重用；冇 PDF（之前 fail / Chromium 未裝）就重試
     if _step_is(status, "report", "done") and status.get("report_pdf"):
         pdf_path = status.get("report_pdf")
     else:
@@ -761,8 +494,6 @@ def main():
     ap.add_argument("--customer-email", default="", help="客戶收貨 email")
     ap.add_argument("--order-id", default="", help="自訂訂單號（預設自動生成）")
     ap.add_argument("--dev", action="store_true", help="開發模式：跳過付款強制檢查")
-    ap.add_argument("--product-id", default="", help="內部產品 id（HERMES A2 routing）")
-    ap.add_argument("--report-language", default="", help="報告語言（EN/zh-Hant/zh-Hans/ja/es）")
     args = ap.parse_args()
 
     url = args.url.strip()
@@ -775,25 +506,7 @@ def main():
         "payment_ref": args.payment_ref,
         "customer_email": args.customer_email,
         "dev": args.dev,
-        "selected_product_id": args.product_id,
-        "report_language": args.report_language,
     }
-
-    # 若 spawn 自 webhook，order file 有完整 HERMES 資料（product/language/tier/business）。
-    # main() 由 order_<id>.json 讀返補齊，令 tier/語言/business 欄位正確帶落 research+report。
-    _of = per_order_status_path(order["order_id"])
-    if os.path.exists(_of):
-        try:
-            with open(_of, "r", encoding="utf-8") as _fh:
-                saved = json.load(_fh)
-            for k in ("report_language", "selected_product_id", "report_tier",
-                      "company_name", "primary_business_goal",
-                      "primary_market_or_service_area", "main_products_or_services",
-                      "known_competitors", "notes_or_constraints"):
-                if k in saved and not order.get(k):
-                    order[k] = saved[k]
-        except Exception:
-            pass
 
     # Round2：所有讀寫都走 per-order status 檔（order_<id>.json）。
     status_path = per_order_status_path(order["order_id"])

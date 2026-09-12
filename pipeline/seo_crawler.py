@@ -28,6 +28,7 @@ Usage:
 """
 
 import html
+import http.client
 import ipaddress
 import json
 import os
@@ -89,9 +90,11 @@ def http_get(url, timeout=FETCH_TIMEOUT):
     if m:
         enc = m.group(1)
     for cand in (enc, "utf-8", "utf-8-sig"):
+        if not cand:
+            continue
         try:
             return status, headers, raw.decode(cand, errors="strict"), ttf, headers.get("content-encoding", "")
-        except (UnicodeDecodeError, LookupError):
+        except (UnicodeDecodeError, LookupError, TypeError):
             continue
     return status, headers, raw.decode("utf-8", errors="replace"), ttf, headers.get("content-encoding", "")
 
@@ -150,6 +153,66 @@ def _substitute_host(url, ip_str):
                                     o.query, o.fragment))
 
 
+class _PinnedHTTPSConnection(http.client.HTTPSConnection):
+    """HTTPSConnection that keeps host (SNI + Host header + cert check = original
+    domain) but connects TCP to a pinned IP (SSRF-safe, no Cloudflare mismatch)."""
+    def __init__(self, host, port=None, connect_ip=None, **kwargs):
+        self.connect_ip = connect_ip
+        super().__init__(host, port, **kwargs)
+
+    def connect(self):
+        # TCP connect to the pinned IP, but keep self.host as the SNI/Host/cert name
+        target = self.connect_ip or self.host
+        self.sock = self._create_connection((target, self.port), self.timeout,
+                                             self.source_address)
+        if self._tunnel_host:
+            self._tunnel()
+        self.sock = self._context.wrap_socket(self.sock,
+                                              server_hostname=self.host)
+        self.sock.settimeout(self.timeout)
+
+
+class _PinnedHTTPSHandler(urllib.request.HTTPSHandler):
+    """HTTPSHandler that connects HTTPS to a pinned IP while keeping the original
+    host for SNI / Host header / cert verify. Overrides do_open to build a pinned
+    connection (urllib's own do_open re-instantiates the connection class)."""
+    def __init__(self, pin_map=None):
+        self._pin_map = pin_map or {}  # host -> ip
+        super().__init__()
+
+    def https_open(self, req):
+        return self.do_open(None, req)
+
+    def do_open(self, http_class, req, **http_conn_args):
+        import ssl as _ssl
+        o = urllib.parse.urlparse(req.full_url)
+        host = o.hostname or req.host
+        port = o.port or (443 if o.scheme == "https" else 80)
+        ip = self._pin_map.get(host)
+        conn = _PinnedHTTPSConnection(host, port, connect_ip=ip,
+                                      context=_ssl.create_default_context(),
+                                      timeout=req.timeout)
+        conn.set_debuglevel(self._debuglevel)
+        headers = dict(req.unredirected_hdrs)
+        headers.update({k: v for k, v in req.headers.items() if k not in headers})
+        headers["Connection"] = "close"
+        headers = {name.title(): val for name, val in headers.items()}
+        try:
+            conn.request(req.get_method(), req.selector, req.data, headers,
+                         encode_chunked=req.has_header("Transfer-encoding"))
+        except OSError as exc:
+            raise urllib.error.URLError(exc)
+        try:
+            resp = conn.getresponse()
+        except OSError as exc:
+            raise urllib.error.URLError(exc)
+        resp.url = req.get_full_url()
+        resp.msg = resp.reason
+        resp.request = req
+        resp.connection = conn
+        return resp
+
+
 class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
     """Stop urllib from auto-following redirects so we can re-check each hop."""
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -169,16 +232,19 @@ def http_get_pinned(url, pinned_ip, orig_host=None, timeout=FETCH_TIMEOUT):
     """
     if orig_host is None:
         orig_host = urllib.parse.urlparse(url).hostname.lower()
-    opener = urllib.request.build_opener(_NoRedirectHandler)
+    # Use a pin-aware handler: keep original host in URL (SNI/Host/cert correct),
+    # but TCP-connect to the pinned public IP (SSRF-safe, no Cloudflare mismatch).
+    opener = urllib.request.build_opener(_NoRedirectHandler,
+                                         _PinnedHTTPSHandler(
+                                             pin_map={orig_host: pinned_ip}))
     current_url = url
     current_host = orig_host
     current_pin = pinned_ip
     redirs = 0
 
     while True:
-        tgt = _substitute_host(current_url, current_pin)
         req = urllib.request.Request(
-            tgt,
+            current_url,
             headers={
                 "User-Agent": USER_AGENT,
                 "Host": current_host,
@@ -225,9 +291,11 @@ def http_get_pinned(url, pinned_ip, orig_host=None, timeout=FETCH_TIMEOUT):
     m = re.search(r"charset=([\w-]+)", ctype, re.I)
     enc = m.group(1) if m else None
     for cand in (enc, "utf-8", "utf-8-sig"):
+        if not cand:
+            continue
         try:
             return status, headers, raw.decode(cand, errors="strict"), ttf
-        except (UnicodeDecodeError, LookupError):
+        except (UnicodeDecodeError, LookupError, TypeError):
             continue
     return status, headers, raw.decode("utf-8", errors="replace"), ttf
 
@@ -269,7 +337,7 @@ class SEOSignalsParser(HTMLParser):
             return  # handled via data in handle_data
         if t == "meta":
             name = (a.get("name") or a.get("property") or "").lower()
-            content = a.get("content", "").strip()
+            content = (a.get("content") or "").strip()
             if name == "description":
                 self.meta_desc = content
             elif name == "robots":
@@ -426,10 +494,18 @@ OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 SCORING_PROMPT = """You are a senior technical SEO auditor. Analyze the crawled on-page signals below and return STRICT JSON only (no markdown fences, no prose).
 
 Rules:
+- Write ALL explanations in English (master copy).
 - "score" is an integer 0-100 baseline technical SEO score.
-- "fix_list" is an array. Each item: {{"priority": "urgent"|"high"|"medium"|"low", "issue": "<short title>", "why_it_matters": "<why this matters for rankings/user experience>", "how_to_fix": "<concrete fix>", "code_snippet": "<optional HTML/code example or null>"}}
-- Prioritize real problems actually visible in the signals. Only add a fix if the signals support it.
-- Use the language the audit is being presented in (write fix explanations in Traditional Chinese unless instructions say otherwise).
+- "fix_list" is an array. Each item MUST be: {"priority": "urgent"|"high"|"medium"|"low", "issue": "<short title, English>", "why_it_matters": "<why this matters, English>", "how_to_fix": "<concrete fix steps, English>", "code_snippet": "<optional HTML/code example or null>", "pattern": "<one of CRAWLABILITY|ONPAGE|CONTENT|SPEED|LINKS|SCHEMA|LOCAL|TRUST>", "effort": "<one of quick|half-day|day|sprint>", "dollar_impact": <integer: conservative estimated annual revenue at risk in USD derived from site_type + page importance + competitive set; use 0 if you cannot justify a figure, never null>, "evidence": "<quote the EXACT measured signal value this finding responds to, e.g. your <title> tag is 184 characters, or TTFB measured at 1240 ms with no gzip, or 17 of 24 images missing alt text>"}}
+- effort guidance: quick = under ~1 hour, half-day = ~4 hours, day = 1-2 days, sprint = multi-week effort.
+- Prioritize real problems actually visible in the signals. Only add a fix if the signals support it, and ALWAYS ground the evidence field in a real measured value from the signals above.
+
+SITE PROFILE (this site is SPECIAL -- weight your recommendations toward these priorities):
+- site_type: {site_type}
+- Persona: {persona}
+- Section weights (higher = more important for THIS kind of site): {weights}
+- Unique on-page evidence count (higher = report is site-specific, not template): {evidence_count}
+IMPORTANT: Because this is a {site_type_label} site, prioritize fixes in the highest-weight sections FIRST (e.g. a {site_type_label} site cares most about {top_weights}). Every finding MUST tie back to at least one real signal value above -- never invent an issue the signals don't support.
 
 SIGNALS (JSON):
 {sigs_json}
@@ -466,41 +542,115 @@ def _coerce_msg_content(content):
     return None
 
 
+def _normalize_fix_list(fix_list):
+    """Sanitize AI-returned fix_list: strip accidental quote chars from any key,
+    whitelist priority/pattern/effort, coerce types. Returns cleaned list."""
+    ok = []
+    if not isinstance(fix_list, list):
+        return ok
+    for it in fix_list:
+        if not isinstance(it, dict):
+            continue
+        clean = {}
+        for k, v in it.items():
+            kk = (k or "").strip().strip('"').strip("'")
+            clean[kk] = v
+        p = (clean.get("priority") or "medium").lower().strip().strip('"').strip("'")
+        if p not in ("urgent", "high", "medium", "low"):
+            p = "medium"
+        clean["priority"] = p
+        pat = (clean.get("pattern") or "").upper().strip().strip('"').strip("'")
+        if pat not in ("CRAWLABILITY", "ONPAGE", "CONTENT", "SPEED", "LINKS",
+                       "SCHEMA", "LOCAL", "TRUST"):
+            pat = "ONPAGE"
+        clean["pattern"] = pat
+        eff = (clean.get("effort") or "day").lower().strip().strip('"').strip("'")
+        if eff not in ("quick", "half-day", "day", "sprint"):
+            eff = "day"
+        clean["effort"] = eff
+        if not clean.get("issue"):
+            clean["issue"] = clean.get("title") or "Unnamed finding"
+        ok.append(clean)
+    return ok
+
+
 def _extract_json_obj(text):
-    """Robustly pull a JSON object out of a model reply (strips fences/padding)."""
+    """Robustly pull a JSON object out of a model reply (strips fences/padding,
+    handles trailing prose, pretty/one-line JSON)."""
     if not text:
         return None
     t = text.strip()
     t = re.sub(r"^```(?:json)?\s*", "", t, flags=re.I)
-    t = re.sub(r"\s*```$", "", t)
+    t = re.sub(r"\s*```\s*$", "", t)
+    # 1) direct parse
     try:
         return json.loads(t)
     except Exception:
         pass
-    m = re.search(r"\{.*\}", t, re.S)
-    if m:
+    # 2) find first '{' ... last '}', then progressively trim trailing junk by
+    #    re-parsing; if trailing text exists, greedy {.*} includes it and fails,
+    #    so work back from each '}' position.
+    start = t.find("{")
+    if start == -1:
+        return None
+    for end in range(len(t) - 1, start, -1):
+        if t[end] != "}":
+            continue
+        cand = t[start:end + 1]
         try:
-            return json.loads(m.group(0))
+            return json.loads(cand)
         except Exception:
-            pass
+            # keep scanning backwards; maybe inner closes before outer
+            continue
     return None
 
 
-def ai_score(sigs, model="deepseek/deepseek-v4-flash-0731"):
+def ai_score(sigs, model="deepseek/deepseek-v4-flash-0731", profile=None):
     """Call OpenRouter. Returns (score:int|None, fix_list:list, error:str|None)."""
     key = resolve_openrouter_key()
     if not key:
         return None, [], "no OPENROUTER_API_KEY found (env or /opt/data/.env)"
     sigs_json = json.dumps(sigs, ensure_ascii=False, default=str)
-    messages = [{"role": "user",
-                 "content": SCORING_PROMPT.format(sigs_json=sigs_json)}]
+
+    # 個性化：用 site profiler 判斷網站類型 + 權重（殺死「一樣分」）
+    profiler = None
+    try:
+        from site_profiler import classify_site, unique_evidence_count
+        profiler = classify_site(sigs)
+    except Exception:
+        pass
+    if profiler is None:
+        profiler = {
+            "site_type": "unknown", "labels": ["網站", "Website"],
+            "weights": {}, "persona_note": "你係一個網站。",
+        }
+    weights = profiler.get("weights") or {}
+    top_weights = ", ".join(f"{k}({v:.0%})" for k, v in
+                            sorted(weights.items(), key=lambda x: -x[1])[:3]) or "content"
+    site_label = profiler.get("labels") or ["網站", "Website"]
+    evidence_count = 0
+    try:
+        from site_profiler import unique_evidence_count as _uec
+        evidence_count = _uec(sigs)
+    except Exception:
+        evidence_count = sum(1 for k in sigs if sigs.get(k) not in (None, "", [], {})) // 2
+
+    prompt = (SCORING_PROMPT
+              .replace("{sigs_json}", sigs_json)
+              .replace("{site_type}", profiler.get("site_type", "unknown"))
+              .replace("{persona}", profiler.get("persona_note", ""))
+              .replace("{weights}", json.dumps(weights, ensure_ascii=False))
+              .replace("{evidence_count}", str(evidence_count))
+              .replace("{site_type_label}", site_label[0])
+              .replace("{top_weights}", top_weights))
+    messages = [{"role": "user", "content": prompt}]
 
     # try with explicit JSON mode first, fall back to plain chat if content=null
     attempts = [
         {"model": model, "messages": messages, "temperature": 0.2,
-         "max_tokens": 1600, "response_format": {"type": "json_object"}},
+         "max_tokens": 2400, "response_format": {"type": "json_object"}},
         {"model": model, "messages": messages, "temperature": 0.2,
-         "max_tokens": 1600},
+         "max_tokens": 2400},
     ]
     last_txt = None
     for payload in attempts:
@@ -523,7 +673,7 @@ def ai_score(sigs, model="deepseek/deepseek-v4-flash-0731"):
     if parsed is None:
         return None, [], last_txt or "OpenRouter returned empty/unparsable content"
     score = parsed.get("score")
-    fix_list = parsed.get("fix_list", [])
+    fix_list = _normalize_fix_list(parsed.get("fix_list", []))
     if score is not None:
         try:
             score = int(round(max(0, min(100, float(score)))))
@@ -536,142 +686,250 @@ def ai_score(sigs, model="deepseek/deepseek-v4-flash-0731"):
 # Rule-based fallback（AI 失敗時嘅保險網）
 # --------------------------------------------------------------------------
 def rule_based_fixes(result):
-    """AI 評分失敗（score=None）或回傳空 fix_list 時，直接用 signals 規則判定。
+    """AI scorer failed (score is None) or returned an empty fix list, so we
+    derive concrete fixes straight from the measured on-page signals.
 
-    用已抓取嘅 on-page 訊號（title/meta/canonical/H1/img alt/robots/ttfb 等）
-    直接產生 concrete 嘅修復項，保證客戶最起碼攞到 5-8 項建議，唔會拎到空報告。
-    Return: list[dict]，每項含 priority/issue/why_it_matters/how_to_fix/code_snippet。
+    Every rule interpolates the REAL measured value (title length, H1 count,
+    image-alt count, TTFB, gzip/cache status, canonical ...) into its evidence
+    string -- never canned copy -- and ships pattern/effort/dollar_impact on
+    each finding so the report's PE framework renders fully in the fallback
+    path. English master only.
     """
     sigs = result.get("signals") or {}
-    srv  = result.get("server_signals") or {}
+    srv = result.get("server_signals") or {}
     robots = result.get("robots") or {}
+    struct = result.get("site_profile") or {}
+    site_type = struct.get("site_type", "unknown")
     fixes = []
 
-    def add(priority, issue, why, how, code=None):
+    def add(priority, pattern, effort, issue, evidence, why, how, code=None):
         fixes.append({
             "priority": priority,
+            "pattern": pattern,
+            "effort": effort,
             "issue": issue,
+            "evidence": evidence,
             "why_it_matters": why,
             "how_to_fix": how,
             "code_snippet": code,
+            "dollar_impact": _dollar_for(pattern, priority, site_type),
         })
 
     title = sigs.get("title")
-    meta  = sigs.get("meta_description")
+    meta = sigs.get("meta_description")
     canon = sigs.get("canonical")
-    h1    = sigs.get("h1_count", 0)
-    h2    = sigs.get("h2_count", 0)
+    h1 = sigs.get("h1_count", 0)
+    h2 = sigs.get("h2_count", 0)
+    title_len = sigs.get("title_length")
+    meta_len = sigs.get("meta_description_length")
 
     # --- base meta / robots ---
     if not title:
-        add("urgent", "缺少 Meta Title（<title>）",
-            "Title 係搜尋引擎判斷頁面主題嘅首要訊號，缺咗幾乎無可能取得好排名。",
-            "為每個頁面寫一個唯一、包含主要關鍵字嘅 50-70 字元 <title>。",
-            "<title>你的主要關鍵字 — 品牌名</title>")
-    elif not (15 <= sigs.get("title_length", 0) <= 70):
-        add("high", "Title 長度不當",
-            "過短/過長嘅 Title 會被截斷或稀釋關鍵字，影響點擊率同排名。",
-            "調整 <title> 至 50-70 字元，前面放主要關鍵字。")
+        add("urgent", "ONPAGE", "quick",
+            "Missing meta title (<title>)",
+            "Measured: the <title> tag is empty or absent on this page.",
+            "The title is the primary signal search engines use to judge a "
+            "page's subject. With none present, ranking for meaningful terms "
+            "is effectively impossible.",
+            "Write a unique 50-70 character <title> for every page, placing "
+            "the primary keyword first.",
+            "<title>Primary Keyword - Brand Name</title>")
+    elif isinstance(title_len, int) and not (15 <= title_len <= 70):
+        add("high", "ONPAGE", "quick",
+            f"Title length is {title_len} characters (target 50-70)",
+            f"Measured: your <title> tag is {title_len} characters.",
+            "Titles that are too short or too long get truncated or dilute the "
+            "keyword, hurting both click-through rate and rankings.",
+            "Rewrite the <title> to 50-70 characters with the primary keyword "
+            "at the front.")
 
     if not meta:
-        add("urgent", "缺少 Meta Description",
-            "Description 影響搜尋結果嘅點擊率（CTR），缺咗 Google 會亂抽頁面文字。",
-            "寫 120-160 字元、包含關鍵字同行動呼籲嘅描述。",
-            '<meta name="description" content="簡短吸引嘅頁面描述，含關鍵字">')
-    elif not (50 <= sigs.get("meta_description_length", 0) <= 160):
-        add("medium", "Meta Description 長度不當",
-            "過短唔夠資訊、過長會被截斷，兩者都拉低點擊率。",
-            "調整 description 至 120-160 字元，確保結尾包含行動呼籲。",
-            '<meta name="description" content="...約120-160字元...">')
+        add("urgent", "ONPAGE", "quick",
+            "Missing meta description",
+            "Measured: no meta description is present on this page.",
+            "The description drives click-through rate in search results; "
+            "without one Google excerpts arbitrary page text.",
+            "Write a 120-160 character description with the keyword and a "
+            "clear call to action.",
+            '<meta name="description" content="Short, compelling page description with keyword">')
+    elif isinstance(meta_len, int) and not (50 <= meta_len <= 160):
+        add("medium", "ONPAGE", "quick",
+            f"Meta description is {meta_len} characters (target 120-160)",
+            f"Measured: your meta description is {meta_len} characters.",
+            "Descriptions that are too short under-sell, and ones that are "
+            "too long get truncated -- both depress click-through rate.",
+            "Tighten the description to 120-160 characters ending with a "
+            "call to action.")
 
     if not canon:
-        add("high", "缺少 rel=canonical",
-            "Canonical 可避免重複內容稀釋權重，缺咗多個網址可能搶同一個排名。",
-            "每個頁面加一個指向正本網址嘅 canonical。",
-            '<link rel="canonical" href="https://example.com/此頁正本網址" />')
+        add("high", "CRAWLABILITY", "half-day",
+            "Missing rel=canonical tag",
+            "Measured: no canonical tag was detected; multiple URLs can "
+            "compete for the same ranking.",
+            "A canonical prevents duplicate-content dilution of ranking "
+            "signals across near-identical URLs.",
+            "Add a self-referencing canonical pointing to the canonical "
+            "version of each page.",
+            '<link rel="canonical" href="https://example.com/this-page" />')
 
     robots_val = (sigs.get("meta_robots") or "").lower()
     if "noindex" in robots_val:
-        add("urgent", "頁面被 noindex（禁止收錄）",
-            "noindex 會令頁面完全唔會喺 Google 出現，等於放棄嗰頁嘅所有流量。",
-            "若此頁本身需要被收錄，移除 meta robots 嘅 noindex。",
+        add("urgent", "CRAWLABILITY", "quick",
+            "Page is set to noindex (blocked from search)",
+            f"Measured: meta robots = \"{sigs.get('meta_robots')}\" -- "
+            "noindex present.",
+            "noindex removes this page from Google entirely, throwing away "
+            "all of its potential traffic.",
+            "If this page should rank, remove noindex from the meta robots tag.",
             '<meta name="robots" content="index, follow" />')
 
     # --- language / mobile ---
     if not sigs.get("has_lang_attr"):
-        add("medium", "缺少 html lang 屬性",
-            "冇 lang 屬性會影響多語言地區嘅搜尋理解同屏幕閱讀器語音。",
-            "喺 <html> 標籤加入 lang 屬性。",
-            '<html lang="zh-HK">')
+        add("medium", "ONPAGE", "quick",
+            "Missing html lang attribute",
+            "Measured: the <html> tag has no lang attribute.",
+            "Without a lang attribute, multilingual search understanding and "
+            "screen-reader pronunciation both suffer.",
+            "Add a lang attribute to the <html> tag.",
+            '<html lang="en">')
+
     if not sigs.get("viewport"):
-        add("high", "缺少 mobile viewport",
-            "冇 viewport 會令手機瀏覽器縮細整個頁面，重創手機 SEO 同 UX。",
-            "喺 <head> 加入 viewport meta。",
+        add("high", "ONPAGE", "quick",
+            "Missing mobile viewport meta",
+            "Measured: no viewport meta tag is present.",
+            "Without a viewport, mobile browsers zoom the whole page out, "
+            "hurting mobile SEO and usability at once.",
+            "Add the viewport meta tag to <head>.",
             '<meta name="viewport" content="width=device-width, initial-scale=1" />')
 
     # --- heading hierarchy ---
     if h1 == 0:
-        add("high", "冇 H1 標題",
-            "H1 係頁面主題嘅最重要結構訊號，缺咗令搜尋引擎難判權重同讀者難掃讀。",
-            "為頁面加一個唯一嘅 H1，包含主要關鍵字。")
-    elif h1 > 1:
-        add("high", "多個 H1（頁面有多個主標題）",
-            "頁面應該只有一個 H1 去明確主主題，多個會稀釋語意權重。",
-            "保留一個 H1，其餘改成 H2/H3。")
+        add("high", "ONPAGE", "half-day",
+            "No H1 heading found on the page",
+            f"Measured: 0 H1 tags on this page (h2_count={h2}). Google reads "
+            "H1 as the page's main subject.",
+            "The H1 is the strongest on-page signal of a page's topic; "
+            "missing it leaves search engines guessing and hurts readers too.",
+            "Add one unique H1 containing the primary keyword.")
+    elif isinstance(h1, int) and h1 > 1:
+        add("high", "ONPAGE", "half-day",
+            f"Multiple H1 headings ({h1} found)",
+            f"Measured: {h1} H1 tags on this page; best practice is exactly one.",
+            "A page should have a single H1 to state its main topic clearly; "
+            "multiple H1s dilute semantic weight.",
+            "Keep one H1 and promote the rest to H2/H3.")
     if h2 == 0:
-        add("low", "冇任何 H2",
-            "冇 H2 會令長內容結構唔清，影響可讀性同關鍵字覆蓋。",
-            "按段落主題加入 H2，自然放入次要關鍵字。")
+        add("low", "CONTENT", "day",
+            "No H2 subheadings on a long page",
+            "Measured: h2_count = 0 on this page.",
+            "Without H2s, longer content lacks structure, hurting readability "
+            "and keyword coverage.",
+            "Break the page into H2 sections with natural secondary keywords.")
 
     # --- images ---
     total_imgs = sigs.get("img_total", 0)
     missing_alt = sigs.get("img_missing_alt", 0)
-    if total_imgs > 0 and missing_alt > 0:
-        add("medium", f"{missing_alt} 張圖片缺少 alt 文字",
-            "Alt 幫助搜尋引擎理解圖片同改善圖片搜索，缺咗喺圖片 SEO 同無障礙都弱。",
-            "為每張有資訊意義嘅圖加描述性 alt；純裝飾圖可留空但在 attrs 標明。",
-            '<img src="product.jpg" alt="產品名 — 簡短描述" />')
+    if isinstance(total_imgs, int) and total_imgs > 0 and missing_alt:
+        add("medium", "ONPAGE", "quick",
+            f"{missing_alt} of {total_imgs} images are missing alt text",
+            f"Measured: {missing_alt} of {total_imgs} images have no alt "
+            "attribute.",
+            "Missing alt text hides image meaning from Google and visually "
+            "impaired users, weakening image SEO and accessibility together.",
+            "Add descriptive alt to every informative image; use alt=\"\" "
+            "for purely decorative ones.",
+            '<img src="product.jpg" alt="Product name - short description" />')
 
     # --- speed / server ---
     ttfb = srv.get("ttfb_ms") or srv.get("head_response_ms")
     if isinstance(ttfb, (int, float)) and ttfb > 600:
-        add("high", "伺服器回應時間偏慢（TTFB）",
-            "TTFB 慢會拖慢成個頁面載入，直接影響 Core Web Vitals 同排名。",
-            "檢查主機、啟用 CDN/快取、優化後端查詢去降低 TTFB。")
+        add("high", "SPEED", "half-day",
+            f"Server response time (TTFB) is slow at {ttfb} ms",
+            f"Measured: TTFB {ttfb} ms (target is under 600 ms).",
+            "A slow time-to-first-byte drags down the whole page load, "
+            "directly hurting Core Web Vitals and rankings.",
+            "Investigate hosting, enable CDN/caching, and optimize backend "
+            "queries to cut TTFB.")
     if srv.get("http_status") and srv.get("http_status") != 200:
-        add("urgent", f"頁面回傳 HTTP {srv.get('http_status')}",
-            "非 200 狀態（例如 404/500）會令頁面無法正常被收錄或體驗破裂。",
-            "修正伺服器/頁面狀態，令核心頁面穩定回傳 200。")
+        add("urgent", "CRAWLABILITY", "quick",
+            f"Page returns HTTP {srv.get('http_status')}",
+            f"Measured: HTTP status {srv.get('http_status')} (target 200).",
+            "A non-200 status (e.g. 404/500) prevents proper indexation or "
+            "breaks the user experience.",
+            "Fix the server/page status so core pages reliably return 200.")
     if srv.get("has_gzip_or_br") is False:
-        add("low", "未啟用 gzip/brotli 壓縮",
-            "冇壓縮會令頁面傳輸更大、載入更慢。",
-            "喺伺服器啟用 gzip 或 brotli 壓縮 HTML/CSS/JS。")
+        enc = srv.get("content_encoding") or "none"
+        add("low", "SPEED", "quick",
+            "gzip/brotli compression is not enabled",
+            f"Measured: content-encoding = {enc}; no gzip/brotli detected.",
+            "Without compression, the page ships larger and loads slower, "
+            "especially on mobile connections.",
+            "Enable gzip or brotli for HTML/CSS/JS on the server.",
+            "AddOutputFilterByType DEFLATE text/html text/css application/javascript")
     if srv.get("has_cache_headers") is False:
-        add("low", "缺少 cache-control/expires 快取頭",
-            "冇快取頭令重訪用戶每次都重新下載全部資源，拖慢速度。",
-            "為靜態資源設定 cache-control 同 expires。")
+        add("low", "SPEED", "quick",
+            "Missing cache-control/expires headers",
+            "Measured: no cache-control or expires header was returned.",
+            "Without caching headers, repeat visitors re-download every "
+            "resource, slowing each visit.",
+            "Set cache-control and expires on static assets.",
+            "Cache-Control: public, max-age=604800")
 
     # --- robots / crawl ---
     robots_err = robots.get("error")
     if robots_err:
-        add("medium", "robots.txt 抓取失敗",
-            "robots.txt 異常可能阻礙搜尋引擎抓取你嘅頁面。",
-            f"檢查 robots.txt 可否公開讀取（錯誤：{robots_err}）。")
+        add("medium", "CRAWLABILITY", "half-day",
+            "Unable to read robots.txt",
+            f"Measured: robots.txt returned an error ({robots_err}).",
+            "A failing robots.txt can block crawlers from reaching your pages.",
+            f"Make robots.txt publicly readable (error: {robots_err}).")
     elif robots and robots.get("has_sitemap_directive") is False:
-        add("low", "robots.txt 沒有指向 Sitemap",
-            "Sitemap 幫搜尋引擎更快發現新頁面；喺 robots.txt 註明可加速收錄。",
-            "喺 robots.txt 加入 Sitemap 指向。",
+        add("low", "CRAWLABILITY", "quick",
+            "robots.txt does not point to a sitemap",
+            "Measured: robots.txt has no Sitemap directive.",
+            "A sitemap reference helps search engines discover new pages faster.",
+            "Add a Sitemap line to robots.txt.",
             "Sitemap: https://example.com/sitemap.xml")
     if result.get("crawl_errors"):
-        add("medium", "發生抓取/解析錯誤",
-            "部分頁面訊號未能完整取得，可能漏報問題。", "重新審計或檢查頁面是否正常回應。")
+        errs = "; ".join(str(e).split(" [used rule")[0] for e in result["crawl_errors"])
+        add("medium", "CRAWLABILITY", "half-day",
+            "Crawl or parse errors during the audit",
+            f"Measured: {errs}.",
+            "Some signals could not be fully collected, so issues may be "
+            "under-reported.",
+            "Re-run the audit or confirm the page responds normally.")
 
-    # 兜底：一個訊號都冇觸到都要至少有嘢講，唔好出空清單。
+    # Fallback: guarantee the report is never empty.
     if not fixes:
-        add("low", "未能偵測到明顯技術錯誤",
-            "主流 on-page 技術訊號大致齊全，仍需要內容品質與外鏈審計先可以全面提升。",
-            "用 Search Console 持續監控，並定期做站點審計複核。")
+        add("low", "ONPAGE", "day",
+            "No obvious technical errors detected",
+            "Measured: core on-page signals (title, meta, H1, alt, canonical, "
+            "TTFB) are all within healthy ranges.",
+            "Healthy technical signals still leave room for content quality "
+            "and authority work to lift rankings.",
+            "Monitor via Search Console and schedule a periodic site audit.")
     return fixes
+
+
+_DOLLAR_BY_PATTERN = {
+    "CRAWLABILITY": 42000, "ONPAGE": 18000, "CONTENT": 36000, "SPEED": 24000,
+    "LINKS": 48000, "SCHEMA": 9000, "LOCAL": 54000, "TRUST": 12000,
+}
+_SITE_TYPE_MULT = {
+    "ecommerce": 1.4, "local_service": 1.2, "saas": 1.2,
+    "content": 1.0, "corporate": 0.9, "unknown": 1.0,
+}
+_PRIO_DOLLAR_FACTOR = {"urgent": 1.5, "high": 1.0, "medium": 0.6, "low": 0.3}
+
+
+def _dollar_for(pattern, priority, site_type):
+    """Deterministic est. annual revenue at risk (USD) for the fallback path."""
+    base = _DOLLAR_BY_PATTERN.get(pattern)
+    if not base:
+        return 0
+    mult = _SITE_TYPE_MULT.get(site_type or "unknown", 1.0)
+    fac = _PRIO_DOLLAR_FACTOR.get((priority or "low").lower(), 0.3)
+    return int(round(base * mult * fac / 100.0) * 100)
 
 
 def _estimate_score(fixes):
@@ -694,7 +952,7 @@ def _estimate_score(fixes):
 # --------------------------------------------------------------------------
 # Orchestration
 # --------------------------------------------------------------------------
-def run(url, pinned_ip=None):
+def run(url, pinned_ip=None, skip_ai=False):
     result = {
         "url": url,
         "server_signals": {},
@@ -707,6 +965,8 @@ def run(url, pinned_ip=None):
         "fetch_ok": False,
         "fallback_used": False,
         "score_is_estimate": False,
+        "skip_ai": bool(skip_ai),
+        "_skip_ai": bool(skip_ai),
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     orig_host = (urllib.parse.urlparse(url).hostname or "").lower()
@@ -743,24 +1003,39 @@ def run(url, pinned_ip=None):
         except Exception as e:
             result["crawl_errors"].append(f"robots: {e}")
 
-    # --- AI score + fix list (isolated; fallback to rule-based notes on fail) ---
+    # --- site profile (個性化：判斷網站類型,報告 header 用) ---
     try:
-        _score, _fixes, _err = ai_score(result["signals"])
-        result["score"] = _score
-        result["fix_list"] = _fixes or []
-        result["ai_error"] = _err
+        from site_profiler import classify_site, unique_evidence_count
+        _prof = classify_site(result["signals"])
+        _prof["unique_evidence_count"] = unique_evidence_count(result["signals"])
+        result["site_profile"] = _prof
     except Exception as e:
-        result["ai_error"] = f"ai_score: {type(e).__name__}: {e}"
-        result["score"] = None
-        result["fix_list"] = []
+        result["site_profile"] = {
+            "site_type": "unknown", "labels": ["網站", "Website"],
+            "weights": {}, "persona_note": "你係一個網站。",
+            "unique_evidence_count": 0,
+        }
+
+    # --- AI score + fix list (isolated; fallback to rule-based notes on fail) ---
+    # FREE tier (skip_ai=True)：唔行 LLM，直接規則快算 —— 令免費 scan 快 + 慳成本。
+    if not result.get("_skip_ai"):
+        try:
+            _score, _fixes, _err = ai_score(result["signals"])
+            result["score"] = _score
+            result["fix_list"] = _fixes or []
+            result["ai_error"] = _err
+        except Exception as e:
+            result["ai_error"] = f"ai_score: {type(e).__name__}: {e}"
+            result["score"] = None
+            result["fix_list"] = []
 
     # Round2：規則式 fallback —— 當 AI 評分失敗（score=None）或回傳空 fix_list 時，
     # 用 signals 直接規則判定，至少出 5-8 項 concrete fix，唔好俾客拎到空報告。
-    # 同時用規則估一個 0-100 基準分，等報告唔會冇分數。
+    # Free tier（skip_ai）都會行呢度出規則 fix + 估分。
     if result["score"] is None or not result["fix_list"]:
         rb_fixes = rule_based_fixes(result)
-        result["fix_list"] = rb_fixes
-        result["score"] = _estimate_score(rb_fixes)
+        result["fix_list"] = _normalize_fix_list(rb_fixes)
+        result["score"] = _estimate_score(result["fix_list"])
         result["fallback_used"] = True
         result["score_is_estimate"] = True
         result["ai_error"] = ((result["ai_error"] or "AI unavailable") +
@@ -777,8 +1052,9 @@ def run(url, pinned_ip=None):
         "ai_error": (result.get("ai_error") or "").split(" [used rule")[0],
         "crawl_errors": list(result.get("crawl_errors") or []),
         "score_is_estimate": bool(result.get("score_is_estimate")),
-        "label": ("規則估算非精確（AI 未能評分）" if result.get("score_is_estimate")
-                  else "真實抓取審計"),
+        "label": ("Rule estimate (approximate) - AI scoring unavailable"
+                  if result.get("score_is_estimate")
+                  else "Live crawl audit"),
     }
 
     return result

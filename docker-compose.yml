@@ -1,0 +1,18 @@
+services:
+  seo-scan:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - secrets.env
+    environment:
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.seoscan.rule=Host(`seoscanaudit.com`) || Host(`www.seoscanaudit.com`)"
+      - "traefik.http.routers.seoscan.entrypoints=websecure"
+      - "traefik.http.routers.seoscan.tls.certresolver=letsencrypt"
+      - "traefik.http.services.seoscan.loadbalancer.server.port=8000"

@@ -25,20 +25,14 @@ def _int_env(name, default):
         return default
 
 
-# 單頁完整 SEO 審計報告 —— 實收單價。
-# v2 定價（Yan 2026-09-12）：正價 $497、Growth $997、早鳥 $397（首50）
-DEFAULT_PRICE_USD = _int_env("DEFAULT_PRICE_USD", 497)
+# 單頁完整 SEO 審計報告 —— 實收單價（單頁 intro 期）。
+# Round2 修正：由硬編碼 US$99 改成單一來源，預設 US$79（首 20 位 intro 價）。
+DEFAULT_PRICE_USD = _int_env("DEFAULT_PRICE_USD", 79)
 
-# Growth 進階版（4 錢頁深挖 + roadmap）
-GROWTH_PRICE_USD = _int_env("GROWTH_PRICE_USD", 997)
+# 正價（頁面上會用刪除線顯示嘅「原價」）。
+REGULAR_PRICE_USD = _int_env("REGULAR_PRICE_USD", 99)
 
-# 早鳥價（首 50 位 Founder，只宣傳唔顯示已售數）
-EARLY_PRICE_USD = _int_env("EARLY_PRICE_USD", 397)
-
-# 正價（頁面上作刪除線顯示）
-REGULAR_PRICE_USD = _int_env("REGULAR_PRICE_USD", 497)
-
-# 保留兼容
+# 早鳥折讓額（面頁顯示「-US$20」）。
 INTRO_DISCOUNT_USD = _int_env("INTRO_DISCOUNT_USD",
                               max(0, REGULAR_PRICE_USD - DEFAULT_PRICE_USD))
 
@@ -64,8 +58,6 @@ def render_landing(output_path=None):
     html = html.replace("{{PRICE_USD}}", str(DEFAULT_PRICE_USD))
     html = html.replace("{{REGULAR_PRICE_USD}}", str(REGULAR_PRICE_USD))
     html = html.replace("{{INTRO_DISCOUNT_USD}}", str(INTRO_DISCOUNT_USD))
-    html = html.replace("{{EARLY_PRICE_USD}}", str(EARLY_PRICE_USD))
-    html = html.replace("{{GROWTH_PRICE_USD}}", str(GROWTH_PRICE_USD))
 
     # Round5 防回歸：模板必須係真後端（DEMO_MODE=false），一旦 render 出嚟撞到示範
     # 模式（DEMO_MODE=true）就代表 template 回歸咗 demo，即刻警告並拒絕寫檔。

@@ -48,16 +48,6 @@ import seo_crawler  # noqa: E402
 LANDING_PATH = os.path.join(_HERE, "landing_page.html")
 OUTPUT_DIR = os.path.join(os.path.dirname(_HERE), "output")  # 同 pipeline_runner 一致
 
-# Round11：多語言 landing —— `/` (EN master)、`/landing` 用 landing_page.html；
-# 子路徑 /en /zh-Hant /zh-Hans /ja /es 各自 serve 對應語言檔案。
-LANDING_LANGS = {
-    "/en":        "landing_en.html",
-    "/zh-Hant":   "landing_zh-Hant.html",
-    "/zh-Hans":   "landing_zh-Hans.html",
-    "/ja":        "landing_ja.html",
-    "/es":        "landing_es.html",
-}
-
 # Round8：靜態法律文件路由 —— pipeline/legal/*.md，經 /legal/<name> 提供。
 LEGAL_DIR = os.path.join(_HERE, "legal")
 # 語意名 -> 實際檔名（footer 用語意名；亦支援直接數檔名）
@@ -67,25 +57,6 @@ LEGAL_ROUTES = {
     "disclaimer":    "04-免責聲明.md",
     "refund":        "05-退款政策.md",
     "authorization": "03-網站審計授權書.md",
-}
-# Round8b：英文 legal master —— pipeline/legal/en/*.md。非繁中語言 fallback 到英文。
-LEGAL_DIR_EN = os.path.join(LEGAL_DIR, "en")
-LEGAL_ROUTES_EN = {
-    "privacy":       "02-privacy-policy.md",
-    "terms":         "01-terms-of-service.md",
-    "disclaimer":    "04-disclaimer.md",
-    "refund":        "05-refund-policy.md",
-    "authorization": "03-website-audit-authorization.md",
-}
-# 語言 token -> legal 子目錄。繁中 token 用 root（原本繁中檔），其他語言（簡中/日/西/英）
-# 一律用英文 en/ 作 fallback；未知 token 亦 fallback 英文。
-LEGAL_LANG_DIR = {
-    "en": LEGAL_DIR_EN,      "eng": LEGAL_DIR_EN,
-    "en-us": LEGAL_DIR_EN,   "en-gb": LEGAL_DIR_EN,
-    "zh": LEGAL_DIR_EN,      "zh-hans": LEGAL_DIR_EN,   "zh-cn": LEGAL_DIR_EN,
-    "ja": LEGAL_DIR_EN,      "ja-jp": LEGAL_DIR_EN,
-    "es": LEGAL_DIR_EN,      "es-es": LEGAL_DIR_EN,     "es-419": LEGAL_DIR_EN,
-    "zh-hant": LEGAL_DIR,    "zh-hk": LEGAL_DIR,        "zh-tw": LEGAL_DIR,
 }
 
 # 統一 email 格式驗證 regex（/api/order 前置驗證用；交付時 pipeline 會再驗一次）
@@ -219,9 +190,7 @@ def run_scan(url, pinned_ip=None):
     (Host header = original domain) — closes the SSRF TOCTOU rebind window."""
     start = time.time()
     try:
-        # 免費 scan：skip_ai=True（唔行 LLM）+ 唔用 pinned IP（避免 HTTPS+IP 嘅 TLS 驗證問題）——
-        # SSRF 防護已經喺 server 層由 validate_scan_url() 做咗（URL 必須公開 IP）。
-        result = seo_crawler.run(url, pinned_ip=None, skip_ai=True)
+        result = seo_crawler.run(url, pinned_ip=pinned_ip)
     except Exception as e:  # hard safety net
         result = {"url": url, "score": None, "fix_list": [],
                   "ai_error": f"server: {type(e).__name__}: {e}"}
@@ -235,13 +204,12 @@ def run_scan(url, pinned_ip=None):
 
 
 def checkout_price():
-    """收費單價唯一來源 —— 現在係首 50 早鳥期，收 EARLY_PRICE_USD(397)。
-    唔信 client 傳咩，夾死 config。Early 期結束先轉返正價 497。"""
+    """Round9：收費單價唯一來源 —— 夾死 config.DEFAULT_PRICE_USD（唔理 client 傳咩）。"""
     try:
         import config as _cfg
-        return int(_cfg.EARLY_PRICE_USD)
+        return int(_cfg.DEFAULT_PRICE_USD)
     except Exception:
-        return 397
+        return 79
 
 
 def shape_scan_response(result):
@@ -286,9 +254,7 @@ def spawn_delivery_pipeline(order):
     cmd = [sys.executable, _runner, order["url"],
            "--payment-ref", order["payment_ref"],
            "--order-id", order.get("order_id", ""),
-           "--customer-email", order.get("customer_email", ""),
-           "--product-id", order.get("selected_product_id", ""),
-           "--report-language", order.get("report_language", "en")]
+           "--customer-email", order.get("customer_email", "")]
     env = dict(os.environ)
     try:
         subprocess.Popen(cmd, cwd=_HERE, env=env,
@@ -301,28 +267,6 @@ def spawn_delivery_pipeline(order):
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "SEOAudit/1.0"
-
-    def _send_success_page(self, order_id=""):
-        """付款成功頁 —— 代替 Stripe redirect 嘅 404。顯示訂單 + 報告進度。"""
-        html = ("<!DOCTYPE html>" 
-            "<html lang='en'><head><meta charset='utf-8'>"
-            "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-            "<title>Payment Successful — seoscanaudit</title>"
-            "<style>body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#fafafa;color:#111;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh}"
-            ".card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;max-width:480px;width:90%;padding:40px 32px;box-shadow:0 10px 30px rgba(0,0,0,.06);text-align:center}"
-            ".check{width:64px;height:64px;border-radius:50%;background:#e8f5e9;color:#2e7d32;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:30px}"
-            "h1{font-size:24px;margin:0 0 8px}.sub{color:#5f6368;font-size:15px;line-height:1.5;margin:0 0 12px}"
-            ".oid{font-family:monospace;background:#f1f3f4;padding:8px 14px;border-radius:8px;font-size:14px;display:inline-block;margin:8px 0}"
-            ".btn{display:inline-block;margin-top:18px;background:#111;color:#fff;padding:12px 22px;border-radius:10px;text-decoration:none;font-size:15px}"
-            ".img{width:24px;height:24px;vertical-align:middle;margin-right:6px}"
-            "</style></head><body><div class='card'>"
-            "<div class='check'>&#10003;</div>"
-            "<h1>Payment received!</h1>"
-            "<p class='sub'>Your payment went through. Your full audit report is being generated and will be emailed to you shortly (usually within ~10 minutes).</p>"
-            "<div>Order ID: <span class='oid'>" + (order_id or "—") + "</span></div>"
-            "<a class='btn' href='/'>Back to home</a>"
-            "</div></body></html>")
-        self._send(200, html.encode("utf-8"), ctype="text/html")
 
     def _send(self, code, body, ctype="application/json", extra_headers=None):
         if isinstance(body, (dict, list)):
@@ -349,23 +293,6 @@ class Handler(BaseHTTPRequestHandler):
     # --- routes ---------------------------------------------------------
     def do_GET(self):
         path = self.path.split("?")[0].rstrip("/") or "/"
-        # Round11：多語言 landing 子路徑（/en /zh-Hant /zh-Hans /ja /es）
-        if path in LANDING_LANGS:
-            candidate = os.path.join(_HERE, LANDING_LANGS[path])
-            if os.path.isfile(candidate):
-                try:
-                    with open(candidate, "rb") as fh:
-                        self._send(200, fh.read(), ctype="text/html")
-                    return
-                except OSError as e:
-                    self._send(500, {"error": f"landing not found: {e}"})
-                    return
-        if path == "/success":
-            # 付款後 redirect 成功頁（Stripe Checkout success_url）—— 以往 404 造成「俾咗錢見 error」
-            from urllib.parse import urlparse, parse_qs
-            q = parse_qs(urlparse(self.path).query)
-            return self._send_success_page(q.get("order", [""])[0])
-
         if path in ("/", "/landing"):
             try:
                 with open(LANDING_PATH, "rb") as fh:
@@ -376,46 +303,15 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "server": "real-backend-v1",
                              "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
         elif path.startswith("/legal/"):
-            # Round8b：多語言 legal 路由。支援幾種形式（name 係語意名如 privacy/terms，
-            # 亦兼容直接數 .md 檔名）：
-            #   /legal/<name>            繁中 default（可按 Accept-Language fallback 英文）
-            #   /legal/<name>/<lang>     指定語言（非繁中→英文）
-            #   /legal/<lang>/<name>     同上
-            #   /legal/<name>?lang=<L>   query 覆寫語言
-            # basename 化防止 path traversal；唔刪原有繁中檔。
-            qlang = (parse_qs(urlparse(self.path).query).get("lang") or [""])[0].strip().lower()
-            segs = [s for s in urlparse(self.path).path[len("/legal/"):].strip("/").split("/") if s]
-            if not segs:
-                self._send(404, {"error": "legal doc not found", "name": path})
-                return
-            name, lang = None, ""
-            if len(segs) == 2 and segs[0].lower() in LEGAL_LANG_DIR:
-                lang, name = segs[0].lower(), segs[1]
-            elif len(segs) == 2 and segs[1].lower() in LEGAL_LANG_DIR:
-                name, lang = segs[0], segs[1].lower()
-            else:
-                name = segs[0]
-            if not lang:
-                lang = qlang
-            if not lang:
-                # Accept-Language 偵測：網頁瀏覽器偏好多於一個非繁中語言 → 英文。
-                ac = (self.headers.get("Accept-Language") or "").lower()
-                if ac:
-                    toks = [t.split(";")[0].strip().lower() for t in ac.split(",") if t.strip()]
-                    if toks and not any(t in ("zh", "zh-hant", "zh-hk", "zh-tw") for t in toks):
-                        lang = "en"
-            # 無語言 → 繁中 root；有語言 → 查表，未知語言 fallback 英文。
-            legal_dir = LEGAL_LANG_DIR.get(lang, LEGAL_DIR_EN) if lang else LEGAL_DIR
-            fname = (LEGAL_ROUTES_EN.get(name) if legal_dir == LEGAL_DIR_EN
-                     else LEGAL_ROUTES.get(name, name))
-            fname = os.path.basename(fname or name)
-            if not fname.endswith(".md"):
+            # Round8：serve pipeline/legal/*.md（例如 /legal/privacy、/legal/terms、
+            # /legal/disclaimer，或直接用檔名）。basename 化防止 path traversal。
+            name = path[len("/legal/"):].strip("/")
+            fname = LEGAL_ROUTES.get(name, name)
+            fname = os.path.basename(fname)
+            if not name or not fname.endswith(".md"):
                 self._send(404, {"error": "legal doc not found", "name": name})
                 return
-            legal_file = os.path.join(legal_dir, fname)
-            if not os.path.isfile(legal_file) and legal_dir != LEGAL_DIR:
-                # 英文超差 → fallback 到繁中 root 對應檔。
-                legal_file = os.path.join(LEGAL_DIR, LEGAL_ROUTES.get(name, name))
+            legal_file = os.path.join(LEGAL_DIR, fname)
             if not os.path.isfile(legal_file):
                 self._send(404, {"error": "legal doc not found", "name": name})
                 return
@@ -498,42 +394,11 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(429, {"error": "rate limited —— 請稍後再試"},
                            extra_headers={"Retry-After": str(retry)})
                 return
-            # Task1（自助落單）：收 url + customer_email + 報告所需欄位（HERMES A2/A3/A4），
-            # 驗證格式（Task6 前置 400），生成 order_id，寫低 order_<id>.json 初始狀態。
+            # Task1（自助落單）：收 url + customer_email，驗證 email 格式（Task6 前置 400），
+            # 生成 order_id，寫低 order_<id>.json 初始狀態，等 checkout 付款後 pipeline 接手。
             body = self._read_json()
             url_raw = (body.get("url") or "").strip()
             email = (body.get("customer_email") or "").strip()
-            report_language = (body.get("report_language") or "").strip()
-            product_id = (body.get("selected_product_id") or body.get("product_id") or "").strip()
-            company_name = (body.get("company_name") or "").strip()
-            biz_goal = (body.get("primary_business_goal") or "").strip()
-            market_area = (body.get("primary_market_or_service_area") or "").strip()
-            main_offers = (body.get("main_products_or_services") or "").strip()
-            competitors = (body.get("known_competitors") or "") or []
-            notes = (body.get("notes_or_constraints") or "").strip()
-
-            # A2/A3：product 必須存在（map 到 ENTRY/PREMIUM）；report_language 必須係 5 個之一。
-            # 唔淨係前端驗，後端硬 gate——缺任何一個就 400 拒收，唔好讓壞單入。
-            import product_catalog as _pc
-            if not product_id or not _pc.product_exists(product_id):
-                code = "PRODUCT_MAPPING_ERROR" if product_id else "MISSING_PRODUCT"
-                self._send(400, {"error": code,
-                                 "message": "selected_product_id 必須對應內部產品目錄"})
-                return
-            if not _pc.valid_language(report_language):
-                self._send(400, {"error": "INVALID_LANGUAGE",
-                                 "message": f"report_language 必須係 {_pc.REPORT_LANGUAGES} 之一"})
-                return
-            if not company_name:
-                self._send(400, {"error": "MISSING_COMPANY",
-                                 "message": "company_name 必須提供"})
-                return
-            allowed_goals = ("leads", "sales-revenue", "qualified-traffic",
-                             "local-enquiries", "subscriptions", "other")
-            if not biz_goal or biz_goal not in allowed_goals:
-                self._send(400, {"error": "INVALID_BUSINESS_GOAL",
-                                 "message": f"primary_business_goal 必須係 {allowed_goals} 之一"})
-                return
 
             # Task6：email 前置驗證 —— 無效即 400，唔好讓壞 email 入單。
             if not is_valid_email(email):
@@ -547,25 +412,11 @@ class Handler(BaseHTTPRequestHandler):
 
             order_id = "ORD-" + uuid.uuid4().hex[:12].upper()
             os.makedirs(OUTPUT_DIR, exist_ok=True)
-            import product_catalog as _pc
-            _tier = _pc.get_tier(product_id)
-            _prod = _pc.get_product(product_id)
             status_file = os.path.join(OUTPUT_DIR, f"order_{order_id}.json")
             initial = {
                 "order_id": order_id,
                 "url": url,
                 "customer_email": email,
-                # HERMES 報告所需欄位 / 產品路由
-                "report_language": report_language,
-                "selected_product_id": product_id,
-                "report_tier": _tier,
-                "report_skill": (_prod or {}).get("skill") if _prod else None,
-                "company_name": company_name,
-                "primary_business_goal": biz_goal,
-                "primary_market_or_service_area": market_area,
-                "main_products_or_services": main_offers,
-                "known_competitors": competitors if isinstance(competitors, list) else [competitors],
-                "notes_or_constraints": notes,
                 "status_file": status_file,
                 "status": "running",
                 "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -577,8 +428,6 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {
                 "order_id": order_id,
                 "url": url,
-                "report_language": report_language,
-                "report_tier": _tier,
                 "status_url": f"/api/status?order_id={order_id}",
                 "pinned_ip": pinned_ip,
             })
@@ -591,49 +440,29 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(429, {"error": "rate limited —— 請稍後再試"},
                            extra_headers={"Retry-After": str(retry)})
                 return
-            # 接真 Stripe Checkout Session，由選定產品路由到對應 price（HERMES A2，唔猜價）。
-            # /api/order 已建好 order_id + selected_product_id，付款後 webhook 用 client_reference_id 接返。
+            # 接真 Stripe Checkout Session (price = config.DEFAULT_PRICE_USD)。
+            # /api/order 已建好 order_id，付款後 webhook 用 client_reference_id 接返張單。
             body = self._read_json()
             url = (body.get("url") or "").strip() or "demo"
             order_id = (body.get("order_id") or "").strip() or ("o-" + uuid.uuid4().hex[:10])
             customer_email = (body.get("customer_email") or "").strip()
-            product_id = (body.get("selected_product_id") or body.get("product_id") or "").strip()
-            # 由 order file 讀返真正 product（前端可能無帶，order 記錄先係 truth）
-            import product_catalog as _pc
-            _of = os.path.join(OUTPUT_DIR, f"order_{order_id}.json")
-            if os.path.exists(_of):
-                try:
-                    with open(_of, "r", encoding="utf-8") as _fh:
-                        _od = json.load(_fh)
-                    product_id = product_id or (_od.get("selected_product_id") or "")
-                    customer_email = customer_email or (_od.get("customer_email") or "")
-                except Exception:
-                    pass
-            _tier = _pc.get_tier(product_id)
-            if not _tier:
-                self._send(400, {"error": "PRODUCT_MAPPING_ERROR",
-                                 "message": "選定產品無法 map 去 ENTRY/PREMIUM"})
-                return
-            _price, _env_key = _pc.price_point_for(product_id)
-            from stripe_lib import StripeError, create_checkout_session, load_env, get_price_id
+            _price = checkout_price()
+            from stripe_lib import StripeError, create_checkout_session, load_env
             load_env()
             site = os.environ.get("PUBLIC_URL", "").rstrip("/") or "https://seoscan.ai"
             try:
-                # 用產品對應緊嘅 price id（test-mode CHECKOUT_TEST_PRICE 仍可短暫 override）
                 cs = create_checkout_session(
                     order_id=order_id,
                     success_url=f"{site}/success?order={order_id}",
                     cancel_url=f"{site}/",
                     customer_email=customer_email or None,
                     url_to_scan=url,
-                    product_id=product_id,
                 )
                 self._send(200, {
                     "checkout_session_id": cs["id"],
                     "redirect_url": cs["url"],
                     "order_id": order_id,
                     "price_usd": _price,
-                    "report_tier": _tier,
                 })
             except StripeError as e:
                 self._send(502, {"error": f"checkout 建立失敗: {e.code}: {e.message}"})
@@ -659,44 +488,11 @@ class Handler(BaseHTTPRequestHandler):
             if result.get("paid") and result.get("delivery") == "spawn":
                 # 攞返 order_id (client_reference_id) + url_to_scan metadata → spawn 交付
                 meta = result.get("metadata") or {}
-                order_id = result.get("client_reference_id") or meta.get("order_id") or ""
-                customer_email = (result.get("customer_email") or "").strip()
-                # 若 Stripe session 冇帶 email，由 /api/order 建立時存嘅 order file 攞返
-                # （landing 填咗 email 落 order，session 層未必帶到）
-                if not customer_email and order_id:
-                    _of = os.path.join(OUTPUT_DIR, f"order_{order_id}.json")
-                    try:
-                        import json as _json
-                        with open(_of, "r", encoding="utf-8") as _fh:
-                            _od = _json.load(_fh)
-                        customer_email = (_od.get("customer_email") or "").strip()
-                    except Exception:
-                        pass
-                # 由 order file 攞返完整訂單資料（product/report_language/tier/business 欄位），
-                # 交付 pipeline 就知去 ENTRY/PREMIUM + report_language。
-                _od = {}
-                _of = os.path.join(OUTPUT_DIR, f"order_{order_id}.json")
-                if os.path.exists(_of):
-                    try:
-                        with open(_of, "r", encoding="utf-8") as _fh:
-                            _od = json.load(_fh)
-                    except Exception:
-                        _od = {}
                 order = {
-                    "url": meta.get("url_to_scan") or (_od.get("url") or "demo"),
-                    "order_id": order_id,
+                    "url": meta.get("url_to_scan") or "demo",
+                    "order_id": result.get("client_reference_id") or meta.get("order_id"),
                     "payment_ref": result.get("session_id"),
-                    "customer_email": customer_email,
-                    # HERMES：產品路由 + 語言 + 商業欄位由 order file 帶落 pipeline
-                    "selected_product_id": meta.get("selected_product_id") or (_od.get("selected_product_id") or ""),
-                    "report_language": _od.get("report_language") or "en",
-                    "report_tier": _od.get("report_tier"),
-                    "company_name": _od.get("company_name") or "",
-                    "primary_business_goal": _od.get("primary_business_goal") or "",
-                    "primary_market_or_service_area": _od.get("primary_market_or_service_area") or "",
-                    "main_products_or_services": _od.get("main_products_or_services") or "",
-                    "known_competitors": _od.get("known_competitors") or [],
-                    "notes_or_constraints": _od.get("notes_or_constraints") or "",
+                    "customer_email": result.get("customer_email") or "",
                 }
                 delivery = spawn_delivery_pipeline(order)
                 result["delivery_result"] = delivery

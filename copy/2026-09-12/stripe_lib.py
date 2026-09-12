@@ -81,31 +81,15 @@ def _api(path, method="GET", params=None, data=None):
                           err.get("message", f"HTTP {e.code}")) from None
 
 
-def get_price_id(selected_product_id=None):
-    """Best-effort: find the Stripe price id for the selected product (HERMES A2).
-    - If a product is given, read its price env (PRICE_397/497/997) from product_catalog.
-    - CHECKOUT_TEST_PRICE (env) overrides to a low test price when set.
-    Returns a price id or raises StripeError."""
-    # Test-mode override: 驗證收款鏈用 $0.5，測完 delenv 即轉返正價
-    test_price = os.environ.get("CHECKOUT_TEST_PRICE", "").strip()
-    if test_price:
-        return test_price
-    # 產品路由優先：由 selected_product_id 讀對應 env
-    if selected_product_id:
-        try:
-            import product_catalog as _pc
-            pid = _pc.price_id_for(selected_product_id)
-            if pid:
-                return pid
-        except Exception:
-            pass
+def get_price_id():
+    """Best-effort: find the one-time price matching config.DEFAULT_PRICE_USD."""
     try:
         import config as _cfg
-        want_usd = int(_cfg.EARLY_PRICE_USD)
+        want_usd = int(_cfg.DEFAULT_PRICE_USD)
     except Exception:
-        want_usd = 397
-    # 早鳥 price ID (env override) —— 對應 $397 price
-    price_id = os.environ.get("PRICE_397", "").strip() or os.environ.get("STRIPE_PRICE_ID", "").strip()
+        want_usd = 79
+    # Cache so we don't hit the API on every checkout.
+    price_id = os.environ.get("STRIPE_PRICE_ID", "").strip()
     if price_id:
         return price_id
     products = _api("/products", params={"active": "true", "limit": "10"})
@@ -121,19 +105,17 @@ def get_price_id(selected_product_id=None):
 
 
 def create_checkout_session(order_id, success_url, cancel_url,
-                            customer_email=None, url_to_scan="demo",
-                            product_id=None):
-    """Create a real Checkout Session for the selected product. Returns {id, url}."""
+                            customer_email=None, url_to_scan="demo"):
+    """Create a real Checkout Session. Returns {id, url}."""
     d = {
         "mode": "payment",
-        "line_items[0][price]": get_price_id(product_id),
+        "line_items[0][price]": get_price_id(),
         "line_items[0][quantity]": "1",
         "success_url": success_url,
         "cancel_url": cancel_url,
         "client_reference_id": order_id,
         "metadata[order_id]": order_id,
         "metadata[url_to_scan]": url_to_scan,
-        "metadata[selected_product_id]": product_id or "",
     }
     if customer_email:
         d["customer_email"] = customer_email
@@ -185,27 +167,10 @@ def handle_webhook(payload, sig_header):
         return 400, {"received": False, "error": "invalid signature"}
     if event.get("type") == "checkout.session.completed":
         cs = event.get("data", {}).get("object", {})
-        session_id = cs.get("id")
-        # 真 Stripe verify：retrieve session 核 payment_status，唔可以淨靠 event type 就當 paid
-        paid = False
-        try:
-            ses = _api("/checkout/sessions/" + session_id, method="GET")
-            if isinstance(ses, dict):
-                ps = ses.get("payment_status") or ""
-                paid = ps == "paid"
-        except Exception as e:
-            # retrieve 失敗 = 保守 fail-closed，唔可以假設 paid
-            return 200, {"received": True, "ok": False, "paid": False,
-                         "webhook_error": f"stripe_retrieve_failed: {type(e).__name__}: {e}",
-                         "type": event.get("type")}
-        if not paid:
-            # 未確實 paid（例如未付款/退款）→ 唔 spawn 交付
-            return 200, {"received": True, "ok": True, "paid": False,
-                         "type": event.get("type")}
         return 200, {
             "ok": True,
             "paid": True,
-            "session_id": session_id,
+            "session_id": cs.get("id"),
             "customer_email": cs.get("customer_email"),
             "client_reference_id": cs.get("client_reference_id"),
             "metadata": cs.get("metadata") or {},

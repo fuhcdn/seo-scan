@@ -1,0 +1,12 @@
+SEO Scan — 測試付款連結 (US$0.50)
+
+步驟:
+1. 選下面成條 URL (由 https 到 #fidn... 完),
+2. 複製 (Ctrl+C),
+3. 開瀏覽器新分頁 → 地址欄貼 (Ctrl+V) → Enter。
+
+========================================
+https://checkout.stripe.com/c/pay/cs_live_a1GI4wbSdSylKDewj1qVxxGMUArzQweX4kqaYe9eSU6OE9qAC4IfcXszEt#fidnandhYHdWcXxpYCc%2FJ2FgY2RwaXEnKSdicGRmZGhqaWBTZHdsZGtxJz8nZmprcXdqaScpJ2R1bE5gfCc%2FJ3VuWmlsc2BaMDRQQGkwRlVNQm1ibHdWSndXZnwyZGlnN2xKNT1WdV1dcD1PQ3dOQEh2fXdOU0t0dkI3YlxUYEc9fz1yTV9zPVNBbTBDXzJwbmBkaHBibXZEdHdoX0NDXHc1NU9hTkxtcmhMJyknY3dqaFZgd3Ngdyc%2FcXdwYCknZ2RmbmJ3anBrYUZqaWp3Jz8nJmNjY2NjYycpJ2lkfGpwcVF8dWAnPyd2bGtiaWBabHFgaCcpJ2BrZGdpYFVpZGZgbWppYWB3dic%2FcXdwYHgl
+========================================
+
+完成付款後,話我知「俾咗」,我就 check 自動交付鏈。

@@ -1,0 +1,13 @@
+[Unit]
+Description=Cloudflare Tunnel seoscanaudit
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared tunnel --config /etc/cloudflared/config.yml run fe4527bc-b2bf-45b4-8800-73e349b5a84e
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
