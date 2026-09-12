@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AI SEO Audit Report — Free Scan Your Website | See Top Issues Instantly</title>
-<meta name="description" content="Scan your website free and get an SEO score plus your Top 5 issues instantly. The full AI audit uncovers every SEO problem in one pass, auto-delivered in ~10 minutes." />
+<title>Know What to Fix on Your Website — Evidence-Led SEO Decision Report</title>
+<meta name="description" content="Get a decision-ready SEO report: your highest-priority opportunities, why they matter to your business, and a practical 90-day action plan. Professional PDF delivery in your chosen language." />
 <link rel="canonical" href="https://seoscanaudit.com/" />
 <link rel="alternate" hreflang="en" href="https://seoscanaudit.com/" />
 <link rel="alternate" hreflang="zh-Hant" href="https://seoscanaudit.com/zh-Hant" />
@@ -14,109 +14,127 @@
 <link rel="alternate" hreflang="x-default" href="https://seoscanaudit.com/" />
 <style>
   :root{
-    --ink:#0f172a; --muted:#64748b; --brand:#2563eb; --brand-dark:#1d4ed8;
-    --bg:#f8fafc; --card:#ffffff; --line:#e2e8f0; --green:#16a34a;
-    --amber:#d97706; --red:#dc2626; --shadow:0 10px 30px -12px rgba(15,23,42,.18);
+    --bg:#F7F7F5; --ink:#0B1220; --navy:#0B1220; --muted:#657085;
+    --indigo:#4F46E5; --indigo-dark:#4338CA; --teal:#0F9D8A; --amber:#D97706;
+    --card:#FFFFFF; --line:#E3E7ED; --line-subtle:#EDEFF2;
+    --shadow:0 1px 2px rgba(11,18,32,.04), 0 10px 28px -14px rgba(11,18,32,.16);
+    --radius:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang HK","Microsoft JhengHei","Microsoft YaHei","Hiragino Sans","Noto Sans SC","Noto Sans JP","Noto Sans",sans-serif;
-    color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
-  header{background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 60%,#3b82f6 100%);color:#fff;padding:64px 0 56px}
-  .nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;font-size:14px;gap:12px;flex-wrap:wrap}
-  .logo{font-weight:800;letter-spacing:.3px}
-  .logo span{color:#bfdbfe}
-  .nav-links{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-  .nav-links a{color:#334155;text-decoration:none;font-weight:600}
-  .langbox select{appearance:none;background:#fff;border:1px solid var(--line);border-radius:999px;
-    padding:7px 30px 7px 14px;font-size:13px;color:var(--ink);cursor:pointer;font-weight:600;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0l5 6 5-6z' fill='%2364748b'/></svg>");
+    color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  a{color:var(--indigo)}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 28px}
+  .topnav{display:flex;justify-content:space-between;align-items:center;padding:20px 0;gap:16px;flex-wrap:wrap}
+  .logo{font-size:20px;font-weight:800;letter-spacing:-.3px;color:var(--ink)}
+  .logo span{color:var(--indigo)}
+  .nav-links{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+  .nav-links a{color:var(--muted);text-decoration:none;font-weight:600;font-size:15px;transition:color .15s}
+  .nav-links a:hover{color:var(--indigo)}
+  .langbox select{appearance:none;background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:8px 32px 8px 14px;font-size:14px;color:var(--ink);cursor:pointer;font-weight:600;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0l5 6 5-6z' fill='%23657085'/></svg>");
     background-repeat:no-repeat;background-position:right 12px center;outline:none}
-  .hero{text-align:center;padding:24px 0 8px}
-  .badge{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
-    padding:5px 14px;border-radius:999px;font-size:13px;margin-bottom:22px}
-  h1{font-size:clamp(30px,5vw,46px);line-height:1.15;font-weight:800;margin-bottom:18px;letter-spacing:-.5px}
-  h1 em{font-style:normal;color:#fbbf24}
-  .sub{font-size:clamp(15px,2vw,18px);opacity:.92;max-width:640px;margin:0 auto}
-  .scanbox{background:#fff;max-width:620px;margin:34px auto 0;padding:10px;border-radius:16px;
-    box-shadow:var(--shadow);display:flex;gap:8px}
-  .scanbox input{flex:1;border:none;outline:none;padding:14px 16px;font-size:16px;color:var(--ink);
-    border-radius:10px;background:#f1f5f9;min-width:0}
-  .scanbox input::placeholder{color:#94a3b8}
-  .scanbox button{border:none;cursor:pointer;background:var(--brand);color:#fff;font-weight:700;
-    padding:14px 22px;border-radius:10px;font-size:15px;white-space:nowrap;transition:background .2s}
-  .scanbox button:hover{background:var(--brand-dark)}
-  .ta{font-size:13px;color:#bfdbfe;margin-top:14px}
-  .quick{color:#bfdbfe;font-size:13px;margin-top:6px}
-  .quick b{color:#fff;cursor:pointer;text-decoration:underline}
-  .stats{display:flex;gap:24px;justify-content:center;margin-top:36px;flex-wrap:wrap}
-  .stats div{text-align:center;min-width:110px}
-  .stats .n{font-size:24px;font-weight:800;color:#fbbf24}
-  .stats .l{font-size:12px;opacity:.85}
-  section{padding:64px 0}
-  .h2{font-size:clamp(22px,3vw,30px);font-weight:800;text-align:center;margin-bottom:10px;letter-spacing:-.3px}
-  .h2sub{text-align:center;color:var(--muted);max-width:520px;margin:0 auto 40px}
-  .trustbar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:10px 0 18px}
-  .trustbar span{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);
-    color:#e2e8f0;padding:5px 12px;border-radius:99px;font-size:12px}
-  .cv{display:grid;grid-template-columns:1fr 1.2fr;gap:20px;max-width:860px;margin:0 auto}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
-  .card .tag{font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase}
-  .card h3{font-size:22px;font-weight:800;margin:6px 0 4px}
-  .card .price{font-size:34px;font-weight:800}
-  .card .price small{font-size:14px;color:var(--muted);font-weight:500}
-  .card ul{list-style:none;margin-top:18px}
-  .card li{padding:7px 0 7px 28px;position:relative;font-size:15px}
-  .card li:before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:800}
-  .card .lock li{color:#94a3b8}
-  .card .lock li:before{content:"🔒";font-size:12px;left:2px;color:var(--amber)}
-  .pro{position:relative;border:2px solid var(--brand);box-shadow:var(--shadow)}
-  .ribbon{position:absolute;top:-14px;right:20px;background:var(--brand);color:#fff;font-size:12px;
-    font-weight:700;padding:5px 14px;border-radius:999px}
-  .cta-btn{display:block;text-align:center;background:var(--brand);color:#fff;border:none;cursor:pointer;
-    font-weight:800;padding:16px;border-radius:12px;font-size:17px;margin-top:24px;width:100%;transition:background .2s}
-  .cta-btn:hover{background:var(--brand-dark)}
-  .cta-btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
-  .cta-btn.ghost:hover{background:#f1f5f9}
-  .promo{background:#fffbeb;border:1px solid #fde68a;color:#92400e;text-align:center;font-size:14px;
-    padding:10px 16px;border-radius:12px;margin-top:18px}
-  .promo b{color:#b45309}
-  .feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;max-width:920px;margin:0 auto}
-  .feat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px}
-  .feat .ico{font-size:26px;margin-bottom:10px}
-  .feat h4{font-size:16px;font-weight:700;margin-bottom:6px}
-  .feat p{font-size:14px;color:var(--muted)}
-  footer{background:#0f172a;color:#94a3b8;padding:34px 0;text-align:center;font-size:13px}
-  footer a{color:#cbd5e1;text-decoration:underline}
-  .result{display:none;max-width:620px;margin:22px auto 0;background:#fff;border:1px solid var(--line);
-    border-radius:16px;padding:24px;box-shadow:var(--shadow);text-align:left}
+  .langbox select:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+  .eyebrow{display:inline-block;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--indigo);margin-bottom:16px}
+  h1{font-size:clamp(32px,5vw,52px);line-height:1.08;font-weight:800;letter-spacing:-1px;margin-bottom:20px}
+  .lead{font-size:clamp(16px,2vw,19px);color:var(--muted);max-width:600px;line-height:1.65}
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;padding:64px 0 72px}
+  .hero-cta{display:flex;gap:14px;flex-wrap:wrap;margin-top:30px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;border:none;cursor:pointer;
+    font-weight:700;padding:16px 28px;border-radius:12px;font-size:16px;text-decoration:none;
+    transition:background .16s,transform .05s;line-height:1}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--indigo);color:#fff}
+  .btn-primary:hover{background:var(--indigo-dark)}
+  .btn-secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn-secondary:hover{background:var(--line-subtle)}
+  .btn:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+  .micro{font-size:13px;color:var(--muted);margin-top:18px}
+  .micro b{color:var(--teal)}
+  .preview{border:1px solid var(--line);border-radius:18px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+  .preview-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line);background:#fbfbfa}
+  .preview-head .pill{font-size:13px;font-weight:800;color:var(--indigo)}
+  .preview-head .lbl{font-size:12px;color:var(--muted)}
+  .preview-body{padding:24px 22px;display:flex;flex-direction:column;gap:18px}
+  .pv-block{background:var(--bg);border:1px solid var(--line-subtle);border-radius:12px;padding:18px}
+  .pv-block h4{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:8px;letter-spacing:.2px}
+  .pv-row{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted);padding:5px 0}
+  .pv-row .chk{color:var(--teal);font-weight:800}
+  .pv-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;margin-left:auto}
+  .pv-badge.p0{background:#fdecec;color:#c0392b}
+  .pv-badge.p1{background:#eceefb;color:var(--indigo)}
+  section{padding:72px 0}
+  .section-head{text-align:center;max-width:680px;margin:0 auto 44px}
+  .section-head .eyebrow{margin-bottom:10px}
+  .section-head h2{font-size:clamp(26px,3.4vw,36px);font-weight:800;letter-spacing:-.6px;line-height:1.15}
+  .section-head p{color:var(--muted);margin-top:12px;font-size:16px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .feat-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:0 1px 2px rgba(11,18,32,.03)}
+  .feat-card .tick{width:34px;height:34px;border-radius:10px;background:#eaf6f4;color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;margin-bottom:14px}
+  .feat-card h4{font-size:16px;font-weight:700;margin-bottom:6px}
+  .feat-card p{font-size:14px;color:var(--muted)}
+  .process{background:var(--navy);color:#fff}
+  .process .section-head h2{color:#fff}
+  .process .section-head p{color:#aab4c5}
+  .process-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;counter-reset:step}
+  .step{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px}
+  .step .num{font-size:12px;font-weight:800;color:var(--teal);letter-spacing:1px;margin-bottom:10px}
+  .step h4{font-size:16px;font-weight:700;margin-bottom:6px;color:#fff}
+  .step p{font-size:13px;color:#aab4c5;line-height:1.5}
+  .pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:880px;margin:0 auto}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:32px;position:relative;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(11,18,32,.03)}
+  .pcard.highlight{border:1.5px solid var(--indigo);box-shadow:var(--shadow)}
+  .pcard .who{font-size:14px;color:var(--muted);margin:8px 0 18px;line-height:1.5}
+  .pcard .price{font-size:40px;font-weight:800;letter-spacing:-1px;margin-bottom:18px}
+  .pcard .price small{font-size:14px;color:var(--muted);font-weight:500;letter-spacing:0}
+  .pcard ul{list-style:none;margin:0 0 8px}
+  .pcard li{padding:7px 0;font-size:14.5px;display:flex;gap:10px;align-items:flex-start}
+  .pcard li .chk{color:var(--teal);font-weight:800;flex-shrink:0;margin-top:1px}
+  .pcard .cta{margin-top:auto;padding-top:22px}
+  .badge-hi{position:absolute;top:-13px;left:32px;background:var(--indigo);color:#fff;font-size:12px;font-weight:700;padding:6px 14px;border-radius:999px;letter-spacing:.2px}
+  .trust{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:980px;margin:0 auto}
+  .trust-item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .trust-item b{font-size:14px;display:block;margin-bottom:4px}
+  .trust-item span{font-size:13px;color:var(--muted)}
+  .final-cta{background:var(--navy);color:#fff;text-align:center;padding:80px 0}
+  .final-cta h2{font-size:clamp(28px,4vw,42px);font-weight:800;letter-spacing:-.6px;max-width:640px;margin:0 auto 20px}
+  .final-cta .btn{margin-top:12px}
+  .result{display:none;max-width:620px;margin:26px auto 0;background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:var(--shadow);text-align:left}
   .result h3{font-size:18px;margin-bottom:12px}
-  .demoNote{display:none;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;
-    padding:8px 12px;border-radius:10px;margin-bottom:14px;line-height:1.5}
+  .demoNote{display:none;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:13px;padding:8px 12px;border-radius:10px;margin-bottom:14px;line-height:1.5}
   .score{display:flex;align-items:center;gap:18px;margin-bottom:6px}
-  .ring{width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-weight:800;font-size:22px;color:#fff;background:conic-gradient(var(--brand) 62%,#e2e8f0 0)}
+  .ring{width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;background:conic-gradient(var(--indigo) 62%,var(--line) 0)}
   .ring span{background:#fff;border-radius:50%;width:58px;height:58px;display:flex;align-items:center;justify-content:center;color:var(--ink)}
   .toplist{margin-top:16px}
   .toplist .row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
   .toplist .lv{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
-  .lv.hi{background:#fee2e2;color:var(--red)}
+  .lv.hi{background:#fdecec;color:#c0392b}
   .lv.md{background:#fef3c7;color:var(--amber)}
-  .lockrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px dashed var(--line);
-    color:#94a3b8;font-size:14px;cursor:pointer}
-  .unlock{background:var(--brand);color:#fff;border:none;cursor:pointer;font-weight:800;padding:18px;
-    border-radius:12px;font-size:17px;width:100%;margin-top:18px}
+  .lockrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px dashed var(--line);color:var(--muted);font-size:14px;cursor:pointer}
+  .unlock{background:var(--indigo);color:#fff;border:none;cursor:pointer;font-weight:800;padding:18px;border-radius:12px;font-size:17px;width:100%;margin-top:18px;transition:background .16s}
+  .unlock:hover{background:var(--indigo-dark)}
+  .scanbox{background:#fff;max-width:620px;margin:30px 0 0;padding:10px;border-radius:14px;box-shadow:var(--shadow);display:flex;gap:8px;border:1px solid var(--line)}
+  .scanbox input{flex:1;border:none;outline:none;padding:15px 16px;font-size:16px;color:var(--ink);border-radius:10px;background:var(--bg);min-width:0}
+  .scanbox input:focus{outline:2px solid var(--indigo);outline-offset:-1px}
+  .scanbox input::placeholder{color:#94a3b8}
+  .scanbox button{border:none;cursor:pointer;background:var(--indigo);color:#fff;font-weight:700;padding:15px 22px;border-radius:10px;font-size:15px;white-space:nowrap;transition:background .16s}
+  .scanbox button:hover{background:var(--indigo-dark)}
+  footer{background:var(--navy);color:#8d98ad;padding:40px 0;text-align:center;font-size:13px}
+  footer a{color:#c3cad6;text-decoration:underline}
   .money{font-variant-numeric:tabular-nums}
-  @media(max-width:700px){.scanbox{flex-direction:column}.scanbox button{width:100%}.cv{grid-template-columns:1fr}.ribbon{right:14px}}
+  @media(max-width:900px){.hero{grid-template-columns:1fr;gap:40px}.grid4{grid-template-columns:1fr 1fr}.process-grid{grid-template-columns:1fr 1fr}.trust{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.grid4{grid-template-columns:1fr}.process-grid{grid-template-columns:1fr}.trust{grid-template-columns:1fr}.pricing-grid{grid-template-columns:1fr}.scanbox{flex-direction:column}.scanbox button{width:100%}.badge-hi{left:24px}}
 </style>
 </head>
 <body id="top">
 
-<!-- NAV -->
-<nav class="wrap nav">
+<nav class="wrap topnav">
   <div class="logo">SEO<span>Scan</span>.ai</div>
   <div class="nav-links">
-    <a href="#how">How it works</a>
+    <a href="#methodology">Methodology</a>
+    <a href="#reports">Reports</a>
     <a href="#pricing">Pricing</a>
     <span class="langbox">
       <select id="langSel" onchange="if(this.value){location.href=this.value}">
@@ -130,25 +148,51 @@
   </div>
 </nav>
 
-<!-- HERO + FREE SCAN ENTRY -->
-<header>
-  <div class="wrap hero">
-    <span class="badge">🤖 AI SEO Audit · Free Scan</span>
-    <div class="trustbar">
-      <span>✅ Aligned with Google Search Essentials</span>
-      <span>✅ Ahrefs×Semrush audit methodology</span>
-      <span>✅ Official Core Web Vitals metrics</span>
+<header class="wrap hero">
+  <div>
+    <span class="eyebrow">Evidence-led SEO research</span>
+    <h1>Know what to fix on your website — before you waste another month on SEO. </h1>
+    <p class="lead">Get a decision-ready SEO report that identifies your highest-priority opportunities, explains why they matter to your business, and gives you a practical 90-day action plan.</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#how" onclick="setTimeout(function(){var u=document.getElementById('url');if(u)u.focus()},60)">Scan my site free</a>
+      <a class="btn btn-secondary" href="#reports">See what’s included</a>
     </div>
-    <h1>Your site's SEO,<br /><em>scanned free</em> — see the issues instantly</h1>
-    <p class="sub">Paste your website URL and get an SEO score + Top 5 issues in seconds. The full AI audit report shows you exactly how to fix them — no more guessing.</p>
+    <p class="micro"><b>✓</b> Choose your output language before payment &nbsp;·&nbsp; <b>✓</b> Professional PDF delivery &nbsp;·&nbsp; <b>✓</b> No login required</p>
+  </div>
+  <div>
+    <div class="preview">
+      <div class="preview-head">
+        <div style="text-align:left"><div class="lbl">Illustrative report preview</div><div class="pill">SEO Opportunity Diagnostic</div></div>
+        <div style="text-align:right;font-size:12px;color:var(--muted)">seoscanaudit.com</div>
+      </div>
+      <div class="preview-body">
+        <div class="pv-block"><h4>Executive decision summary</h4>
+          <div class="pv-row"><span class="chk">✓</span>Score 64/100 — Needs work</div>
+          <div class="pv-row"><span class="chk">✓</span>3 findings, est. +9 pts available</div></div>
+        <div class="pv-block"><h4>Evidence-led finding</h4>
+          <div class="pv-row"><span class="chk">✓</span>Speed is your biggest drag <span class="pv-badge p0">P0</span></div>
+          <div class="pv-row"><span class="chk">✓</span>TTFB measured 1240 ms, no gzip</div></div>
+        <div class="pv-block"><h4>Prioritised action ledger · 90-day roadmap</h4>
+          <div class="pv-row"><span class="chk">✓</span>Owner · Effort · Acceptance criteria</div>
+          <div class="pv-row"><span class="chk">✓</span>Days 0–30 · 31–60 · 61–90</div></div>
+      </div>
+    </div>
+  </div>
+</header>
 
+<section id="how">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Start with a free scan</span>
+      <h2>See your real issues first — before you pay for anything</h2>
+      <p>No signup, no credit card. Paste your website URL and get your SEO health score and top issues in seconds.</p>
+    </div>
     <div class="scanbox">
       <input id="url" type="url" placeholder="Paste your website URL, e.g. mybusiness.com" required />
       <button onclick="runScan()">Scan My Site Free</button>
     </div>
-
     <div class="result" id="result">
-      <h3>Scan result: <span id="rurl" style="color:var(--brand)"></span></h3>
+      <h3>Scan result: <span id="rurl" style="color:var(--indigo)"></span></h3>
       <div class="demoNote" id="demoNote" style="display:none"></div>
       <div class="score">
         <div class="ring"><span id="rscore">—</span></div>
@@ -168,114 +212,130 @@
         <input id="email" type="email" placeholder="you@example.com" required
                style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
         <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:12px">
-          <input id="consent" type="checkbox" required style="width:16px;height:16px;accent-color:var(--brand)" />
+          <input id="consent" type="checkbox" required style="width:16px;height:16px;accent-color:var(--indigo)" />
           I agree my email is used only to deliver this report, as described in the Privacy Policy. I understand I can opt out anytime.
         </label>
-        <button class="unlock" onclick="startCheckout()">Unlock Full Report — US$397</button>
-        <div style="margin:10px 0 2px;font-size:12px;color:#16a34a;font-weight:600">🛡️ 7-day peace-of-mind guarantee: full refund before delivery · free re-review after</div>
+        <button class="unlock" onclick="startCheckout()">Unlock Full Report</button>
+        <div style="margin:10px 0 2px;font-size:12px;color:var(--teal);font-weight:600">7-day peace-of-mind guarantee: full refund before delivery · free re-review after</div>
         <div style="font-size:11px;color:var(--muted)">Auto-delivered to your email within ~10 minutes of payment</div>
       </div>
     </div>
-
-    <div class="ta">🔒 100% free · no signup · instant result</div>
-    <div class="quick">Want to try?
-      <b onclick="document.getElementById('url').value='restaurant-hk.com'">restaurant-hk.com</b></div>
-
-    <div class="stats">
-      <div><div class="n" id="scanCount">0</div><div class="l">Websites scanned</div></div>
-      <div><div class="n">100%</div><div class="l">Reports hand-QC'd before delivery</div></div>
-      <div><div class="n">10 min</div><div class="l">report delivery</div></div>
-    </div>
+    <p style="text-align:center;color:var(--muted);font-size:13px;margin-top:16px">Free · no signup · instant result</p>
   </div>
-</header>
+</section>
 
-<!-- HOW -->
-<section id="how">
+<section id="methodology" style="background:#fff">
   <div class="wrap">
-    <div class="h2">3 free steps — see if your site has problems first</div>
-    <p class="h2sub">No signup, no credit card. Paste your URL.</p>
-    <div class="feats">
-      <div class="feat"><div class="ico">1️⃣</div><h4>Paste your URL</h4><p>One input box. Paste your site address, click “Scan My Site Free”.</p></div>
-      <div class="feat"><div class="ico">2️⃣</div><h4>Score + Top 5 instantly</h4><p>Get your SEO health score and the 5 most serious issues in seconds.</p></div>
-      <div class="feat"><div class="ico">3️⃣</div><h4>Full report from US$397</h4><p>Unlock the full fix list when you're confident. Delivered instantly on payment.</p></div>
+    <div class="section-head">
+      <span class="eyebrow">Why this is different</span>
+      <h2>Not another SEO error export.</h2>
+      <p>Evidence-led research, prioritised for your business.</p>
+    </div>
+    <div class="grid4">
+      <div class="feat-card"><div class="tick">✓</div><h4>Less noise</h4><p>Material risks and opportunities — not a huge generic error list.</p></div>
+      <div class="feat-card"><div class="tick">✓</div><h4>Clear evidence</h4><p>Facts, evidence-based inferences and validation items are kept distinct.</p></div>
+      <div class="feat-card"><div class="tick">✓</div><h4>Usable work</h4><p>Actions have owner, effort, dependency, acceptance criteria and validation.</p></div>
+      <div class="feat-card"><div class="tick">✓</div><h4>Business-first</h4><p>Recommendations relate to business pages, customer journeys and commercial intent.</p></div>
     </div>
   </div>
 </section>
 
-<!-- PRICING -->
-<section id="pricing" style="background:#fff">
+<section class="process">
   <div class="wrap">
-    <div class="h2">Prove value free — the full version fixes your site</div>
-    <p class="h2sub">Scan your site free first — see real problems before you decide. The “how to fix” lives in the full version.</p>
-    <div class="cv" style="gap:18px;align-items:stretch">
-      <div class="card">
-        <div class="tag">Free</div>
-        <h3>Free Scan</h3>
-        <div class="price money">US$0</div>
+    <div class="section-head">
+      <span class="eyebrow" style="color:#9eb0ff">The research process</span>
+      <h2>How each report is built</h2>
+      <p>A disciplined, reproducible method — not an automated guess.</p>
+    </div>
+    <div class="process-grid">
+      <div class="step"><div class="num">STEP 1</div><h4>Study your website</h4><p>Read structure, navigation, key commercial and content pages.</p></div>
+      <div class="step"><div class="num">STEP 2</div><h4>Research search patterns</h4><p>Observe what actually ranks for your commercial intents.</p></div>
+      <div class="step"><div class="num">STEP 3</div><h4>Build the evidence</h4><p>Each finding ties to a verifiable observation with source.</p></div>
+      <div class="step"><div class="num">STEP 4</div><h4>Prioritise the work</h4><p>Rank by business impact, effort and confidence.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="reports" style="background:#fff">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Illustrative report preview</span>
+      <h2>What a decision-ready SEO report looks like</h2>
+      <p>Liberally labelled samples — your real report is personalised to your website.</p>
+    </div>
+    <div style="max-width:880px;margin:0 auto">
+      <div class="pv-block"><h4>Executive decision summary</h4><div class="pv-row"><span class="chk">✓</span>Score 64/100 — Needs work</div></div>
+      <div class="pv-block" style="margin-top:14px"><h4>Evidence-led finding</h4><div class="pv-row"><span class="chk">✓</span>Speed is your biggest drag</div></div>
+      <div class="pv-block" style="margin-top:14px"><h4>Prioritised action ledger · 90-day roadmap</h4><div class="pv-row"><span class="chk">✓</span>Owner · Effort · Acceptance criteria</div></div>
+      <div class="pv-block" style="margin-top:14px"><h4>90-day roadmap</h4><div class="pv-row"><span class="chk">✓</span>Days 0–30 · 31–60 · 61–90, with owners</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">Choose your report</span>
+      <h2>Two evidence-led reports. One clear path.</h2>
+      <p>Choose a report, choose your language, pay securely. Your PDF is delivered to your email.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="pcard">
+        <h3 style="font-size:22px;font-weight:800">SEO Opportunity Diagnostic</h3>
+        <p class="who">For business owners who need to know which SEO work deserves attention over the next 90 days.</p>
+        <div class="price money">US$497 <small>/ once</small></div>
         <ul>
-          <li>SEO health score</li>
-          <li>Top 5 most serious issues</li>
-          <li>Site type detection</li>
-          <li>Instant results</li>
+          <li><span class="chk">✓</span>Evidence-led website and search review</li>
+          <li><span class="chk">✓</span>3–5 priority findings</li>
+          <li><span class="chk">✓</span>Top-five action plan</li>
+          <li><span class="chk">✓</span>Business-readable executive summary</li>
+          <li><span class="chk">✓</span>90-day roadmap</li>
+          <li><span class="chk">✓</span>Public-data validation checklist</li>
         </ul>
-        <a class="cta-btn ghost" href="#how" style="text-decoration:none">↑ Scan Free</a>
+        <div class="cta"><button class="btn btn-primary" style="width:100%" data-product="prod_seo_opportunity" onclick="chooseProduct(this)">Choose Report</button></div>
       </div>
-      <div class="card pro" style="border:2px solid var(--brand);position:relative">
-        <div class="tag" style="background:var(--brand);color:#fff">Full Version · Most Popular</div>
-        <h3>Full AI SEO Audit</h3>
-        <div class="price money"><del style="font-size:16px;color:var(--muted);margin-right:8px">US$497</del> <span style="color:var(--brand)">US$397</span> <small>/ once</small></div>
-        <div class="promo" style="font-size:12px;color:var(--muted);margin:2px 0 12px">Founder price for the first 50 — early-bird only, while spots last</div>
-        <ul class="lock">
-          <li>Complete SEO issue fix list (count varies by site)</li>
-          <li>AI step-by-step fix guide + priority + expected impact</li>
-          <li>Competitor comparison analysis</li>
-          <li>Downloadable PDF report (white-label ready)</li>
-          <li>Auto-delivered within 10 minutes of payment</li>
-          <li>7-day guarantee: refund before delivery · free re-review after</li>
-        </ul>
-        <button class="cta-btn" onclick="document.getElementById('url').scrollIntoView({behavior:'smooth'});document.getElementById('url').focus()">Scan Free, then Unlock — US$397</button>
-      </div>
-      <div class="card">
-        <div class="tag">Growth</div>
-        <h3>Growth Audit</h3>
+      <div class="pcard highlight">
+        <span class="badge-hi">Best for teams ready to execute</span>
+        <h3 style="font-size:22px;font-weight:800">SEO Growth Blueprint</h3>
+        <p class="who">For teams that need a more complete action system for content, marketing and development.</p>
         <div class="price money">US$997 <small>/ once</small></div>
-        <ul class="lock">
-          <li>Everything in the full version</li>
-          <li>4 money-page deep dives (page-level)</li>
-          <li>Prioritized action roadmap</li>
-          <li>Competitor gap table</li>
-          <li>90-day execution roadmap</li>
-          <li>7-day guarantee</li>
+        <ul>
+          <li><span class="chk">✓</span>Deeper strategy and architecture assessment</li>
+          <li><span class="chk">✓</span>Topic, intent and page-purpose map</li>
+          <li><span class="chk">✓</span>Detailed prioritised action ledger</li>
+          <li><span class="chk">✓</span>Content opportunity briefs</li>
+          <li><span class="chk">✓</span>Developer-ready implementation briefs</li>
+          <li><span class="chk">✓</span>90-day roadmap with owners and validation plan</li>
         </ul>
-        <button class="cta-btn ghost" onclick="document.getElementById('url').scrollIntoView({behavior:'smooth'});document.getElementById('url').focus()">Scan Free, then see Growth</button>
+        <div class="cta"><button class="btn btn-primary" style="width:100%" data-product="prod_seo_growth" onclick="chooseProduct(this)">Choose Report</button></div>
       </div>
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:13px;margin-top:26px">Both reports delivered as a professional PDF in your chosen language.</p>
+  </div>
+</section>
+
+<section style="background:#fff;padding:48px 0">
+  <div class="wrap">
+    <div class="trust">
+      <div class="trust-item"><b>Evidence before opinion</b><span>Findings rest on observable facts, not guesses.</span></div>
+      <div class="trust-item"><b>Facts vs assumptions</b><span>Fact, inference and hypothesis are labelled.</span></div>
+      <div class="trust-item"><b>Clear boundaries</b><span>What we can and can’t verify is stated honestly.</span></div>
+      <div class="trust-item"><b>Actionable by design</b><span>Owner, effort and how to check success included.</span></div>
     </div>
   </div>
 </section>
 
-<!-- SOCIAL PROOF -->
-<section>
+<section class="final-cta">
   <div class="wrap">
-    <div class="h2">Know in seconds whether your site is healthy</div>
-    <p class="h2sub">Scan your real website free — no sample site, no signup. Paste a URL and get your site's score and Top issues.</p>
-  </div>
-</section>
-
-<!-- URGENCY -->
-<section style="padding:44px 0">
-  <div class="wrap" style="max-width:640px;text-align:center">
-    <div style="font-size:40px;margin-bottom:8px">⏳</div>
-    <div class="h2" style="font-size:26px;margin-bottom:6px">Scan free first — decide once you see real issues</div>
-    <p style="color:var(--muted);margin-bottom:22px">Founder price US$397 (was US$497) for the first 50 — back to full price once full. Scan free now, unlock if you love it.</p>
-    <a class="scanbox" href="#top" style="text-decoration:none;cursor:pointer;justify-content:center;background:var(--brand);color:#fff;font-weight:800" onclick="document.getElementById('url').focus()">
-      Scan My Site Free →
-    </a>
+    <span class="eyebrow" style="color:#9eb0ff">A cleaner way forward</span>
+    <h2>Stop collecting SEO tasks. Start making SEO decisions.</h2>
+    <a class="btn btn-primary" href="#reports">Choose your report</a>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    SEO Scan.ai — AI SEO audit report · start with a 100% free scan<br />
+    SEO Scan.ai — evidence-led AI SEO audit report<br />
     <a href="/legal/privacy">Privacy Policy</a> · <a href="/legal/terms">Terms of Service</a> · <a href="/legal/refund">Refund Policy</a> · <a href="/legal/disclaimer">Disclaimer</a><br />
     © 2026 SEO Scan.ai
   </div>
@@ -283,103 +343,72 @@
 
 <script>
   var DEMO_MODE = false;
-
+  var CURRENT_LANG = 'en';
+  function setLang(){ try{ var seg=window.location.pathname.split('/')[1]; if(seg&&['en','zh-Hant','zh-Hans','ja','es'].indexOf(seg)!==-1) CURRENT_LANG=seg; }catch(e){} }
+  function chooseProduct(btn){ var pid=btn.getAttribute('data-product'); try{ window.__selectedProduct=pid; }catch(e){} var t=document.getElementById('how'); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); setTimeout(function(){ var u=document.getElementById('url'); if(u) u.focus(); },60); }
   function runScan(){
     var u = document.getElementById('url').value.trim();
     if(!u){ document.getElementById('url').focus(); return; }
-
     document.getElementById('rscore').textContent = '…';
     document.getElementById('demoNote').style.display = 'none';
     document.getElementById('result').style.display = 'block';
     document.getElementById('result').scrollIntoView({behavior:'smooth', block:'center'});
-
-    fetch('/api/scan', {method:'POST', headers:{'Content-Type':'application/json'},
-           body: JSON.stringify({url: u})})
+    fetch('/api/scan', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url: u})})
       .then(function(r){ return r.json(); })
       .then(function(data){
-        if (data.error){
-          document.getElementById('rscore').textContent = '—';
-          document.getElementById('demoNote').style.display = 'block';
-          document.getElementById('demoNote').textContent = '⚠️ Scan error: ' + data.error;
-          return;
-        }
+        if (data.error){ document.getElementById('rscore').textContent = '—'; document.getElementById('demoNote').style.display = 'block'; document.getElementById('demoNote').textContent = 'Scan error: ' + data.error; return; }
         var clean = u.replace(/^https?:\/\//,'').replace(/\/$/,'');
         var scVal = (data.score != null) ? data.score : '—';
         document.getElementById('rscore').textContent = scVal;
-        var big = document.getElementById('rscoreBig');
-        if(big) big.textContent = scVal;
+        var big = document.getElementById('rscoreBig'); if(big) big.textContent = scVal;
         var hint = document.getElementById('rscoreHint');
         if(hint) hint.textContent = (data.score != null) ? ((data.score >= 80 ? '✅ Healthy site' : (data.score >= 50 ? '⚠️ Worth improving' : '🔴 Many issues'))) : 'Could not read diagnosis';
         document.getElementById('rurl').textContent = clean;
-
         var fc = (data.fix_count != null) ? data.fix_count : (data.fix_list || []).length;
         document.querySelectorAll('.fixCount').forEach(function(el){ el.textContent = fc; });
-
         var top = (data.top_issues || []).slice(0,5);
         var list = document.getElementById('toplistResult');
         if(!list){ list = document.createElement('div'); list.id='toplistResult'; document.querySelector('.toplist').appendChild(list); }
         list.innerHTML = '';
-        if(top.length === 0){ top = [{priority:'low', issue:'No obvious technical errors detected' }]; }
-        top.forEach(function(t){
-          var lv = t.priority === 'urgent' ? 'hi' : (t.priority === 'high' ? 'hi' : 'md');
-          var row = document.createElement('div');
-          row.className = 'row';
-          row.innerHTML = '<span class="lv '+lv+'">'+t.priority+'</span>'+t.issue;
-          list.appendChild(row);
-        });
+        if(top.length === 0){ top = [{priority:'low', issue:'No obvious technical errors detected'}]; }
+        top.forEach(function(t){ var lv = t.priority === 'urgent' ? 'hi' : (t.priority === 'high' ? 'hi' : 'md'); var row = document.createElement('div'); row.className='row'; row.innerHTML='<span class="lv '+lv+'">'+t.priority+'</span>'+t.issue; list.appendChild(row); });
         var toplist = document.querySelector('.toplist');
-        Array.prototype.slice.call(toplist.children).forEach(function(c){
-          if(c.className && String(c.className).indexOf('row') !== -1 && !c.id){ toplist.removeChild(c); }
-        });
-
-        if(typeof window.__scanTotal === 'number'){
-          window.__scanTotal += 1;
-          var sc = document.getElementById('scanCount');
-          if(sc) sc.textContent = window.__scanTotal;
-        }
+        Array.prototype.slice.call(toplist.children).forEach(function(c){ if(c.className && String(c.className).indexOf('row') !== -1 && !c.id){ toplist.removeChild(c); } });
+        if(typeof window.__scanTotal === 'number'){ window.__scanTotal += 1; var sc = document.getElementById('scanCount'); if(sc) sc.textContent = window.__scanTotal; }
       })
-      .catch(function(e){
-        document.getElementById('rscore').textContent = '—';
-        document.getElementById('demoNote').style.display = 'block';
-        document.getElementById('demoNote').textContent = '⚠️ Could not reach scan backend: ' + e;
-      });
+      .catch(function(e){ document.getElementById('rscore').textContent = '—'; document.getElementById('demoNote').style.display = 'block'; document.getElementById('demoNote').textContent = 'Could not reach scan backend: ' + e; });
   }
-
   function startCheckout(){
     var u = document.getElementById('url').value.trim();
     var em = document.getElementById('email') ? document.getElementById('email').value.trim() : '';
     var note = document.getElementById('demoNote');
     function showNote(msg){ note.style.display='block'; note.textContent = msg; }
-    if(!em){ showNote('⚠️ Please enter the email to receive the report (full PDF goes here)'); document.getElementById('email').focus(); return; }
-
-    fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'},
-           body: JSON.stringify({url:u, customer_email:em})})
+    var productId = (window.__selectedProduct || 'prod_seo_opportunity');
+    var sel = document.getElementById('langSel');
+    var langOpt = sel ? sel.value.replace(/^\//,'') : '';
+    var reportLanguage = (langOpt && ['en','zh-Hant','zh-Hans','ja','es'].indexOf(langOpt)!==-1) ? langOpt : 'en';
+    if(!em){ showNote('Please enter the email to receive the report (full PDF goes here)'); document.getElementById('email').focus(); return; }
+    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage };
+    fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(orderPayload)})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, json:d}; }); })
       .then(function(res){
         var d = res.json;
-        if(!res.ok || d.error){
-          showNote('⚠️ Order failed: ' + (d.error || 'unknown error')); return;
-        }
+        if(!res.ok || d.error){ showNote('Order failed: ' + (d.error || 'unknown error')); return; }
         var orderId = d.order_id;
-        fetch('/api/create-checkout', {method:'POST', headers:{'Content-Type':'application/json'},
-               body: JSON.stringify({url:u, order_id:orderId, price_usd:397})})
+        var checkoutPayload = { url:u, order_id:orderId, customer_email:em, selected_product_id:productId, report_language:reportLanguage };
+        fetch('/api/create-checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(checkoutPayload)})
           .then(function(r){ return r.json(); })
           .then(function(cd){
             if(cd.redirect_url){ window.location.href = cd.redirect_url; return; }
-            showNote('💰 Order created (' + orderId + '). Payment system preparing — this is the reserved checkout step. Once real Stripe is connected, “Unlock” will redirect to the Stripe payment page.');
+            showNote('Order created ( ' + orderId + ' ). Redirecting to secure payment…');
             document.getElementById('result').scrollIntoView({behavior:'smooth', block:'center'});
           })
-          .catch(function(e){ showNote('⚠️ Could not reach checkout server: ' + e); });
+          .catch(function(e){ showNote('Could not reach checkout server: ' + e); });
       })
-      .catch(function(e){
-        showNote('⚠️ Could not reach order server: ' + e);
-      });
+      .catch(function(e){ showNote('Could not reach order server: ' + e); });
   }
-
   window.__scanTotal = 0;
-  var sc = document.getElementById('scanCount');
-  if(sc) sc.textContent = window.__scanTotal;
-
+  setLang();
   document.addEventListener('keydown', function(e){ if(e.key==='Enter' && document.activeElement.id==='url') runScan(); });
 </script>
 </body>
