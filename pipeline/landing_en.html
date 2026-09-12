@@ -208,6 +208,18 @@
         <div class="lockrow"><span>🔒 Full <span class='fixCount'>—</span>-item fix list (updates after scan)</span><b>Locked</b></div>
         <div class="lockrow"><span>🔒 Competitor comparison analysis</span><b>Locked</b></div>
         <div class="lockrow"><span>🔒 AI step-by-step fix guide + prioritization</span><b>Locked</b></div>
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">Company name (for the report cover):</div>
+        <input id="company" type="text" placeholder="e.g. Acme LLC" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:4px 0 4px;font-size:13px;color:var(--muted)">Your primary business goal:</div>
+        <select id="businessGoal" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px;background:#fff;color:var(--ink)">
+          <option value="leads">Get more leads</option>
+          <option value="sales-revenue">Increase sales / revenue</option>
+          <option value="qualified-traffic">Grow qualified traffic</option>
+          <option value="local-enquiries">Local enquiries</option>
+          <option value="subscriptions">Grow subscriptions</option>
+          <option value="other">Other</option>
+        </select>
         <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">Receive the report by email (full PDF delivery):</div>
         <input id="email" type="email" placeholder="you@example.com" required
                style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
@@ -381,14 +393,18 @@
   function startCheckout(){
     var u = document.getElementById('url').value.trim();
     var em = document.getElementById('email') ? document.getElementById('email').value.trim() : '';
+    var company = document.getElementById('company') ? document.getElementById('company').value.trim() : '';
+    var goalEl = document.getElementById('businessGoal');
+    var goal = goalEl ? goalEl.value : '';
     var note = document.getElementById('demoNote');
     function showNote(msg){ note.style.display='block'; note.textContent = msg; }
     var productId = (window.__selectedProduct || 'prod_seo_opportunity');
     var sel = document.getElementById('langSel');
     var langOpt = sel ? sel.value.replace(/^\//,'') : '';
     var reportLanguage = (langOpt && ['en','zh-Hant','zh-Hans','ja','es'].indexOf(langOpt)!==-1) ? langOpt : 'en';
+    if(!company){ showNote('Please enter your company name'); document.getElementById('company').focus(); return; }
     if(!em){ showNote('Please enter the email to receive the report (full PDF goes here)'); document.getElementById('email').focus(); return; }
-    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage };
+    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:'', main_products_or_services:'' };
     fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(orderPayload)})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, json:d}; }); })
       .then(function(res){

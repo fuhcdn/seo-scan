@@ -225,6 +225,18 @@ SKELETON = """<!DOCTYPE html>
         <div class="lockrow"><span>🔒 {{LOCK_FIXLIST}}</span><b>{{LOCKED}}</b></div>
         <div class="lockrow"><span>🔒 {{LOCK_COMPETE}}</span><b>{{LOCKED}}</b></div>
         <div class="lockrow"><span>🔒 {{LOCK_AI_STEPS}}</span><b>{{LOCKED}}</b></div>
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">{{COMPANY_NOTE}}</div>
+        <input id="company" type="text" placeholder="{{COMPANY_PLACEHOLDER}}" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <div style="margin:4px 0 4px;font-size:13px;color:var(--muted)">{{GOAL_NOTE}}</div>
+        <select id="businessGoal" style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px;background:#fff;color:var(--ink)">
+          <option value="leads">{{GOAL_LEADS}}</option>
+          <option value="sales-revenue">{{GOAL_SALES}}</option>
+          <option value="qualified-traffic">{{GOAL_TRAFFIC}}</option>
+          <option value="local-enquiries">{{GOAL_LOCAL}}</option>
+          <option value="subscriptions">{{GOAL_SUBS}}</option>
+          <option value="other">{{GOAL_OTHER}}</option>
+        </select>
         <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">{{EMAIL_NOTE}}</div>
         <input id="email" type="email" placeholder="you@example.com" required
                style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
@@ -398,14 +410,18 @@ SKELETON = """<!DOCTYPE html>
   function startCheckout(){
     var u = document.getElementById('url').value.trim();
     var em = document.getElementById('email') ? document.getElementById('email').value.trim() : '';
+    var company = document.getElementById('company') ? document.getElementById('company').value.trim() : '';
+    var goalEl = document.getElementById('businessGoal');
+    var goal = goalEl ? goalEl.value : '';
     var note = document.getElementById('demoNote');
     function showNote(msg){ note.style.display='block'; note.textContent = msg; }
     var productId = (window.__selectedProduct || 'prod_seo_opportunity');
     var sel = document.getElementById('langSel');
     var langOpt = sel ? sel.value.replace(/^\\//,'') : '';
     var reportLanguage = (langOpt && ['en','zh-Hant','zh-Hans','ja','es'].indexOf(langOpt)!==-1) ? langOpt : 'en';
+    if(!company){ showNote('{{COMPANY_REQ}}'); document.getElementById('company').focus(); return; }
     if(!em){ showNote('{{EMAIL_REQ}}'); document.getElementById('email').focus(); return; }
-    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage };
+    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage, company_name:company, primary_business_goal:goal || 'leads', primary_market_or_service_area:'', main_products_or_services:'' };
     fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(orderPayload)})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, json:d}; }); })
       .then(function(res){
@@ -466,6 +482,17 @@ EN = dict(base("en"), SEL_EN="selected", **{
     "LOCKED": "Locked", "LOCK_COMPETE": "Competitor comparison analysis", "LOCK_AI_STEPS": "AI step-by-step fix guide + prioritization",
     "EMAIL_NOTE": "Receive the report by email (full PDF delivery):",
     "CONSENT": "I agree my email is used only to deliver this report, as described in the Privacy Policy. I understand I can opt out anytime.",
+    "COMPANY_NOTE": "Company name (for the report cover):",
+    "COMPANY_PLACEHOLDER": "e.g. Acme LLC",
+    "COMPANY_REQ": "Please enter your company name",
+    "GOAL_NOTE": "Your primary business goal:",
+    "GOAL_LEADS": "Get more leads",
+    "GOAL_SALES": "Increase sales / revenue",
+    "GOAL_TRAFFIC": "Grow qualified traffic",
+    "GOAL_LOCAL": "Local enquiries",
+    "GOAL_SUBS": "Grow subscriptions",
+    "GOAL_OTHER": "Other",
+
     "UNLOCK_BTN": "Unlock Full Report",
     "GUARANTEE": "7-day peace-of-mind guarantee: full refund before delivery · free re-review after",
     "AUTO_DELIVER": "Auto-delivered to your email within ~10 minutes of payment",
@@ -534,6 +561,17 @@ ZH_HANT = dict(base("zh-Hant"),
     "LOCKED": "鎖住", "LOCK_COMPETE": "競爭對手對比分析", "LOCK_AI_STEPS": "AI 逐步修復指引 + 優先次序",
     "EMAIL_NOTE": "收報告 email（交付完整 PDF）：",
     "CONSENT": "我同意將 email 僅用於交付本報告（見私隱政策），可隨時取消訂閱。",
+    "COMPANY_NOTE": "公司名稱（用嚟印喺報告封面）：",
+    "COMPANY_PLACEHOLDER": "例如：Acme 有限公司",
+    "COMPANY_REQ": "請輸入公司名稱",
+    "GOAL_NOTE": "你嘅主要業務目標：",
+    "GOAL_LEADS": "攞更多潛在客戶",
+    "GOAL_SALES": "提升銷售 / 收入",
+    "GOAL_TRAFFIC": "增加優質流量",
+    "GOAL_LOCAL": "本地查詢",
+    "GOAL_SUBS": "提升訂閱",
+    "GOAL_OTHER": "其他",
+
     "UNLOCK_BTN": "解鎖完整報告",
     "GUARANTEE": "7 日放心保證：交付前全額退 · 交付後免費重審",
     "AUTO_DELIVER": "付款後約 10 分鐘自動送到你 email",
@@ -598,6 +636,17 @@ ZH_HANS = dict(base("zh-Hans"), SEL_ZHS="selected", **{
     "LOCKED": "已锁定", "LOCK_COMPETE": "竞争对手对比分析", "LOCK_AI_STEPS": "AI 逐步修复指引 + 优先级",
     "EMAIL_NOTE": "通过 email 接收报告（交付完整 PDF）：",
     "CONSENT": "我同意将 email 仅用于交付本报告（见隐私政策），可随时取消订阅。",
+    "COMPANY_NOTE": "公司名称（用于报告封面）：",
+    "COMPANY_PLACEHOLDER": "例如：Acme 有限公司",
+    "COMPANY_REQ": "请输入公司名称",
+    "GOAL_NOTE": "您的主要业务目标：",
+    "GOAL_LEADS": "获取更多潜在客户",
+    "GOAL_SALES": "提升销售/收入",
+    "GOAL_TRAFFIC": "增加优质流量",
+    "GOAL_LOCAL": "本地查询",
+    "GOAL_SUBS": "提升订阅",
+    "GOAL_OTHER": "其他",
+
     "UNLOCK_BTN": "解锁完整报告",
     "GUARANTEE": "7 天安心保证：交付前全额退款 · 交付后免费复审",
     "AUTO_DELIVER": "付款后约 10 分钟自动送到你的 email",
@@ -662,6 +711,17 @@ JA = dict(base("ja"), SEL_JA="selected", **{
     "LOCKED": "ロック中", "LOCK_COMPETE": "競合比較分析", "LOCK_AI_STEPS": "AI段階別修正ガイド＋優先度",
     "EMAIL_NOTE": "レポートをemailで受け取る(完全版PDFを納品)：",
     "CONSENT": "本報告書の配信のためだけにメールを使用することに同意します（プライバシーポリシー参照）。いつでも登録解除できます。",
+    "COMPANY_NOTE": "会社名（レポート表紙に使用）：",
+    "COMPANY_PLACEHOLDER": "例：Acme合同会社",
+    "COMPANY_REQ": "会社名を入力してください",
+    "GOAL_NOTE": "主なビジネス目標：",
+    "GOAL_LEADS": "リード獲得",
+    "GOAL_SALES": "売上・収益向上",
+    "GOAL_TRAFFIC": "質の高いトラフィック増",
+    "GOAL_LOCAL": "ローカル問い合わせ",
+    "GOAL_SUBS": "定期購読増",
+    "GOAL_OTHER": "その他",
+
     "UNLOCK_BTN": "完全レポートを解除",
     "GUARANTEE": "7日間の安心保証：納品前に全額返金 · 納品後に無料で再審査",
     "AUTO_DELIVER": "お支払い後およそ10分でメールにお届け",
@@ -726,6 +786,17 @@ ES = dict(base("es"), SEL_ES="selected", **{
     "LOCKED": "Bloqueado", "LOCK_COMPETE": "Análisis comparativo de competidores", "LOCK_AI_STEPS": "Guía de corrección paso a paso con IA + prioridad",
     "EMAIL_NOTE": "Reciba el informe por email (entrega del PDF completo):",
     "CONSENT": "Acepto que mi email se use solo para entregar este informe (ver Política de Privacidad). Puedo darme de baja en cualquier momento.",
+    "COMPANY_NOTE": "Nombre de la empresa (para la portada del informe):",
+    "COMPANY_PLACEHOLDER": "p. ej., Acme S.L.",
+    "COMPANY_REQ": "Introduzca el nombre de su empresa",
+    "GOAL_NOTE": "Su objetivo comercial principal:",
+    "GOAL_LEADS": "Obtener más clientes potenciales",
+    "GOAL_SALES": "Aumentar ventas/ingresos",
+    "GOAL_TRAFFIC": "Aumentar tráfico cualificado",
+    "GOAL_LOCAL": "Consultas locales",
+    "GOAL_SUBS": "Aumentar suscripciones",
+    "GOAL_OTHER": "Otro",
+
     "UNLOCK_BTN": "Desbloquear informe completo",
     "GUARANTEE": "Garantía de 7 días: reembolso total antes de la entrega · revisión gratuita después",
     "AUTO_DELIVER": "Se entrega a su email en unos 10 minutos tras el pago",
