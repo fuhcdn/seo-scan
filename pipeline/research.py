@@ -246,6 +246,15 @@ def run_research(order, max_pages=12):
             "source_url": "", "direct_observation": f"SERP research skipped ({type(_serp_err).__name__})",
             "label": "NOT VERIFIABLE WITH PUBLIC DATA", "confidence": "Low",
         })
+    # ---- competitor/result-pattern examples (public, deduped) ----
+    comps = list(order.get("known_competitors") or [])
+    for s in research.get("serp") or []:
+        for dom in s.get("source_domains") or []:
+            d = (dom or "").strip().lower()
+            d = re.sub(r"^https?://(www\.)?", "", d).rstrip("/")
+            if d and d not in comps:
+                comps.append(d)
+    research["competitors"] = comps[:6]
     return research
 
 

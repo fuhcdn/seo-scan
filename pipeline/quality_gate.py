@@ -48,11 +48,11 @@ def is_prohibited_finding(claim):
 
 
 # --- Required customer intake fields ---
+# FINAL 497/997 STANDARD: 8 required (ideal customer is OPTIONAL to reduce friction)
 REQUIRED_INTAKE = [
     "website_url", "company_name", "primary_business_goal",
     "main_products_or_services", "target_market_or_service_area",
-    "ideal_customer_or_target_audience", "primary_customer_action",
-    "report_language", "selected_product_category",
+    "primary_customer_action", "report_language", "selected_product_category",
 ]
 
 
@@ -87,8 +87,9 @@ def validate_intake(order):
 
 
 def research_minimum_satisfied(research, tier):
-    """Return (ok, gaps[]). Checks §4 minimums. research: dict with architecture,
-    serp, evidence_ledger, pages_reviewed."""
+    """Return (ok, gaps[]). FINAL 497/997 STANDARD per-tier minimums (§5/§6).
+    Entry: >=6 page obs, >=3 SERP obs, >=2 competitor examples.
+    Premium: >=12 page obs, >=8 SERP obs, >=3 competitors."""
     gaps = []
     arch = research.get("architecture") or {}
     pages = research.get("pages_reviewed") or arch.get("pages_reviewed") or []
@@ -96,13 +97,18 @@ def research_minimum_satisfied(research, tier):
     ok_pages = [p for p in pages if (isinstance(p, dict) and p.get("ok")) or isinstance(p, str)]
     pages = ok_pages
     is_premium = tier == "PREMIUM_REPORT"
-    req_pages = 8 if is_premium else 5
+    req_pages = 12 if is_premium else 6
     if len(pages) < req_pages:
         gaps.append(f"page_observations ({len(pages)}/{req_pages})")
     serp = research.get("serp") or []
     req_serp = 8 if is_premium else 3
     if len(serp) < req_serp:
         gaps.append(f"serp_observations ({len(serp)}/{req_serp})")
+    # competitor/result-pattern examples
+    competitors = research.get("competitors") or research.get("competitor_examples") or []
+    req_comp = 3 if is_premium else 2
+    if isinstance(competitors, list) and len(competitors) < req_comp:
+        gaps.append(f"competitor_examples ({len(competitors)}/{req_comp})")
     evidence = research.get("evidence_ledger") or []
     if not evidence:
         gaps.append("evidence_ledger empty")
@@ -158,7 +164,9 @@ def score_report(research, findings, actions, tier, lang, order=None):
     ok_min, gaps = research_minimum_satisfied(research, tier)
     b = 6 if not gaps else max(0, 6 - 2 * len(gaps))
     b += 6 if (research.get("serp") or []) else 0
-    b += 4 if (research.get("business") or {}) else 0
+    # competitor/result-pattern research (where relevant)
+    comps = research.get("competitors") or research.get("competitor_examples") or []
+    b += 4 if (isinstance(comps, list) and len(comps) >= (2 if tier != "PREMIUM_REPORT" else 3)) else 0
     b += 4 if (order or {}).get("primary_business_goal") else 0
     sc["B_research_completeness"] = (cap(b, 20), 20)
 
@@ -301,19 +309,57 @@ def classify_findings(research, status, tier):
             "dependencies": f.get("dependencies", []),
         })
 
+    # FINAL 497/997 STANDARD: entry = exactly 3 findings + 5 actions; premium = 5-8 findings + 15 actions.
+    is_premium = tier == "PREMIUM_REPORT"
+    target_findings = 8 if is_premium else 3
+    target_actions = 15 if is_premium else 5
+    findings = findings[:target_findings]
+
+    # Expand the action ledger to meet per-tier minimum without filler:
+    # derive extra concrete actions from SERP/gap observations (commercial intent, not system logs).
+    extra_pool = []
+    for s in serp:
+        q = s.get("query") or ""
+        gap = s.get("gap") or s.get("customer_page_gap") or ""
+        pat = s.get("result_pattern") or ""
+        if not q:
+            continue
+        title = f"Publish or improve a page answering \"{q}\""
+        extra_pool.append({
+            "action_id": f"ACT-{len(actions)+len(extra_pool)+1:03d}",
+            "priority": "P2",
+            "title": title[:60],
+            "claim": title,
+            "claim_label": s.get("label", "INFERENCE"),
+            "evidence_ids": [s["evidence_id"]] if s.get("evidence_id") else [],
+            "owner": "Content / SEO",
+            "effort": "Medium",
+            "acceptance_criteria": "A customer-intent page answering the query exists and links from the relevant commercial area.",
+            "validation_method": "GSC / GA4 where access provided; otherwise public re-check of result fit.",
+            "review_window": "90 days",
+            "dependencies": [],
+        })
+    # fill up to target (never invent, only from real serp observations)
+    need = target_actions - len(actions)
+    if need > 0:
+        for item in extra_pool[:need]:
+            actions.append(item)
+
+    actions = actions[:target_actions]
+
     return findings, actions, rejected
 
 
 # --- Insufficient-context / insufficient-evidence outputs ---
 def insufficient_business_context_html(order, missing):
     m = "".join(f"<li>{json.dumps(x)}</li>" for x in missing)
-    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Report paused — insufficient business context</title><style>body{{font-family:-apple-system,sans-serif;padding:40px;max-width:720px;margin:auto;color:#0B1220;line-height:1.6}}h1{{font-size:24px}}</style></head><body>
-<h1>We could not yet prepare your paid SEO report.</h1>
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>More Information Needed — before we can produce your SEO report</title><style>body{{font-family:-apple-system,sans-serif;padding:40px;max-width:720px;margin:auto;color:#0B1220;line-height:1.6}}h1{{font-size:24px}}</style></head><body>
+<h1>More information needed — before we can produce your SEO report</h1>
 <p>To give you a business-specific recommendation (not a generic checklist), we need a little more context. Missing fields:</p>
 <ul>{m}</ul>
-<p><strong>Why this matters:</strong> without knowing your primary business goal, target market, ideal customer and primary customer action, a credible paid recommendation is not possible. A generic report would waste your money.</p>
+<p><strong>Why this matters:</strong> without knowing your primary business goal, target market and primary customer action, a credible paid recommendation is not possible. A generic report would waste your money.</p>
 <p><strong>Next step:</strong> please provide the missing information via the order form (or reply to your order confirmation email) and we will prepare your report.</p>
-<p>This is not a completed SEO audit.</p>
+<p>This is not a completed SEO report.</p>
 </body></html>"""
 
 
