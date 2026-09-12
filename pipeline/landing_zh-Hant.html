@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-HK">
+<html lang="zh-Hant">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>AI SEO 審計報告 — 免費 Scan 你網站 | 即刻睇 Top 問題</title>
-<meta name="description" content="免費 scan 你網站，即刻得到 SEO 總分同 Top 5 問題。完整 AI 審計報告一步發掘所有 SEO 隱患，約 10 分鐘自動交付。" />
+<title>知道網站要修啲咩 — 證據為本嘅 SEO 決策報告</title>
+<meta name="description" content="攞一份決策就緒嘅 SEO 報告：你最高優先嘅機會、點解對你生意重要、仲有實用嘅 90 日行動計劃。以你揀嘅語言交付專業 PDF。" />
 <link rel="canonical" href="https://seoscanaudit.com/zh-Hant" />
 <link rel="alternate" hreflang="en" href="https://seoscanaudit.com/" />
 <link rel="alternate" hreflang="zh-Hant" href="https://seoscanaudit.com/zh-Hant" />
@@ -14,113 +14,131 @@
 <link rel="alternate" hreflang="x-default" href="https://seoscanaudit.com/" />
 <style>
   :root{
-    --ink:#0f172a; --muted:#64748b; --brand:#2563eb; --brand-dark:#1d4ed8;
-    --bg:#f8fafc; --card:#ffffff; --line:#e2e8f0; --green:#16a34a;
-    --amber:#d97706; --red:#dc2626; --shadow:0 10px 30px -12px rgba(15,23,42,.18);
+    --bg:#F7F7F5; --ink:#0B1220; --navy:#0B1220; --muted:#657085;
+    --indigo:#4F46E5; --indigo-dark:#4338CA; --teal:#0F9D8A; --amber:#D97706;
+    --card:#FFFFFF; --line:#E3E7ED; --line-subtle:#EDEFF2;
+    --shadow:0 1px 2px rgba(11,18,32,.04), 0 10px 28px -14px rgba(11,18,32,.16);
+    --radius:14px;
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang HK","Microsoft JhengHei","Microsoft YaHei","Hiragino Sans","Noto Sans SC","Noto Sans JP","Noto Sans",sans-serif;
-    color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
-  header{background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 60%,#3b82f6 100%);color:#fff;padding:64px 0 56px}
-  .nav{display:flex;justify-content:space-between;align-items:center;padding:18px 0;font-size:14px;gap:12px;flex-wrap:wrap}
-  .logo{font-weight:800;letter-spacing:.3px}
-  .logo span{color:#bfdbfe}
-  .nav-links{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
-  .nav-links a{color:#334155;text-decoration:none;font-weight:600}
-  .langbox select{appearance:none;background:#fff;border:1px solid var(--line);border-radius:999px;
-    padding:7px 30px 7px 14px;font-size:13px;color:var(--ink);cursor:pointer;font-weight:600;
-    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0l5 6 5-6z' fill='%2364748b'/></svg>");
+    color:var(--ink);background:var(--bg);line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  a{color:var(--indigo)}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 28px}
+  .topnav{display:flex;justify-content:space-between;align-items:center;padding:20px 0;gap:16px;flex-wrap:wrap}
+  .logo{font-size:20px;font-weight:800;letter-spacing:-.3px;color:var(--ink)}
+  .logo span{color:var(--indigo)}
+  .nav-links{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+  .nav-links a{color:var(--muted);text-decoration:none;font-weight:600;font-size:15px;transition:color .15s}
+  .nav-links a:hover{color:var(--indigo)}
+  .langbox select{appearance:none;background:#fff;border:1px solid var(--line);border-radius:10px;
+    padding:8px 32px 8px 14px;font-size:14px;color:var(--ink);cursor:pointer;font-weight:600;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0l5 6 5-6z' fill='%23657085'/></svg>");
     background-repeat:no-repeat;background-position:right 12px center;outline:none}
-  .hero{text-align:center;padding:24px 0 8px}
-  .badge{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);
-    padding:5px 14px;border-radius:999px;font-size:13px;margin-bottom:22px}
-  h1{font-size:clamp(30px,5vw,46px);line-height:1.15;font-weight:800;margin-bottom:18px;letter-spacing:-.5px}
-  h1 em{font-style:normal;color:#fbbf24}
-  .sub{font-size:clamp(15px,2vw,18px);opacity:.92;max-width:640px;margin:0 auto}
-  .scanbox{background:#fff;max-width:620px;margin:34px auto 0;padding:10px;border-radius:16px;
-    box-shadow:var(--shadow);display:flex;gap:8px}
-  .scanbox input{flex:1;border:none;outline:none;padding:14px 16px;font-size:16px;color:var(--ink);
-    border-radius:10px;background:#f1f5f9;min-width:0}
-  .scanbox input::placeholder{color:#94a3b8}
-  .scanbox button{border:none;cursor:pointer;background:var(--brand);color:#fff;font-weight:700;
-    padding:14px 22px;border-radius:10px;font-size:15px;white-space:nowrap;transition:background .2s}
-  .scanbox button:hover{background:var(--brand-dark)}
-  .ta{font-size:13px;color:#bfdbfe;margin-top:14px}
-  .quick{color:#bfdbfe;font-size:13px;margin-top:6px}
-  .quick b{color:#fff;cursor:pointer;text-decoration:underline}
-  .stats{display:flex;gap:24px;justify-content:center;margin-top:36px;flex-wrap:wrap}
-  .stats div{text-align:center;min-width:110px}
-  .stats .n{font-size:24px;font-weight:800;color:#fbbf24}
-  .stats .l{font-size:12px;opacity:.85}
-  section{padding:64px 0}
-  .h2{font-size:clamp(22px,3vw,30px);font-weight:800;text-align:center;margin-bottom:10px;letter-spacing:-.3px}
-  .h2sub{text-align:center;color:var(--muted);max-width:520px;margin:0 auto 40px}
-  .trustbar{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:10px 0 18px}
-  .trustbar span{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.28);
-    color:#e2e8f0;padding:5px 12px;border-radius:99px;font-size:12px}
-  .cv{display:grid;grid-template-columns:1fr 1.2fr;gap:20px;max-width:860px;margin:0 auto}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 4px 14px rgba(15,23,42,.05)}
-  .card .tag{font-size:12px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase}
-  .card h3{font-size:22px;font-weight:800;margin:6px 0 4px}
-  .card .price{font-size:34px;font-weight:800}
-  .card .price small{font-size:14px;color:var(--muted);font-weight:500}
-  .card ul{list-style:none;margin-top:18px}
-  .card li{padding:7px 0 7px 28px;position:relative;font-size:15px}
-  .card li:before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:800}
-  .card .lock li{color:#94a3b8}
-  .card .lock li:before{content:"🔒";font-size:12px;left:2px;color:var(--amber)}
-  .pro{position:relative;border:2px solid var(--brand);box-shadow:var(--shadow)}
-  .ribbon{position:absolute;top:-14px;right:20px;background:var(--brand);color:#fff;font-size:12px;
-    font-weight:700;padding:5px 14px;border-radius:999px}
-  .cta-btn{display:block;text-align:center;background:var(--brand);color:#fff;border:none;cursor:pointer;
-    font-weight:800;padding:16px;border-radius:12px;font-size:17px;margin-top:24px;width:100%;transition:background .2s}
-  .cta-btn:hover{background:var(--brand-dark)}
-  .cta-btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
-  .cta-btn.ghost:hover{background:#f1f5f9}
-  .promo{background:#fffbeb;border:1px solid #fde68a;color:#92400e;text-align:center;font-size:14px;
-    padding:10px 16px;border-radius:12px;margin-top:18px}
-  .promo b{color:#b45309}
-  .feats{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;max-width:920px;margin:0 auto}
-  .feat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px}
-  .feat .ico{font-size:26px;margin-bottom:10px}
-  .feat h4{font-size:16px;font-weight:700;margin-bottom:6px}
-  .feat p{font-size:14px;color:var(--muted)}
-  footer{background:#0f172a;color:#94a3b8;padding:34px 0;text-align:center;font-size:13px}
-  footer a{color:#cbd5e1;text-decoration:underline}
-  .result{display:none;max-width:620px;margin:22px auto 0;background:#fff;border:1px solid var(--line);
-    border-radius:16px;padding:24px;box-shadow:var(--shadow);text-align:left}
+  .langbox select:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+  .eyebrow{display:inline-block;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--indigo);margin-bottom:16px}
+  h1{font-size:clamp(32px,5vw,52px);line-height:1.08;font-weight:800;letter-spacing:-1px;margin-bottom:20px}
+  .lead{font-size:clamp(16px,2vw,19px);color:var(--muted);max-width:600px;line-height:1.65}
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;padding:64px 0 72px}
+  .hero-cta{display:flex;gap:14px;flex-wrap:wrap;margin-top:30px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;border:none;cursor:pointer;
+    font-weight:700;padding:16px 28px;border-radius:12px;font-size:16px;text-decoration:none;
+    transition:background .16s,transform .05s;line-height:1}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--indigo);color:#fff}
+  .btn-primary:hover{background:var(--indigo-dark)}
+  .btn-secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn-secondary:hover{background:var(--line-subtle)}
+  .btn:focus-visible{outline:2px solid var(--indigo);outline-offset:2px}
+  .micro{font-size:13px;color:var(--muted);margin-top:18px}
+  .micro b{color:var(--teal)}
+  .preview{border:1px solid var(--line);border-radius:18px;background:var(--card);box-shadow:var(--shadow);overflow:hidden}
+  .preview-head{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line);background:#fbfbfa}
+  .preview-head .pill{font-size:13px;font-weight:800;color:var(--indigo)}
+  .preview-head .lbl{font-size:12px;color:var(--muted)}
+  .preview-body{padding:24px 22px;display:flex;flex-direction:column;gap:18px}
+  .pv-block{background:var(--bg);border:1px solid var(--line-subtle);border-radius:12px;padding:18px}
+  .pv-block h4{font-size:13px;font-weight:800;color:var(--ink);margin-bottom:8px;letter-spacing:.2px}
+  .pv-row{display:flex;gap:10px;align-items:center;font-size:13px;color:var(--muted);padding:5px 0}
+  .pv-row .chk{color:var(--teal);font-weight:800}
+  .pv-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;margin-left:auto}
+  .pv-badge.p0{background:#fdecec;color:#c0392b}
+  .pv-badge.p1{background:#eceefb;color:var(--indigo)}
+  section{padding:72px 0}
+  .section-head{text-align:center;max-width:680px;margin:0 auto 44px}
+  .section-head .eyebrow{margin-bottom:10px}
+  .section-head h2{font-size:clamp(26px,3.4vw,36px);font-weight:800;letter-spacing:-.6px;line-height:1.15}
+  .section-head p{color:var(--muted);margin-top:12px;font-size:16px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .feat-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:0 1px 2px rgba(11,18,32,.03)}
+  .feat-card .tick{width:34px;height:34px;border-radius:10px;background:#eaf6f4;color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:17px;margin-bottom:14px}
+  .feat-card h4{font-size:16px;font-weight:700;margin-bottom:6px}
+  .feat-card p{font-size:14px;color:var(--muted)}
+  .process{background:var(--navy);color:#fff}
+  .process .section-head h2{color:#fff}
+  .process .section-head p{color:#aab4c5}
+  .process-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;counter-reset:step}
+  .step{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:24px}
+  .step .num{font-size:12px;font-weight:800;color:var(--teal);letter-spacing:1px;margin-bottom:10px}
+  .step h4{font-size:16px;font-weight:700;margin-bottom:6px;color:#fff}
+  .step p{font-size:13px;color:#aab4c5;line-height:1.5}
+  .pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:880px;margin:0 auto}
+  .pcard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:32px;position:relative;display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(11,18,32,.03)}
+  .pcard.highlight{border:1.5px solid var(--indigo);box-shadow:var(--shadow)}
+  .pcard .who{font-size:14px;color:var(--muted);margin:8px 0 18px;line-height:1.5}
+  .pcard .price{font-size:40px;font-weight:800;letter-spacing:-1px;margin-bottom:18px}
+  .pcard .price small{font-size:14px;color:var(--muted);font-weight:500;letter-spacing:0}
+  .pcard ul{list-style:none;margin:0 0 8px}
+  .pcard li{padding:7px 0;font-size:14.5px;display:flex;gap:10px;align-items:flex-start}
+  .pcard li .chk{color:var(--teal);font-weight:800;flex-shrink:0;margin-top:1px}
+  .pcard .cta{margin-top:auto;padding-top:22px}
+  .badge-hi{position:absolute;top:-13px;left:32px;background:var(--indigo);color:#fff;font-size:12px;font-weight:700;padding:6px 14px;border-radius:999px;letter-spacing:.2px}
+  .trust{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;max-width:980px;margin:0 auto}
+  .trust-item{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .trust-item b{font-size:14px;display:block;margin-bottom:4px}
+  .trust-item span{font-size:13px;color:var(--muted)}
+  .final-cta{background:var(--navy);color:#fff;text-align:center;padding:80px 0}
+  .final-cta h2{font-size:clamp(28px,4vw,42px);font-weight:800;letter-spacing:-.6px;max-width:640px;margin:0 auto 20px}
+  .final-cta .btn{margin-top:12px}
+  .result{display:none;max-width:620px;margin:26px auto 0;background:#fff;border:1px solid var(--line);border-radius:16px;padding:24px;box-shadow:var(--shadow);text-align:left}
   .result h3{font-size:18px;margin-bottom:12px}
-  .demoNote{display:none;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:12px;
-    padding:8px 12px;border-radius:10px;margin-bottom:14px;line-height:1.5}
+  .demoNote{display:none;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:13px;padding:8px 12px;border-radius:10px;margin-bottom:14px;line-height:1.5}
   .score{display:flex;align-items:center;gap:18px;margin-bottom:6px}
-  .ring{width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-    font-weight:800;font-size:22px;color:#fff;background:conic-gradient(var(--brand) 62%,#e2e8f0 0)}
+  .ring{width:74px;height:74px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:22px;color:#fff;background:conic-gradient(var(--indigo) 62%,var(--line) 0)}
   .ring span{background:#fff;border-radius:50%;width:58px;height:58px;display:flex;align-items:center;justify-content:center;color:var(--ink)}
   .toplist{margin-top:16px}
   .toplist .row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
   .toplist .lv{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px}
-  .lv.hi{background:#fee2e2;color:var(--red)}
+  .lv.hi{background:#fdecec;color:#c0392b}
   .lv.md{background:#fef3c7;color:var(--amber)}
-  .lockrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px dashed var(--line);
-    color:#94a3b8;font-size:14px;cursor:pointer}
-  .unlock{background:var(--brand);color:#fff;border:none;cursor:pointer;font-weight:800;padding:18px;
-    border-radius:12px;font-size:17px;width:100%;margin-top:18px}
+  .lockrow{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px dashed var(--line);color:var(--muted);font-size:14px;cursor:pointer}
+  .unlock{background:var(--indigo);color:#fff;border:none;cursor:pointer;font-weight:800;padding:18px;border-radius:12px;font-size:17px;width:100%;margin-top:18px;transition:background .16s}
+  .unlock:hover{background:var(--indigo-dark)}
+  .scanbox{background:#fff;max-width:620px;margin:30px 0 0;padding:10px;border-radius:14px;box-shadow:var(--shadow);display:flex;gap:8px;border:1px solid var(--line)}
+  .scanbox input{flex:1;border:none;outline:none;padding:15px 16px;font-size:16px;color:var(--ink);border-radius:10px;background:var(--bg);min-width:0}
+  .scanbox input:focus{outline:2px solid var(--indigo);outline-offset:-1px}
+  .scanbox input::placeholder{color:#94a3b8}
+  .scanbox button{border:none;cursor:pointer;background:var(--indigo);color:#fff;font-weight:700;padding:15px 22px;border-radius:10px;font-size:15px;white-space:nowrap;transition:background .16s}
+  .scanbox button:hover{background:var(--indigo-dark)}
+  footer{background:var(--navy);color:#8d98ad;padding:40px 0;text-align:center;font-size:13px}
+  footer a{color:#c3cad6;text-decoration:underline}
   .money{font-variant-numeric:tabular-nums}
-  @media(max-width:700px){.scanbox{flex-direction:column}.scanbox button{width:100%}.cv{grid-template-columns:1fr}.ribbon{right:14px}}
+  @media(max-width:900px){.hero{grid-template-columns:1fr;gap:40px}.grid4{grid-template-columns:1fr 1fr}.process-grid{grid-template-columns:1fr 1fr}.trust{grid-template-columns:1fr 1fr}}
+  @media(max-width:600px){.grid4{grid-template-columns:1fr}.process-grid{grid-template-columns:1fr}.trust{grid-template-columns:1fr}.pricing-grid{grid-template-columns:1fr}.scanbox{flex-direction:column}.scanbox button{width:100%}.badge-hi{left:24px}}
 </style>
 </head>
 <body id="top">
 
-<!-- NAV -->
-<nav class="wrap nav">
+<nav class="wrap topnav">
   <div class="logo">SEO<span>Scan</span>.ai</div>
   <div class="nav-links">
-    <a href="#how">點運作</a>
-    <a href="#pricing">收費</a>
+    <a href="#methodology">方法論</a>
+    <a href="#reports">報告</a>
+    <a href="#pricing">定價</a>
     <span class="langbox">
       <select id="langSel" onchange="if(this.value){location.href=this.value}">
-        <option value="/en" >English</option>
+        <option value="/en" selected>English</option>
         <option value="/zh-Hant" selected>繁體中文</option>
         <option value="/zh-Hans" >简体中文</option>
         <option value="/ja" >日本語</option>
@@ -130,256 +148,267 @@
   </div>
 </nav>
 
-<!-- HERO + FREE SCAN ENTRY -->
-<header>
-  <div class="wrap hero">
-    <span class="badge">🤖 AI SEO 審計 · 免費 Scan 即睇</span>
-    <div class="trustbar">
-      <span>✅ 跟 Google Search Essentials 標準</span>
-      <span>✅ Ahrefs×Semrush 審計方法</span>
-      <span>✅ Core Web Vitals 官方指標</span>
+<header class="wrap hero">
+  <div>
+    <span class="eyebrow">證據為本嘅 SEO 研究</span>
+    <h1>知道網站要修啲咩 — 唔好再浪費多一個月喺 SEO。 </h1>
+    <p class="lead">攞一份決策就緒嘅 SEO 報告，識別你最高優先嘅機會、解釋點解對你生意重要，並提供實用嘅 90 日行動計劃。</p>
+    <div class="hero-cta">
+      <a class="btn btn-primary" href="#how" onclick="setTimeout(function(){var u=document.getElementById('url');if(u)u.focus()},60)">免費 Scan 我網站</a>
+      <a class="btn btn-secondary" href="#reports">睇下包括啲咩</a>
     </div>
-    <h1>你網站嘅 SEO，<br /><em>即刻免費 Scan</em>，睇到 Top 問題</h1>
-    <p class="sub">貼你網站 URL，幾秒內得到 SEO 總分 + Top 5 問題。完整 AI 審計報告教你點樣修 —— 唔使再估。</p>
-
-    <div class="scanbox">
-      <input id="url" type="url" placeholder="貼你網站 URL，例如 mybusiness.com" required />
-      <button onclick="runScan()">免費 Scan 我網站</button>
-    </div>
-
-    <div class="result" id="result">
-      <h3>Scan 結果： <span id="rurl" style="color:var(--brand)"></span></h3>
-      <div class="demoNote" id="demoNote" style="display:none"></div>
-      <div class="score">
-        <div class="ring"><span id="rscore">—</span></div>
-        <div style="font-size:13px;color:var(--muted);line-height:1.5">
-          SEO 健康總分<br /><b style="font-size:22px;color:var(--ink);display:block"><span id="rscoreBig">—</span> / 100</b>
-          <span id="rscoreHint" style="color:var(--amber)">Scan 緊…</span>
-        </div>
+    <p class="micro"><b>✓</b> 付款前揀定輸出語言 &nbsp;·&nbsp; <b>✓</b> 專業 PDF 交付 &nbsp;·&nbsp; <b>✓</b> 唔使登入</p>
+  </div>
+  <div>
+    <div class="preview">
+      <div class="preview-head">
+        <div style="text-align:left"><div class="lbl">示意報告預覽</div><div class="pill">SEO 機會診斷</div></div>
+        <div style="text-align:right;font-size:12px;color:var(--muted)">seoscanaudit.com</div>
       </div>
-      <div class="toplist">
-        <div class="row"><span class="lv md">中</span>輸入 URL 後撳「免費 Scan」睇真數據 Top 問題</div>
+      <div class="preview-body">
+        <div class="pv-block"><h4>執行決策摘要</h4>
+          <div class="pv-row"><span class="chk">✓</span>得分 64/100 — 有待改善</div>
+          <div class="pv-row"><span class="chk">✓</span>3 項發現，預期 +9 分</div></div>
+        <div class="pv-block"><h4>證據為本嘅發現</h4>
+          <div class="pv-row"><span class="chk">✓</span>速度係你最大樽頸 <span class="pv-badge p0">P0</span></div>
+          <div class="pv-row"><span class="chk">✓</span>實測 TTFB 1240ms，冇 gzip</div></div>
+        <div class="pv-block"><h4>優先行動清單 · 90 日路線圖</h4>
+          <div class="pv-row"><span class="chk">✓</span>負責人 · 工作量 · 驗收準則</div>
+          <div class="pv-row"><span class="chk">✓</span>第 0–30 · 31–60 · 61–90 日</div></div>
       </div>
-      <div id="locked" style="margin-top:8px">
-        <div class="lockrow"><span>🔒 完整 <span class='fixCount'>—</span> 項修復清單（Scan 後更新）</span><b>Locked</b></div>
-        <div class="lockrow"><span>🔒 同競爭對手對比分析</span><b>Locked</b></div>
-        <div class="lockrow"><span>🔒 AI 逐步修復指引 + 優先次序</span><b>Locked</b></div>
-        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">收報告 email（交付完整 PDF）：</div>
-        <input id="email" type="email" placeholder="you@example.com" required
-               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
-        <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:12px">
-          <input id="consent" type="checkbox" required style="width:16px;height:16px;accent-color:var(--brand)" />
-          我同意將 email 僅用於交付本報告（見私隱政策），可隨時取消訂閱。
-        </label>
-        <button class="unlock" onclick="startCheckout()">解鎖完整報告 — US$397</button>
-        <div style="margin:10px 0 2px;font-size:12px;color:#16a34a;font-weight:600">🛡️ 7 日放心保證：交付前全額退 · 交付後免費重審</div>
-        <div style="font-size:11px;color:var(--muted)">付款後約 10 分鐘內自動交付到 email</div>
-      </div>
-    </div>
-
-    <div class="ta">🔒 100% 免費 · 無需註冊 · 掃一次即刻睇</div>
-    <div class="quick">想試？
-      <b onclick="document.getElementById('url').value='restaurant-hk.com'">restaurant-hk.com</b></div>
-
-    <div class="stats">
-      <div><div class="n" id="scanCount">0</div><div class="l">網站已 Scan</div></div>
-      <div><div class="n">100%</div><div class="l">每份報告人手 QC 後交付</div></div>
-      <div><div class="n">10 分鐘</div><div class="l">報告交付</div></div>
     </div>
   </div>
 </header>
 
-<!-- HOW -->
 <section id="how">
   <div class="wrap">
-    <div class="h2">免費 3 步，先知道你網站有冇問題</div>
-    <p class="h2sub">唔使註冊、唔使信用卡。貼 URL 就得。</p>
-    <div class="feats">
-      <div class="feat"><div class="ico">1️⃣</div><h4>貼上 URL</h4><p>一個輸入框，貼你網站網址，撳「免費 Scan」。</p></div>
-      <div class="feat"><div class="ico">2️⃣</div><h4>即刻睇總分 + Top 5</h4><p>幾秒內得到 SEO 健康總分同最嚴重嘅 5 個問題。</p></div>
-      <div class="feat"><div class="ico">3️⃣</div><h4>完整報告先 US$397</h4><p>有信心中意先解鎖完整修復清單。付款即時交付。</p></div>
+    <div class="section-head">
+      <span class="eyebrow">由免費 scan 開始</span>
+      <h2>先睇你嘅真問題 — 唔好未買就俾錢</h2>
+      <p>唔使註冊、唔使信用卡。貼你網站 URL，幾秒攞到 SEO 健康分同最嚴重問題。</p>
+    </div>
+    <div class="scanbox">
+      <input id="url" type="url" placeholder="貼你網站 URL，例如 mybusiness.com" required />
+      <button onclick="runScan()">免費 Scan 我網站</button>
+    </div>
+    <div class="result" id="result">
+      <h3>Scan 結果： <span id="rurl" style="color:var(--indigo)"></span></h3>
+      <div class="demoNote" id="demoNote" style="display:none"></div>
+      <div class="score">
+        <div class="ring"><span id="rscore">—</span></div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.5">
+          SEO 健康分<br /><b style="font-size:22px;color:var(--ink);display:block"><span id="rscoreBig">—</span> / 100</b>
+          <span id="rscoreHint" style="color:var(--amber)">掃描中…</span>
+        </div>
+      </div>
+      <div class="toplist">
+        <div class="row"><span class="lv md">mid</span>貼你 URL 再撳「免費 Scan」，睇到你網站 Top 問題嘅真實數據</div>
+      </div>
+      <div id="locked" style="margin-top:8px">
+        <div class="lockrow"><span>🔒 完整 <span class='fixCount'>—</span> 項修復清單（scan 後更新）</span><b>鎖住</b></div>
+        <div class="lockrow"><span>🔒 競爭對手對比分析</span><b>鎖住</b></div>
+        <div class="lockrow"><span>🔒 AI 逐步修復指引 + 優先次序</span><b>鎖住</b></div>
+        <div style="margin:14px 0 4px;font-size:13px;color:var(--muted)">收報告 email（交付完整 PDF）：</div>
+        <input id="email" type="email" placeholder="you@example.com" required
+               style="width:100%;padding:12px 14px;font-size:15px;border:1px solid var(--line);border-radius:10px;outline:none;margin-bottom:10px" />
+        <label style="display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:12px">
+          <input id="consent" type="checkbox" required style="width:16px;height:16px;accent-color:var(--indigo)" />
+          我同意將 email 僅用於交付本報告（見私隱政策），可隨時取消訂閱。
+        </label>
+        <button class="unlock" onclick="startCheckout()">解鎖完整報告</button>
+        <div style="margin:10px 0 2px;font-size:12px;color:var(--teal);font-weight:600">7 日放心保證：交付前全額退 · 交付後免費重審</div>
+        <div style="font-size:11px;color:var(--muted)">付款後約 10 分鐘自動送到你 email</div>
+      </div>
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:13px;margin-top:16px">免費 · 唔使註冊 · 即時結果</p>
+  </div>
+</section>
+
+<section id="methodology" style="background:#fff">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">點解唔同</span>
+      <h2>唔係另一份 SEO 錯誤清單。</h2>
+      <p>證據為本嘅研究，按你生意優先排列。</p>
+    </div>
+    <div class="grid4">
+      <div class="feat-card"><div class="tick">✓</div><h4>少啲噪音</h4><p>實質風險同機會 — 唔係一大疊通用錯誤清單。</p></div>
+      <div class="feat-card"><div class="tick">✓</div><h4>清晰證據</h4><p>事實、基於證據嘅推論同驗證項目會清楚分開。</p></div>
+      <div class="feat-card"><div class="tick">✓</div><h4>實用嘅工作</h4><p>行動有負責人、工作量、依賴、驗收準則同驗證方法。</p></div>
+      <div class="feat-card"><div class="tick">✓</div><h4>生意優先</h4><p>建議關乎生意頁面、客戶旅程同商業意圖。</p></div>
     </div>
   </div>
 </section>
 
-<!-- PRICING -->
-<section id="pricing" style="background:#fff">
+<section class="process">
   <div class="wrap">
-    <div class="h2">免費證明價值，完整版幫你執好個網站</div>
-    <p class="h2sub">先免費 scan 你個網站——見到真問題先決定。「點改」留俾完整版。</p>
-    <div class="cv" style="gap:18px;align-items:stretch">
-      <div class="card">
-        <div class="tag">免費</div>
-        <h3>Free Scan</h3>
-        <div class="price money">US$0</div>
+    <div class="section-head">
+      <span class="eyebrow" style="color:#9eb0ff">研究流程</span>
+      <h2>每份報告點樣整出嚟</h2>
+      <p>一套嚴謹、可重現嘅方法 — 唔係自動估。</p>
+    </div>
+    <div class="process-grid">
+      <div class="step"><div class="num">第 1 步</div><h4>研究你嘅網站</h4><p>睇結構、導覽、關鍵商業同內容頁。</p></div>
+      <div class="step"><div class="num">第 2 步</div><h4>研究搜尋模式</h4><p>觀察你商業意圖實際排到啲咩。</p></div>
+      <div class="step"><div class="num">第 3 步</div><h4>建立證據</h4><p>每個發現都連繫到可驗證、有出處嘅觀察。</p></div>
+      <div class="step"><div class="num">第 4 步</div><h4>排列優先次序</h4><p>按商業影響、工作量同信心度排序。</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="reports" style="background:#fff">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">示意報告預覽</span>
+      <h2>一份決策就緒嘅 SEO 報告係點樣</h2>
+      <p>已清楚標示樣本 — 你真實報告會按你網站個人化。</p>
+    </div>
+    <div style="max-width:880px;margin:0 auto">
+      <div class="pv-block"><h4>執行決策摘要</h4><div class="pv-row"><span class="chk">✓</span>得分 64/100 — 有待改善</div></div>
+      <div class="pv-block" style="margin-top:14px"><h4>證據為本嘅發現</h4><div class="pv-row"><span class="chk">✓</span>速度係你最大樽頸</div></div>
+      <div class="pv-block" style="margin-top:14px"><h4>優先行動清單 · 90 日路線圖</h4><div class="pv-row"><span class="chk">✓</span>負責人 · 工作量 · 驗收準則</div></div>
+      <div class="pv-block" style="margin-top:14px"><h4>90 日路線圖</h4><div class="pv-row"><span class="chk">✓</span>第 0–30 · 31–60 · 61–90 日，附負責人</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">揀你嘅報告</span>
+      <h2>兩份證據為本嘅報告。一條清晰路。</h2>
+      <p>揀報告、揀語言、安全付款。PDF 送到你 email。</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="pcard">
+        <h3 style="font-size:22px;font-weight:800">SEO 機會診斷</h3>
+        <p class="who">俾要知未來 90 日邊啲 SEO 工作值得關注嘅生意東主。</p>
+        <div class="price money">US$497 <small>/ 一次</small></div>
         <ul>
-          <li>SEO 健康總分</li>
-          <li>Top 5 最嚴重問題</li>
-          <li>網站類型識別</li>
-          <li>即時睇即時攞</li>
+          <li><span class="chk">✓</span>證據為本嘅網站同搜尋審查</li>
+          <li><span class="chk">✓</span>3–5 項優先發現</li>
+          <li><span class="chk">✓</span>Top 5 行動計劃</li>
+          <li><span class="chk">✓</span>生意人睇得明嘅執行摘要</li>
+          <li><span class="chk">✓</span>90 日路線圖</li>
+          <li><span class="chk">✓</span>公開數據驗證清單</li>
         </ul>
-        <a class="cta-btn ghost" href="#how" style="text-decoration:none">↑ 免費 Scan</a>
+        <div class="cta"><button class="btn btn-primary" style="width:100%" data-product="prod_seo_opportunity" onclick="chooseProduct(this)">揀呢份報告</button></div>
       </div>
-      <div class="card pro" style="border:2px solid var(--brand);position:relative">
-        <div class="tag" style="background:var(--brand);color:#fff">完整版 · 最受歡迎</div>
-        <h3>Full AI SEO Audit</h3>
-        <div class="price money"><del style="font-size:16px;color:var(--muted);margin-right:8px">US$497</del> <span style="color:var(--brand)">US$397</span> <small>/ 一次</small></div>
-        <div class="promo" style="font-size:12px;color:var(--muted);margin:2px 0 12px">首 50 位創始價（只限早鳥，名額派完即止）</div>
-        <ul class="lock">
-          <li>完整 SEO 問題修復清單（數量因網站而異）</li>
-          <li>AI 逐步修復指引 + 優先次序 + 預期效果</li>
-          <li>同競爭對手對比分析</li>
-          <li>可下載 PDF 報告（白牌可用）</li>
-          <li>付款後 10 分鐘內自動交付</li>
-          <li>7 日放心保證：交付前可退 · 交付後免費重審</li>
-        </ul>
-        <button class="cta-btn" onclick="document.getElementById('url').scrollIntoView({behavior:'smooth'});document.getElementById('url').focus()">免費 Scan 後解鎖 — US$397</button>
-      </div>
-      <div class="card">
-        <div class="tag">進階</div>
-        <h3>Growth Audit</h3>
+      <div class="pcard highlight">
+        <span class="badge-hi">最啱準備好執行嘅團隊</span>
+        <h3 style="font-size:22px;font-weight:800">SEO 增長藍圖</h3>
+        <p class="who">俾需要更完整行動系統（內容、市場、開發）嘅團隊。</p>
         <div class="price money">US$997 <small>/ 一次</small></div>
-        <ul class="lock">
-          <li>完整版全部内容</li>
-          <li>4 條錢頁 page-level 深挖</li>
-          <li>優先次序行動路線圖</li>
-          <li>競爭對手差距表</li>
-          <li>90 日執行 roadmap</li>
-          <li>7 日放心保證</li>
+        <ul>
+          <li><span class="chk">✓</span>更深嘅策略同架構評估</li>
+          <li><span class="chk">✓</span>話題、意圖同頁面用途地圖</li>
+          <li><span class="chk">✓</span>詳細優先行動清單</li>
+          <li><span class="chk">✓</span>內容機會簡報</li>
+          <li><span class="chk">✓</span>開發就緒嘅實作簡報</li>
+          <li><span class="chk">✓</span>附負責人同驗證計劃嘅 90 日路線圖</li>
         </ul>
-        <button class="cta-btn ghost" onclick="document.getElementById('url').scrollIntoView({behavior:'smooth'});document.getElementById('url').focus()">免費 Scan 後睇 Growth</button>
+        <div class="cta"><button class="btn btn-primary" style="width:100%" data-product="prod_seo_growth" onclick="chooseProduct(this)">揀呢份報告</button></div>
       </div>
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:13px;margin-top:26px">兩份報告都係以你揀嘅語言交付專業 PDF。</p>
+  </div>
+</section>
+
+<section style="background:#fff;padding:48px 0">
+  <div class="wrap">
+    <div class="trust">
+      <div class="trust-item"><b>證據先於意見</b><span>發現建基於可觀察事實，唔靠估。</span></div>
+      <div class="trust-item"><b>事實 vs 假設</b><span>事實、推論同假設會清楚標明。</span></div>
+      <div class="trust-item"><b>清楚界線</b><span>我哋做到同做唔到驗證嘅嘢會誠實講明。</span></div>
+      <div class="trust-item"><b>設計上可執行</b><span>包括負責人、工作量同點樣 check 成功。</span></div>
     </div>
   </div>
 </section>
 
-<!-- SOCIAL PROOF -->
-<section>
+<section class="final-cta">
   <div class="wrap">
-    <div class="h2">你個網站，即刻知有冇問題</div>
-    <p class="h2sub">免費 scan 你個真實網站——唔使樣本、唔使註冊，貼 URL 就出你網站嘅總分同 Top 問題。</p>
-  </div>
-</section>
-
-<!-- URGENCY -->
-<section style="padding:44px 0">
-  <div class="wrap" style="max-width:640px;text-align:center">
-    <div style="font-size:40px;margin-bottom:8px">⏳</div>
-    <div class="h2" style="font-size:26px;margin-bottom:6px">先免費 scan，見到真問題先決定</div>
-    <p style="color:var(--muted);margin-bottom:22px">首 50 位創始價 US$397（原價 US$497）—— 額滿即回復正價。而家免費 scan，中意先解鎖。</p>
-    <a class="scanbox" href="#top" style="text-decoration:none;cursor:pointer;justify-content:center;background:var(--brand);color:#fff;font-weight:800" onclick="document.getElementById('url').focus()">
-      免費 Scan 我網站 →
-    </a>
+    <span class="eyebrow" style="color:#9eb0ff">更清晰嘅前行路</span>
+    <h2>停止收集 SEO 任務。開始做 SEO 決定。</h2>
+    <a class="btn btn-primary" href="#reports">揀你嘅報告</a>
   </div>
 </section>
 
 <footer>
   <div class="wrap">
-    SEO Scan.ai — AI SEO 審計報告 · 100% 免費 Scan 入門<br />
-    <a href="/legal/privacy">私隱政策</a> · <a href="/legal/terms">使用條款</a> · <a href="/legal/refund">退款政策</a> · <a href="/legal/disclaimer">免責聲明</a><br />
+    SEO Scan.ai — 證據為本嘅 AI SEO 審計報告<br />
+    <a href="/legal/privacy">私隱政策</a> · <a href="/legal/terms">服務條款</a> · <a href="/legal/refund">退款政策</a> · <a href="/legal/disclaimer">免責聲明</a><br />
     © 2026 SEO Scan.ai
   </div>
 </footer>
 
 <script>
   var DEMO_MODE = false;
-
+  var CURRENT_LANG = 'en';
+  function setLang(){ try{ var seg=window.location.pathname.split('/')[1]; if(seg&&['en','zh-Hant','zh-Hans','ja','es'].indexOf(seg)!==-1) CURRENT_LANG=seg; }catch(e){} }
+  function chooseProduct(btn){ var pid=btn.getAttribute('data-product'); try{ window.__selectedProduct=pid; }catch(e){} var t=document.getElementById('how'); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); setTimeout(function(){ var u=document.getElementById('url'); if(u) u.focus(); },60); }
   function runScan(){
     var u = document.getElementById('url').value.trim();
     if(!u){ document.getElementById('url').focus(); return; }
-
     document.getElementById('rscore').textContent = '…';
     document.getElementById('demoNote').style.display = 'none';
     document.getElementById('result').style.display = 'block';
     document.getElementById('result').scrollIntoView({behavior:'smooth', block:'center'});
-
-    fetch('/api/scan', {method:'POST', headers:{'Content-Type':'application/json'},
-           body: JSON.stringify({url: u})})
+    fetch('/api/scan', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({url: u})})
       .then(function(r){ return r.json(); })
       .then(function(data){
-        if (data.error){
-          document.getElementById('rscore').textContent = '—';
-          document.getElementById('demoNote').style.display = 'block';
-          document.getElementById('demoNote').textContent = '⚠️ 掃描出錯：' + data.error;
-          return;
-        }
+        if (data.error){ document.getElementById('rscore').textContent = '—'; document.getElementById('demoNote').style.display = 'block'; document.getElementById('demoNote').textContent = 'Scan 錯誤： ' + data.error; return; }
         var clean = u.replace(/^https?:\/\//,'').replace(/\/$/,'');
         var scVal = (data.score != null) ? data.score : '—';
         document.getElementById('rscore').textContent = scVal;
-        var big = document.getElementById('rscoreBig');
-        if(big) big.textContent = scVal;
+        var big = document.getElementById('rscoreBig'); if(big) big.textContent = scVal;
         var hint = document.getElementById('rscoreHint');
-        if(hint) hint.textContent = (data.score != null) ? ((data.score >= 80 ? '✅ 健康網站' : (data.score >= 50 ? '⚠️ 值得改進' : '🔴 好多問題'))) : '未能讀取診斷';
+        if(hint) hint.textContent = (data.score != null) ? ((data.score >= 80 ? '✅ 網站健康' : (data.score >= 50 ? '⚠️ 值得改善' : '🔴 好多問題'))) : '無法讀取診斷';
         document.getElementById('rurl').textContent = clean;
-
         var fc = (data.fix_count != null) ? data.fix_count : (data.fix_list || []).length;
         document.querySelectorAll('.fixCount').forEach(function(el){ el.textContent = fc; });
-
         var top = (data.top_issues || []).slice(0,5);
         var list = document.getElementById('toplistResult');
         if(!list){ list = document.createElement('div'); list.id='toplistResult'; document.querySelector('.toplist').appendChild(list); }
         list.innerHTML = '';
-        if(top.length === 0){ top = [{priority:'low', issue:'未能偵測到明顯技術錯誤' }]; }
-        top.forEach(function(t){
-          var lv = t.priority === 'urgent' ? 'hi' : (t.priority === 'high' ? 'hi' : 'md');
-          var row = document.createElement('div');
-          row.className = 'row';
-          row.innerHTML = '<span class="lv '+lv+'">'+t.priority+'</span>'+t.issue;
-          list.appendChild(row);
-        });
+        if(top.length === 0){ top = [{priority:'low', issue:'未偵測到明顯技術錯誤'}]; }
+        top.forEach(function(t){ var lv = t.priority === 'urgent' ? 'hi' : (t.priority === 'high' ? 'hi' : 'md'); var row = document.createElement('div'); row.className='row'; row.innerHTML='<span class="lv '+lv+'">'+t.priority+'</span>'+t.issue; list.appendChild(row); });
         var toplist = document.querySelector('.toplist');
-        Array.prototype.slice.call(toplist.children).forEach(function(c){
-          if(c.className && String(c.className).indexOf('row') !== -1 && !c.id){ toplist.removeChild(c); }
-        });
-
-        if(typeof window.__scanTotal === 'number'){
-          window.__scanTotal += 1;
-          var sc = document.getElementById('scanCount');
-          if(sc) sc.textContent = window.__scanTotal;
-        }
+        Array.prototype.slice.call(toplist.children).forEach(function(c){ if(c.className && String(c.className).indexOf('row') !== -1 && !c.id){ toplist.removeChild(c); } });
+        if(typeof window.__scanTotal === 'number'){ window.__scanTotal += 1; var sc = document.getElementById('scanCount'); if(sc) sc.textContent = window.__scanTotal; }
       })
-      .catch(function(e){
-        document.getElementById('rscore').textContent = '—';
-        document.getElementById('demoNote').style.display = 'block';
-        document.getElementById('demoNote').textContent = '⚠️ 連唔到 scan 後端：' + e;
-      });
+      .catch(function(e){ document.getElementById('rscore').textContent = '—'; document.getElementById('demoNote').style.display = 'block'; document.getElementById('demoNote').textContent = '連唔到 scan 後端： ' + e; });
   }
-
   function startCheckout(){
     var u = document.getElementById('url').value.trim();
     var em = document.getElementById('email') ? document.getElementById('email').value.trim() : '';
     var note = document.getElementById('demoNote');
     function showNote(msg){ note.style.display='block'; note.textContent = msg; }
-    if(!em){ showNote('⚠️ 請輸入收報告嘅 email（完整 PDF 會寄去呢度）'); document.getElementById('email').focus(); return; }
-
-    fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'},
-           body: JSON.stringify({url:u, customer_email:em})})
+    var productId = (window.__selectedProduct || 'prod_seo_opportunity');
+    var sel = document.getElementById('langSel');
+    var langOpt = sel ? sel.value.replace(/^\//,'') : '';
+    var reportLanguage = (langOpt && ['en','zh-Hant','zh-Hans','ja','es'].indexOf(langOpt)!==-1) ? langOpt : 'en';
+    if(!em){ showNote('請輸入收報告嘅 email（完整 PDF 會送到呢度）'); document.getElementById('email').focus(); return; }
+    var orderPayload = { url:u, customer_email:em, selected_product_id:productId, report_language:reportLanguage };
+    fetch('/api/order', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(orderPayload)})
       .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, json:d}; }); })
       .then(function(res){
         var d = res.json;
-        if(!res.ok || d.error){
-          showNote('⚠️ 落單失敗：' + (d.error || '未知錯誤')); return;
-        }
+        if(!res.ok || d.error){ showNote('落單失敗： ' + (d.error || '未知錯誤')); return; }
         var orderId = d.order_id;
-        fetch('/api/create-checkout', {method:'POST', headers:{'Content-Type':'application/json'},
-               body: JSON.stringify({url:u, order_id:orderId, price_usd:397})})
+        var checkoutPayload = { url:u, order_id:orderId, customer_email:em, selected_product_id:productId, report_language:reportLanguage };
+        fetch('/api/create-checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(checkoutPayload)})
           .then(function(r){ return r.json(); })
           .then(function(cd){
             if(cd.redirect_url){ window.location.href = cd.redirect_url; return; }
-            showNote('💰 訂單已建立（' + orderId + '）。付款系統準備中 —— 呢個係預留步伐（checkout_placeholder）。接完真 Stripe 之後，撳「解鎖」會自動跳去 Stripe 付款頁。');
+            showNote('訂單已建立（ ' + orderId + ' ）。跳去安全付款…');
             document.getElementById('result').scrollIntoView({behavior:'smooth', block:'center'});
           })
-          .catch(function(e){ showNote('⚠️ 連唔到結帳伺服器：' + e); });
+          .catch(function(e){ showNote('連唔到 checkout server： ' + e); });
       })
-      .catch(function(e){
-        showNote('⚠️ 連唔到落單伺服器：' + e);
-      });
+      .catch(function(e){ showNote('連唔到 order server： ' + e); });
   }
-
   window.__scanTotal = 0;
-  var sc = document.getElementById('scanCount');
-  if(sc) sc.textContent = window.__scanTotal;
-
+  setLang();
   document.addEventListener('keydown', function(e){ if(e.key==='Enter' && document.activeElement.id==='url') runScan(); });
 </script>
 </body>
