@@ -113,5 +113,6 @@ Redesign 只改**視覺層**：warm-white 背景、深海軍藍字、靛藍 CTA�
 
 ## 10. 未完成 / 風險
 - **Staging environment 未建立** —— design 開始前必須建（見 REDESIGN checklist）
+- **Known baseline limitation**：`/robots.txt` 同 `/sitemap.xml` **未 serve**（server.py 無對應 route，回 404 JSON）。呢個係 baseline 已有狀態（非 regression）。屬「redesign 可改嘅 SEO metadata 改善項」，但要喺 staging 做，唔好喺 baseline 直接加。
 - 現有 session 冇 database，restore 單純 JSON 覆蓋，風險低但須先備份「壞 state」
 - 有 `CHECKOUT_TEST_PRICE`（$0.5 測試 mode）喺 secrets，屬正考慮中；正式價應轉返（見 baseline 決定）
