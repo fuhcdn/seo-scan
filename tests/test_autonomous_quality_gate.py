@@ -400,6 +400,26 @@ def run_tests():
     results.append(("AB-customer-email-no-internal-id", _no_leak and not _leak_in_src, "sample",
                     f"ref={_refAB}; subject uses customer-safe reference (no internal order id)"))
 
+    # Test AC — BRAND_CONSISTENCY regression validator (owner Option A: "SEO Scan Audit"):
+    # public-facing sources must use the unified brand; "SEO Scan.ai" must not remain.
+    _brand_files = ["seo_report_template.py", "landing_en.html", "landing_es.html",
+                    "landing_ja.html", "landing_zh-Hans.html", "landing_zh-Hant.html",
+                    "landing_page.html", "generate_languages.py"]
+    _pdir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline")
+    _stale = []
+    _present = []
+    for _bf in _brand_files:
+        _p = os.path.join(_pdir, _bf)
+        if not os.path.exists(_p):
+            continue
+        _s = open(_p, encoding="utf-8").read()
+        if "SEO Scan.ai" in _s:
+            _stale.append(_bf)
+        if "SEO Scan Audit" in _s:
+            _present.append(_bf)
+    results.append(("AC-brand-unified-seo-scan-audit", not _stale and len(_present) >= len(_brand_files) - 1,
+                    "sample", f"stale={_stale or 'none'}; unified present in {len(_present)}/{len(_brand_files)}"))
+
     print("=" * 60)
     ok_count = 0
     for name, passed, info_k, info_v in results:

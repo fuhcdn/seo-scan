@@ -49,6 +49,9 @@ JOB_STATES = [
 TERMINAL_STATES = {"email_sent", "delivery_failed", "insufficient_public_evidence",
                    "insufficient_legacy_public_evidence",
                    "manual_support_required", "cancelled"}
+# Owner-approved clarification flow states (not terminal, but not retriable either —
+# we are waiting for the CUSTOMER, not for a worker; never auto-retry these).
+CLARIFICATION_STATES = {"clarification_required", "awaiting_customer_clarification"}
 # Stages that are safe to re-run (idempotent: pure computation, no email/charge)
 IDEMPOTENT_STAGES = {"order_received", "research", "quality", "report", "scan"}
 NEVER_RERUN_STAGES = {"deliver"}          # email send is NOT idempotent
@@ -100,6 +103,15 @@ def classify(order_id: str, status: dict) -> str:
     if (status.get("status") in TERMINAL_STATES
             or status.get("delivery_state") in TERMINAL_STATES):
         return "terminal"
+    if status.get("status") in CLARIFICATION_STATES:
+        # awaiting CUSTOMER (not worker) — only act when the window expires
+        try:
+            import clarification_flow as _cf
+            if _cf.check_window_expired(status):
+                return "clarification_window_expired"
+            return "awaiting_customer"
+        except Exception:
+            return "awaiting_customer"
     return "active_nonterminal"
 
 
@@ -114,6 +126,20 @@ def reconcile_one(order_id: str, status: dict, dry_run: bool = False,
     """Reconcile one job. Returns an action record; never emails, never charges."""
     action = {"job_id": order_id, "before_status": status.get("status"),
               "classified": classify(order_id, status), "action": "none"}
+    if action["classified"] == "clarification_window_expired":
+        # Owner rule 9: window expired -> manual_support_required (no auto remedy)
+        action["action"] = "clarification_expired_to_manual_support"
+        if not dry_run:
+            try:
+                import clarification_flow as _cf
+                _cf.window_expired(status)
+            except Exception:
+                status["status"] = "manual_support_required"
+                _save(status)
+        return action
+    if action["classified"] == "awaiting_customer":
+        action["action"] = "awaiting_customer_clarification_no_op"
+        return action
     if action["classified"] == "test_data" and status.get("status") not in TERMINAL_STATES:
         # Documented cleanup path for the 13 stuck test jobs: preserve minimal audit
         # record, prevent customer-facing processing, close as cancelled (archive).

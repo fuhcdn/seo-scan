@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SEO Scan.ai :: AI SEO Audit -- Professional PDF/HTML Report Template Generator
+SEO Scan Audit :: AI SEO Audit -- Professional PDF/HTML Report Template Generator
 ===============================================================================
 English-master, agency-grade report HTML builder. Consumes the crawler's audit
 JSON (seo_crawler.py) and renders a print-ready report with:
@@ -70,7 +70,7 @@ _YEAR = time.strftime("%Y")
 # Brand / theme (single source of truth -- change here to rebrand)
 # ---------------------------------------------------------------------------
 BRAND = {
-    "name": "SEO Scan.ai",
+    "name": "SEO Scan Audit",
     "tagline": "AI · Technical · Actionable",
     "contact": "hello@seoscanaudit.com",
     "site": "seoscanaudit.com",

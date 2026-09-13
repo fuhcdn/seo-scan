@@ -33,7 +33,7 @@ SKELETON = """<!DOCTYPE html>
 <meta property="og:title" content="{{TITLE}}" />
 <meta property="og:description" content="{{META_DESC}}" />
 <meta property="og:url" content="{{BASE_URL}}/{{URL_PATH}}" />
-<meta property="og:site_name" content="SEO Scan.ai" />
+<meta property="og:site_name" content="SEO Scan Audit" />
 <meta name="twitter:card" content="summary" />
 <style>
   :root{
@@ -577,9 +577,9 @@ EN = dict(base("en"), SEL_EN="selected", **{
     "T3_T": "Clear boundaries", "T3_D": "What we can and can’t verify is stated honestly.",
     "T4_T": "Actionable by design", "T4_D": "Owner, effort and how to check success included.",
     "CTA_EYEBROW": "A cleaner way forward", "CTA_H2": "Stop collecting SEO tasks. Start making SEO decisions.", "CTA_BTN": "Choose your report",
-    "FOOT1": "SEO Scan.ai — evidence-led AI SEO audit report",
+    "FOOT1": "SEO Scan Audit — evidence-led AI SEO audit report",
     "FOOT_PRIVACY": "Privacy Policy", "FOOT_TERMS": "Terms of Service", "FOOT_REFUND": "Refund Policy", "FOOT_DISCLAIMER": "Disclaimer",
-    "COPYRIGHT": "© 2026 SEO Scan.ai",
+    "COPYRIGHT": "© 2026 SEO Scan Audit",
     "SCAN_ERR": "Scan error:", "HINT_GOOD": "✅ Healthy site", "HINT_MID": "⚠️ Worth improving", "HINT_BAD": "🔴 Many issues", "HINT_NODIAG": "Could not read diagnosis",
     "TOP_EMPTY": "No obvious technical errors detected",
     "CONNECT_ERR": "Could not reach scan backend:", "EMAIL_REQ": "Please enter the email to receive the report (full PDF goes here)",
@@ -675,9 +675,9 @@ ZH_HANT = dict(base("zh-Hant"),
     "T3_T": "清楚界線", "T3_D": "我哋做到同做唔到驗證嘅嘢會誠實講明。",
     "T4_T": "設計上可執行", "T4_D": "包括負責人、工作量同點樣 check 成功。",
     "CTA_EYEBROW": "更清晰嘅前行路", "CTA_H2": "停止收集 SEO 任務。開始做 SEO 決定。", "CTA_BTN": "揀你嘅報告",
-    "FOOT1": "SEO Scan.ai — 證據為本嘅 AI SEO 審計報告",
+    "FOOT1": "SEO Scan Audit — 證據為本嘅 AI SEO 審計報告",
     "FOOT_PRIVACY": "私隱政策", "FOOT_TERMS": "服務條款", "FOOT_REFUND": "退款政策", "FOOT_DISCLAIMER": "免責聲明",
-    "COPYRIGHT": "© 2026 SEO Scan.ai",
+    "COPYRIGHT": "© 2026 SEO Scan Audit",
     "SCAN_ERR": "Scan 錯誤：", "HINT_GOOD": "✅ 網站健康", "HINT_MID": "⚠️ 值得改善", "HINT_BAD": "🔴 好多問題", "HINT_NODIAG": "無法讀取診斷",
     "TOP_EMPTY": "未偵測到明顯技術錯誤",
     "CONNECT_ERR": "連唔到 scan 後端：", "EMAIL_REQ": "請輸入收報告嘅 email（完整 PDF 會送到呢度）",
@@ -769,9 +769,9 @@ ZH_HANS = dict(base("zh-Hans"), SEL_ZHS="selected", **{
     "T3_T": "明确边界", "T3_D": "我们能验证和不能验证的东西会诚实说明。",
     "T4_T": "设计上可执行", "T4_D": "包括负责人、工作量和如何检查成功。",
     "CTA_EYEBROW": "更清晰的前行之路", "CTA_H2": "停止收集 SEO 任务。开始做 SEO 决策。", "CTA_BTN": "选择你的报告",
-    "FOOT1": "SEO Scan.ai — 基于证据的 AI SEO 审计报告",
+    "FOOT1": "SEO Scan Audit — 基于证据的 AI SEO 审计报告",
     "FOOT_PRIVACY": "隐私政策", "FOOT_TERMS": "服务条款", "FOOT_REFUND": "退款政策", "FOOT_DISCLAIMER": "免责声明",
-    "COPYRIGHT": "© 2026 SEO Scan.ai",
+    "COPYRIGHT": "© 2026 SEO Scan Audit",
     "SCAN_ERR": "扫描错误：", "HINT_GOOD": "✅ 网站健康", "HINT_MID": "⚠️ 值得改善", "HINT_BAD": "🔴 很多问题", "HINT_NODIAG": "无法读取诊断",
     "TOP_EMPTY": "未检测到明显技术错误",
     "CONNECT_ERR": "无法连接扫描后端：", "EMAIL_REQ": "请输入接收报告用的 email（完整 PDF 会送到这里）",
@@ -863,9 +863,9 @@ JA = dict(base("ja"), SEL_JA="selected", **{
     "T3_T": "明確な境界", "T3_D": "検証できること、できないことを正直に提示。",
     "T4_T": "設計上実行可能", "T4_D": "担当者、工数、成功確認方法を記載。",
     "CTA_EYEBROW": "より明確な次の一手", "CTA_H2": "SEOタスクをため込むのはやめ。SEO判断を始めよう。", "CTA_BTN": "レポートを選択",
-    "FOOT1": "SEO Scan.ai — エビデンス主導のAI SEO監査レポート",
+    "FOOT1": "SEO Scan Audit — エビデンス主導のAI SEO監査レポート",
     "FOOT_PRIVACY": "プライバシーポリシー", "FOOT_TERMS": "利用規約", "FOOT_REFUND": "返金ポリシー", "FOOT_DISCLAIMER": "免責事項",
-    "COPYRIGHT": "© 2026 SEO Scan.ai",
+    "COPYRIGHT": "© 2026 SEO Scan Audit",
     "SCAN_ERR": "スキャンエラー：", "HINT_GOOD": "✅ 健全なサイト", "HINT_MID": "⚠️ 改善の余地あり", "HINT_BAD": "🔴 問題多数", "HINT_NODIAG": "診断を読み取れません",
     "TOP_EMPTY": "明らかな技術エラーを検出せず",
     "CONNECT_ERR": "スキャンサーバーに接続できません：", "EMAIL_REQ": "レポートを受取るメールを入力してください（完全版PDFが届きます）",
@@ -957,9 +957,9 @@ ES = dict(base("es"), SEL_ES="selected", **{
     "T3_T": "Límites claros", "T3_D": "Lo que podemos y no podemos verificar se indica con honestidad.",
     "T4_T": "Accionable por diseño", "T4_D": "Se incluyen responsable, esfuerzo y cómo comprobar el éxito.",
     "CTA_EYEBROW": "Un camino más claro", "CTA_H2": "Deje de acumular tareas SEO. Empiece a tomar decisiones SEO.", "CTA_BTN": "Elija su informe",
-    "FOOT1": "SEO Scan.ai — Informe SEO de auditoría asistido por IA y basado en evidencia",
+    "FOOT1": "SEO Scan Audit — Informe SEO de auditoría asistido por IA y basado en evidencia",
     "FOOT_PRIVACY": "Política de privacidad", "FOOT_TERMS": "Términos de servicio", "FOOT_REFUND": "Política de reembolso", "FOOT_DISCLAIMER": "Aviso legal",
-    "COPYRIGHT": "© 2026 SEO Scan.ai",
+    "COPYRIGHT": "© 2026 SEO Scan Audit",
     "SCAN_ERR": "Error de escaneo:", "HINT_GOOD": "✅ Sitio saludable", "HINT_MID": "⚠️ Merece mejorar", "HINT_BAD": "🔴 Muchos problemas", "HINT_NODIAG": "No se pudo leer el diagnóstico",
     "TOP_EMPTY": "No se detectaron errores técnicos evidentes",
     "CONNECT_ERR": "No se pudo conectar con el servidor de escaneo:", "EMAIL_REQ": "Introduzca el email para recibir el informe (el PDF completo llega aquí)",
