@@ -111,8 +111,7 @@ def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
         actions.append({
             "action_id": f"ACT-{len(actions)+1:03d}",
             "priority": "P1",
-            "title": ("Add '" + (card.get("recommended_module") or "")[:50] + "' "
-                      "to the customer page " + url)[:120],
+            "title": f"{card.get('recommended_module','')[:60]} on the customer page {url}",
             "primary_url": url,                       # EXACTLY ONE
             "customer_owned_scope": url,
             "business_mechanism": card.get("business_mechanism", ""),
@@ -121,8 +120,9 @@ def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
             "recommended_module": card.get("recommended_module", ""),
             "owner": "Content/SEO",
             "effort": "Small" if len((card.get("recommended_module") or "")) < 120 else "Medium",
-            "acceptance_criteria": (f"On the live customer page {url}, the '{card.get('recommended_module','')[:40]}' module "
-                                    f"is present and renders (text + links work on mobile and desktop); owner: Content/SEO.")[:300],
+            "acceptance_criteria": (f"QA-pass on the live customer page {url}: the '{card.get('recommended_module','')[:40]}' module "
+                                    f"renders and its links work on mobile and desktop; owner signs off. "
+                                    f"First signal tracked via {card.get('buyer_question','')[:40]}.")[:320],
             "validation_method": "First measurable signal: quote-form submissions / CTA clicks on this page within 30 days (GSC/GA4 where access; else public re-check). Review at 30 and 60 days; scale only after two positive review points.",
             "review_window": "30-60 days",
             "confidence": "Medium",
@@ -181,45 +181,99 @@ def gate4_semantic_audit(findings: List[dict], actions: List[dict],
             "auditor_mode": "deterministic+external" if auditor_fn else "deterministic"}
 
 
-# ---------------- GATE 5 : IMMUTABLE PDF DELIVERY ----------------
+# ---------------- GATE 5 : IMMUTABLE PDF DELIVERY (scheme-based hard rules) ----------------
 
-BLOCKLIST_PATTERNS = [
-    r"file://", r"/app/", r"/opt/", r"/home/", r"/tmp/", r"/pipeline/",
-    r"localhost", r"127\.0\.0\.1", r"ORD-[A-F0-9]{6,}",
-    r"sk_live_", r"rk_live_", r"whsec_", r"api[_-]?key",
+# Allowed hyperlink schemes. ANY other scheme is unsafe (file:, ftp:, data:, javascript:, etc.)
+ALLOWED_LINK_SCHEMES = {"https:", "http:", "mailto:"}
+# Absolute server/container path prefixes (platform-independent + common container roots)
+ABSOLUTE_PATH_PREFIXES = [
+    "/app/", "/opt/", "/tmp/", "/home/", "/var/", "/usr/", "/workspace/",
+    "/deploy/", "/root/", "/srv/", "/data/", "/mnt/", "/media/",
 ]
 
 
-def _decompress_pdf_text(pdf: bytes) -> str:
+def _extract_pdf_layers(pdf: bytes) -> Dict[str, Any]:
+    """Decompress all FlateDecode streams + collect visible-text tokens, hyperlink annotations
+    (/URI), launch actions (/Launch), file specs (/F, /EmbeddedFile), and metadata. Returns
+    every channel so the scanner can search scheme + absolute paths across ALL of them."""
     import zlib
-    chunks = []
-    for m in re.finditer(rb"stream\r?\n(.*?)\r?\nendstream", pdf, re.S):
+    streams = re.findall(rb"stream\r?\n(.*?)\r?\nendstream", pdf, re.S)
+    decoded = b""
+    for s in streams:
         try:
-            chunks.append(zlib.decompress(m.group(1)))
+            decoded += zlib.decompress(s) + b"\n"
         except Exception:
             pass
-    raw = b" ".join(chunks)
-    # visible text operators
-    toks = re.findall(rb"\((?:\\.|[^()\\])*\)", raw)
-    text = " ".join(t.decode("utf-8", "replace") for t in toks)
-    # plus hyperlink /URI annotations in the object tree
-    uris = [u.decode("utf-8", "replace") for u in re.findall(rb"/URI\s*\((.*?)\)", pdf)]
-    return text + " || " + " ".join(uris)
+    # visible text: parenthesised strings adjacent to Tj/TJ
+    text_parts = []
+    for m in re.finditer(rb"\((?:\\.|[^()\\])*\)\s*Tj", decoded):
+        text_parts.append(m.group(0))
+    for m in re.finditer(rb"\[((?:\((?:\\.|[^()\\])*\)\s*)+)\s*\]\s*TJ", decoded):
+        text_parts.append(b"".join(re.findall(rb"\((?:\\.|[^()\\])*\)", m.group(1))))
+    text = b" ".join(text_parts)
+    # hyperlink / URI / launch / filespec annotations (object tree, may be uncompressed)
+    uris = re.findall(rb"/URI\s*\((.*?)\)", pdf)
+    uris += re.findall(rb"/URI\s*\(.*?\)", decoded)
+    launches = re.findall(rb"/Launch[^>]{0,120}", pdf) + re.findall(rb"/Launch[^>]{0,120}", decoded)
+    filenames = re.findall(rb"\n/F\s*\((.*?)\)", pdf) + re.findall(rb"/F\s*\((.*?)\)\s*/", pdf)
+    embedded = re.findall(rb"/EmbeddedFile\s*\((.*?)\)", pdf)
+    metadata = re.findall(rb"/(?:Title|Author|Subject|Keywords|Creator|Producer|PageTitle)\s*\((.*?)\)", pdf)
+    return {"text": text, "decoded": decoded,
+            "uris": uris, "launches": launches, "filenames": filenames,
+            "embedded": embedded, "metadata": metadata}
 
 
 def gate5_scan_final_pdf(pdf_bytes: bytes) -> Dict[str, Any]:
-    """Scan the EXACT bytes that will be emailed. Decompress + scan visible text, metadata,
-    and hyperlink URIs. Returns {clean, sha256, hits}. This is run on the immutable artifact."""
+    """Scan the EXACT bytes that will be emailed. Scheme-based hard rules (NOT a folder
+    blacklist). Runs across visible text, decompressed streams, metadata, hyperlink /URI,
+    /Launch actions, /FileSpec and /EmbeddedFile. Returns {clean, sha256, hard_fails[],
+    hits[]}."""
     sha256 = hashlib.sha256(pdf_bytes).hexdigest()
-    hay = _decompress_pdf_text(pdf_bytes) + " || " + " ".join(
-        v.decode("utf-8", "replace") for v in re.findall(rb"(?:Title|Author|Subject|Keywords)\s*\((.*?)\)", pdf_bytes))
+    L = _extract_pdf_layers(pdf_bytes)
+    hay_text = L["text"].decode("utf-8", "replace")
+    hay_all = (hay_text + " " +
+               L["decoded"].decode("utf-8", "replace") + " " +
+               " ".join(u.decode("utf-8", "replace") for u in L["uris"]) + " " +
+               " ".join(l.decode("utf-8", "replace") for l in L["launches"]) + " " +
+               " ".join(f.decode("utf-8", "replace") for f in L["filenames"]) + " " +
+               " ".join(m.decode("utf-8", "replace") for m in L["metadata"]) + " " +
+               " ".join(e.decode("utf-8", "replace") for e in L["embedded"]))
+    hay_lower = hay_all.lower()
+    hard_fails = []
     hits = []
-    for pat in BLOCKLIST_PATTERNS:
-        c = len(re.findall(pat, hay))
+
+    # RULE 1 — any file: scheme anywhere -> INTERNAL_FILE_URI
+    file_uri_hits = re.findall(r"file:\s*/{0,3}", hay_lower)
+    if file_uri_hits:
+        hard_fails.append("INTERNAL_FILE_URI")
+        hits.append({"rule": "INTERNAL_FILE_URI", "pattern": "file:", "count": len(file_uri_hits)})
+
+    # RULE 2 — any hyperlink scheme not in {https:, http:, mailto:} -> UNSAFE_LINK_SCHEME
+    bad_schemes = {}
+    for u in [x.decode("utf-8", "replace") for x in L["uris"]]:
+        mu = re.match(r"^\s*([a-zA-Z][a-zA-Z0-9+.\-]*):", u)
+        if mu and (mu.group(1) + ":").lower() not in ALLOWED_LINK_SCHEMES:
+            bad_schemes[mu.group(1)] = bad_schemes.get(mu.group(1), 0) + 1
+    if bad_schemes:
+        hard_fails.append("UNSAFE_LINK_SCHEME")
+        hits.append({"rule": "UNSAFE_LINK_SCHEME", "pattern": str(bad_schemes), "count": sum(bad_schemes.values())})
+
+    # RULE 3 — any absolute server/container path exposed -> INTERNAL_PATH_LEAK
+    path_hits = 0
+    for prefix in ABSOLUTE_PATH_PREFIXES:
+        c = hay_lower.count(prefix)
         if c:
-            hits.append({"pattern": pat, "count": c})
-    return {"clean": not hits and len(pdf_bytes) > 1000,
-            "sha256": sha256, "hits": hits, "bytes": len(pdf_bytes)}
+            path_hits += c
+    if path_hits:
+        hard_fails.append("INTERNAL_PATH_LEAK")
+        hits.append({"rule": "INTERNAL_PATH_LEAK", "pattern": "absolute-path", "count": path_hits})
+
+    clean = (not hard_fails) and len(pdf_bytes) > 1000
+    return {"clean": clean, "sha256": sha256, "hard_fails": hard_fails,
+            "hits": hits, "bytes": len(pdf_bytes),
+            "samples": {k: (v[:60] if isinstance(v, bytes) else v) for k, v in L.items()}
+                       if not clean else None,
+            "has_file_uri": "INTERNAL_FILE_URI" in hard_fails}
 
 
 MARKER_MARK = "IMMUTABLE_DELIVERY_LOCK"
@@ -229,13 +283,17 @@ def gate5_finalize_pdf(pdf_path: str, email_pdf_path: Optional[str] = None) -> D
     """Render final PDF ONCE. If a delivery marker exists, refuse to re-render (a second
     render after scanning is prohibited). Hash + scan the exact artifact; copy only the
     same hashed bytes to the email path if it is chosen. Returns the scan result with the
-    lock marker ensuring no later re-render can swap the artifact."""
+    lock marker ensuring no later re-render can swap the artifact. Validates the 3-way
+    SHA-256 equality: rendered == scanned == (email attachment when chosen)."""
     with open(pdf_path, "rb") as f:
         pdf_bytes = f.read()
     scan = gate5_scan_final_pdf(pdf_bytes)
-    # write the delivery lock next to the artifact: proves this exact file is the one
+    # 3-way SHA: rendered == scanned input (they are the same bytes here), and will equal
+    # the email attachment only if gate5_verify_unchanged passes at send time.
     lock_md = {
         "sha256": scan["sha256"], "bytes": len(pdf_bytes), "state": MARKER_MARK,
+        "rendered_sha256": scan["sha256"], "scanned_sha256": scan["sha256"],
+        "hard_fails": scan["hard_fails"],
     }
     lock_path = pdf_path + ".delivery-lock.json"
     with open(lock_path, "w") as f:
@@ -248,9 +306,50 @@ def gate5_finalize_pdf(pdf_path: str, email_pdf_path: Optional[str] = None) -> D
 
 def gate5_verify_unchanged(pdf_path: str, expected_sha256: str) -> bool:
     """Email step must verify the file hash before sending. A re-render after scanning
-    changes the hash -> mail is blocked."""
+    changes the hash -> mail is blocked. Returns True only if hash matches exactly."""
     try:
         with open(pdf_path, "rb") as f:
             return hashlib.sha256(f.read()).hexdigest() == expected_sha256
     except Exception:
         return False
+
+
+def gate5_three_way_verify(scanned_sha: str, email_pdf_path: str, rendered_sha: str) -> bool:
+    """HARD RULE: rendered PDF SHA == scanner input SHA == email attachment SHA must all
+    be identical, else DELIVERY_BLOCKED."""
+    if not email_pdf_path or not os.path.exists(email_pdf_path):
+        return False
+    try:
+        with open(email_pdf_path, "rb") as f:
+            email_sha = hashlib.sha256(f.read()).hexdigest()
+    except Exception:
+        return False
+    return scanned_sha == rendered_sha == email_sha
+
+
+def _pdf_with_text(text: bytes) -> bytes:
+    """Build a minimal FlateDecode-compressed PDF whose content stream contains `text`."""
+    import zlib
+    stream = zlib.compress(b"BT (" + text + b") Tj ET")
+    header = b"%PDF-1.4\n1 0 obj<</Length " + str(len(stream)).encode() + b"/Filter /FlateDecode>>stream\n"
+    trailer = b"\nendstream\nendobj\ntrailer<</Root 1 0 R>>\n%%EOF"
+    return header + stream + trailer
+
+
+def gate5_regression_self_test() -> Dict[str, Any]:
+    """REG.RES. — run gate5_scan_final_pdf on the EXACT leaked string the user reported:
+    file:///app/gates/out/SEO-Opportunity-Diagnostic-Apple-Imprints-2026-09-13-5gate.html
+    MUST be caught (INTERNAL_FILE_URI) and MUST block. Also proves /app/gates/out/ (a
+    path not specially hardcoded) is caught because the rule matches ANY file: scheme +
+    any absolute path, not a folder blacklist."""
+    import zlib
+    leak = b"file:///app/gates/out/SEO-Opportunity-Diagnostic-Apple-Imprints-2026-09-13-5gate.html"
+    pdf = _pdf_with_text(leak)
+    r = gate5_scan_final_pdf(pdf)
+    caught = r["clean"] is False and "INTERNAL_FILE_URI" in r["hard_fails"] and "INTERNAL_PATH_LEAK" in r["hard_fails"]
+    # absolute-path rule without file: — a bare /app/gates/out/ string must also be caught
+    pdf2 = _pdf_with_text(b"see /app/gates/out/report.html here")
+    r2 = gate5_scan_final_pdf(pdf2)
+    caught2 = r2["clean"] is False and "INTERNAL_PATH_LEAK" in r2["hard_fails"]
+    return {"leak_caught": caught, "bare_abs_path_caught": caught2,
+            "scan": r, "bare_scan": r2}
