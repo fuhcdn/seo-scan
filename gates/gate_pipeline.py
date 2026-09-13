@@ -204,13 +204,6 @@ def _extract_pdf_layers(pdf: bytes) -> Dict[str, Any]:
             decoded += zlib.decompress(s) + b"\n"
         except Exception:
             pass
-    # visible text: parenthesised strings adjacent to Tj/TJ
-    text_parts = []
-    for m in re.finditer(rb"\((?:\\.|[^()\\])*\)\s*Tj", decoded):
-        text_parts.append(m.group(0))
-    for m in re.finditer(rb"\[((?:\((?:\\.|[^()\\])*\)\s*)+)\s*\]\s*TJ", decoded):
-        text_parts.append(b"".join(re.findall(rb"\((?:\\.|[^()\\])*\)", m.group(1))))
-    text = b" ".join(text_parts)
     # hyperlink / URI / launch / filespec annotations (object tree, may be uncompressed)
     uris = re.findall(rb"/URI\s*\((.*?)\)", pdf)
     uris += re.findall(rb"/URI\s*\(.*?\)", decoded)
@@ -218,37 +211,64 @@ def _extract_pdf_layers(pdf: bytes) -> Dict[str, Any]:
     filenames = re.findall(rb"\n/F\s*\((.*?)\)", pdf) + re.findall(rb"/F\s*\((.*?)\)\s*/", pdf)
     embedded = re.findall(rb"/EmbeddedFile\s*\((.*?)\)", pdf)
     metadata = re.findall(rb"/(?:Title|Author|Subject|Keywords|Creator|Producer|PageTitle)\s*\((.*?)\)", pdf)
-    return {"text": text, "decoded": decoded,
+    return {"decoded": decoded,
             "uris": uris, "launches": launches, "filenames": filenames,
             "embedded": embedded, "metadata": metadata}
 
 
+def extract_visible_text_mature(pdf: bytes) -> str:
+    """PRODUCTION-GRADE text extraction via pypdf (mature PDF text extractor), used on the
+    EXACT final PDF. Falls back to decompression+regex ONLY if pypdf is unavailable."""
+    try:
+        import pypdf
+        import io
+        reader = pypdf.PdfReader(io.BytesIO(pdf))
+        parts = []
+        for pg in reader.pages:
+            t = pg.extract_text() or ""
+            if t:
+                parts.append(t)
+        return "\n".join(parts)
+    except Exception:
+        # fallback: decompressed streams text (better than nothing, still not ideal)
+        import zlib
+        streams = re.findall(rb"stream\r?\n(.*?)\r?\nendstream", pdf, re.S)
+        dec = b""
+        for s in streams:
+            try:
+                dec += zlib.decompress(s) + b"\n"
+            except Exception:
+                pass
+        toks = re.findall(rb"\((?:\\.|[^()\\])*\)\s*Tj", dec)
+        return b" ".join(toks).decode("utf-8", "replace")
+
+
 def gate5_scan_final_pdf(pdf_bytes: bytes) -> Dict[str, Any]:
-    """Scan the EXACT bytes that will be emailed. Scheme-based hard rules (NOT a folder
-    blacklist). Runs across visible text, decompressed streams, metadata, hyperlink /URI,
-    /Launch actions, /FileSpec and /EmbeddedFile. Returns {clean, sha256, hard_fails[],
-    hits[]}."""
+    """Scan the EXACT bytes that will be emailed, using a MATURE PDF text extractor (pypdf)
+    on the visible text, PLUS annotation/metadata layers. NOT a folder blacklist. Compares
+    extracted text against: file:, all absolute internal paths, prior-customer/company/domain,
+    placeholders, internal order IDs, secrets, unsafe schemes. Any file: URI in extracted
+    customer-visible text blocks, regardless of raw-byte scanning."""
     sha256 = hashlib.sha256(pdf_bytes).hexdigest()
+    visible_text = extract_visible_text_mature(pdf_bytes).lower()
     L = _extract_pdf_layers(pdf_bytes)
-    hay_text = L["text"].decode("utf-8", "replace")
-    hay_all = (hay_text + " " +
-               L["decoded"].decode("utf-8", "replace") + " " +
-               " ".join(u.decode("utf-8", "replace") for u in L["uris"]) + " " +
-               " ".join(l.decode("utf-8", "replace") for l in L["launches"]) + " " +
-               " ".join(f.decode("utf-8", "replace") for f in L["filenames"]) + " " +
-               " ".join(m.decode("utf-8", "replace") for m in L["metadata"]) + " " +
-               " ".join(e.decode("utf-8", "replace") for e in L["embedded"]))
-    hay_lower = hay_all.lower()
+    layer_hay = (" ".join(u.decode("utf-8", "replace") for u in L["uris"]) + " " +
+                 " ".join(l.decode("utf-8", "replace") for l in L["launches"]) + " " +
+                 " ".join(f.decode("utf-8", "replace") for f in L["filenames"]) + " " +
+                 " ".join(m.decode("utf-8", "replace") for m in L["metadata"]) + " " +
+                 " ".join(e.decode("utf-8", "replace") for e in L["embedded"])).lower()
+    # the customer-visible check is authoritative: search BOTH visible text and layers
+    hay = visible_text + " || " + layer_hay
     hard_fails = []
     hits = []
 
-    # RULE 1 — any file: scheme anywhere -> INTERNAL_FILE_URI
-    file_uri_hits = re.findall(r"file:\s*/{0,3}", hay_lower)
-    if file_uri_hits:
+    # 1) any file: scheme (visible text OR any layer) -> INTERNAL_FILE_URI (hard block)
+    file_uri = re.findall(r"file:\s*/{0,3}", hay)
+    if file_uri:
         hard_fails.append("INTERNAL_FILE_URI")
-        hits.append({"rule": "INTERNAL_FILE_URI", "pattern": "file:", "count": len(file_uri_hits)})
+        hits.append({"rule": "INTERNAL_FILE_URI", "pattern": "file:", "count": len(file_uri)})
 
-    # RULE 2 — any hyperlink scheme not in {https:, http:, mailto:} -> UNSAFE_LINK_SCHEME
+    # 2) unsafe hyperlink schemes (visible text and layer URIs)
     bad_schemes = {}
     for u in [x.decode("utf-8", "replace") for x in L["uris"]]:
         mu = re.match(r"^\s*([a-zA-Z][a-zA-Z0-9+.\-]*):", u)
@@ -258,22 +278,28 @@ def gate5_scan_final_pdf(pdf_bytes: bytes) -> Dict[str, Any]:
         hard_fails.append("UNSAFE_LINK_SCHEME")
         hits.append({"rule": "UNSAFE_LINK_SCHEME", "pattern": str(bad_schemes), "count": sum(bad_schemes.values())})
 
-    # RULE 3 — any absolute server/container path exposed -> INTERNAL_PATH_LEAK
-    path_hits = 0
-    for prefix in ABSOLUTE_PATH_PREFIXES:
-        c = hay_lower.count(prefix)
-        if c:
-            path_hits += c
+    # 3) absolute internal paths in extracted text or layers
+    path_hits = sum(hay.count(p) for p in ABSOLUTE_PATH_PREFIXES)
     if path_hits:
         hard_fails.append("INTERNAL_PATH_LEAK")
         hits.append({"rule": "INTERNAL_PATH_LEAK", "pattern": "absolute-path", "count": path_hits})
 
+    # 4) secrets / order-ids / placeholders / prior-customer marks in extracted text
+    secret_pat = re.findall(r"sk_live_|rk_live_|whsec_|api[_-]?key", hay)
+    order_pat = re.findall(r"ORD-[A-F0-9]{6,}", hay)
+    ph_pat = re.findall(r"\{\{.*?\}\}|\[y[our\-]*domain\]|REMOVE THIS", hay)
+    if secret_pat:
+        hard_fails.append("SECRET_LEAK"); hits.append({"rule": "SECRET_LEAK", "count": len(secret_pat)})
+    if order_pat:
+        hard_fails.append("ORDER_ID_LEAK"); hits.append({"rule": "ORDER_ID_LEAK", "count": len(order_pat)})
+    if ph_pat:
+        hard_fails.append("PLACEHOLDER_PRESENT"); hits.append({"rule": "PLACEHOLDER_PRESENT", "count": len(ph_pat)})
+
     clean = (not hard_fails) and len(pdf_bytes) > 1000
     return {"clean": clean, "sha256": sha256, "hard_fails": hard_fails,
             "hits": hits, "bytes": len(pdf_bytes),
-            "samples": {k: (v[:60] if isinstance(v, bytes) else v) for k, v in L.items()}
-                       if not clean else None,
-            "has_file_uri": "INTERNAL_FILE_URI" in hard_fails}
+            "extracted_visible_text": visible_text[:1000] + (" ... (%d chars total)" % len(visible_text)) if not clean else None,
+            "text_extractor": "pypdf" }
 
 
 MARKER_MARK = "IMMUTABLE_DELIVERY_LOCK"

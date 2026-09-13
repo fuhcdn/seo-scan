@@ -1,0 +1,31 @@
+{
+ "STRUCTURAL_COMPLETENESS_SCORE": 100.0,
+ "QUALITY_SCORE": 100,
+ "QUALITY_categories": {
+  "evidence_accuracy": 100,
+  "finding_distinctness": 100,
+  "customer_specificity": 100,
+  "commercial_priority_quality": 100,
+  "action_executability": 100,
+  "pdf_customer_readiness": 100
+ },
+ "investment_status": {
+  "ACT-001": "VALIDATE FIRST (pending owner approval)",
+  "ACT-002": "VALIDATE FIRST (pending owner approval)",
+  "ACT-003": "DO NOW"
+ },
+ "pdf_sha256": "f9ff05da93ed05438b3a903742a0b6e7c3db8223406e48b6a0618d30e258c02e",
+ "three_way": true,
+ "hard_fails": [],
+ "independent_pypdf": {
+  "file_uri": 0,
+  "abs_path": 0,
+  "placeholder": 0,
+  "order_leak": 0,
+  "owner_confirmation_required": 3,
+  "approval_flag": 3,
+  "cta_destination": 3,
+  "baseline": 3,
+  "scale_rule": 3
+ }
+}

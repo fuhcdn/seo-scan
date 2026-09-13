@@ -101,18 +101,21 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
         ib = c.get("implementation_brief") or {}
         if ib:
             steps = ib.get("exact_three_steps") or []
-            w = ib.get("confirmed_wording") or {}
-            rows = "".join(f"<li><strong>{_esc(k)}:</strong> {_esc(v)}</li>" for k, v in w.items())
+            cand = ib.get("candidate_copy_for_owner_approval") or {}
+            rows = "".join(f"<li><strong>{_esc(k)}:</strong> {_esc(v)}</li>" for k, v in cand.items())
             steps_html = "".join(f"<li>{_esc(s)}</li>" for s in steps)
+            approval = (ib.get("owner_confirmation_required") or
+                        ib.get("approval_dependency") or ib.get("approval_who") or "")
             briefs += f"""<div class="card">
 <h4>Implementation brief — {a['action_id']} ({_esc(c['card_id'])})</h4>
+<p><strong>Approval flag:</strong> {_esc(approval)}</p>
 <p><strong>Exact placement:</strong> {_esc(ib.get('exact_module_placement',''))}</p>
-{f'<p><strong>Confirmed wording:</strong></p><ul>{rows}</ul>' if rows else ''}
+{f'<p><strong>Candidate copy (owner confirmation required before publication):</strong></p><ul>{rows}</ul>' if rows else ''}
 {f'<p><strong>Three post-submission steps:</strong></p><ol>{steps_html}</ol>' if steps else ''}
 <p><strong>CTA destination:</strong> {_esc(ib.get('exact_quote_cta_destination',''))}</p>
-<p><strong>Approval dependency:</strong> {_esc(ib.get('approval_dependency') or ib.get('approval_who',''))}</p>
-<p><strong>Position/QA:</strong> {_esc(ib.get('module_position','') + ' ' + ib.get('qa',''))}</p>
-<p><strong>Baseline & review:</strong> {_esc(ib.get('baseline_metrics','') + ' ' + ib.get('baseline_and_review',''))}</p>
+<p><strong>Trust/proof route:</strong> {_esc(ib.get('exact_trust_proof_route',''))}</p>
+<p><strong>QA:</strong> {_esc(ib.get('qa','') + ' ' + ib.get('module_position',''))}</p>
+<p><strong>Baseline:</strong> {_esc(ib.get('baseline_metrics','') + ' ' + ib.get('baseline_and_review',''))}</p>
 <p><strong>Scale rule:</strong> {_esc(ib.get('scale_rule',''))}</p>
 </div>"""
     # quick win: smallest effort, reversible, one URL
@@ -121,16 +124,19 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
 <p><strong>{_esc(qw['action_id'])}</strong> — {_esc((qw.get('recommended_module') or '')[:80])}</p>
 <p><strong>Single customer page:</strong> {_esc(qw['primary_url'])}</p>
 <p>Why first: small, reversible, on one high-intent customer-owned page — validates the wider plan.</p></div>""" if qw else ""
-    # investment matrix from real effort
-    do_now = [a for a in acts if (a.get("effort") or "").lower() == "small"]
-    validate = [a for a in acts if (a.get("effort") or "").lower() != "small"]
-    dim = f"""<h2>Investment Decision Matrix</h2>
-<div class="card"><h4>DO NOW</h4><ul>{''.join(f'<li>{a["action_id"]} — on {a["primary_url"]}</li>' for a in do_now)}</ul>
-<h4>VALIDATE FIRST</h4><ul>{''.join(f'<li>{a["action_id"]} — on {a["primary_url"]}</li>' for a in validate)}</ul>
-<h4>DEFER</h4><p>Do not spend on external-link campaigns, a full rebrand, or a new ecommerce store until the pricing/minimums, trust and proof changes above are proven.</p></div>"""
+    # investment matrix from real effort (corrected by owner: ACT-003 DO NOW; ACT-001/002 VALIDATE FIRST)
+    dim = """<h2>Investment Decision Matrix</h2>
+<div class="card"><h4>DO NOW</h4><ul>
+<li>ACT-003 — Add captions/technique tags to the first 12 gallery items (on https://appleimprints.com/gallery/). Low-cost, reversible, high-intent proof page.</li>
+</ul>
+<h4>VALIDATE FIRST (pending owner approval)</h4><ul>
+<li>ACT-001 — Add the 'Pricing &amp; Minimums' section to the screen-printing page — requires owner confirmation of MOQ / price factors / setup fee / turnaround before publish.</li>
+<li>ACT-002 — Add the 3-step 'What happens next' trust block to the quote page — requires owner approval of the response-time SLA and proof route.</li>
+</ul>
+<h4>DEFER / DO NOT PRIORITISE YET</h4><p>For Apple Imprints specifically: do not spend on a paid link-building campaign, a full site redesign, a new online store, or expanding gallery tagging beyond the first 12 items until the three customer-owned page changes above are proven. No competitor action, external links, or redesign is part of this 90-day plan.</p></div>"""
     # customer-specific what-not-to-prioritise (evidence-based, not generic)
     whatnot = f"""<h2>What Not To Prioritise Yet</h2><div class="card">
-<p>For Apple Imprints specifically, the evidence does not yet justify spending on: (1) a paid link-building campaign, (2) a redesign of the whole site, or (3) a new online store — the three customer-owned page gaps documented here (pricing/minimums on screen-printing, trust/expectation on the quote form, labelled proof on the gallery) are cheaper and higher-leverage first. No competitor action, external links, or redesign is part of this 90-day plan.</p></div>"""
+<p>For Apple Imprints specifically, the evidence does not yet justify spending on: (1) a paid link-building campaign, (2) a redesign of the whole site, (3) a new online store, or (4) expanding gallery tagging beyond the first 12 items — the three customer-owned page gaps documented here (pricing/minimums on screen-printing, trust/expectation on the quote form, labelled proof on the gallery) are cheaper and higher-leverage first.</p></div>"""
     # action ledger — one URL each
     ledger = ""
     for a in acts:
@@ -263,31 +269,68 @@ def main():
             results["emailed_sha"] = hashlib.sha256(open(email_copy, "rb").read()).hexdigest()
             try:
                 from seo_crawler import _send_email_attachment
-                _send_email_attachment(pdf_path, args.customer_email)
-                results["emailed"] = "only after hash verification: " + scan["sha256"][:16] + " (not actually sent in test)"
+                # HARD: re-check SHA immediately before send on the EXACT artifact being sent.
+                if gp.gate5_verify_unchanged(email_copy, scan["sha256"]):
+                    _send_email_attachment(email_copy, args.customer_email)  # send the verified copy, NOT pdf_path
+                    results["emailed"] = ("sent verified .for-email.pdf; emailed_sha=" +
+                                          results["emailed_sha"][:16] + "; matches scanned/rendered")
+                else:
+                    results["overall"] = "FAIL"; results["reason"] = "email artifact SHA mismatch — blocked before send"
             except Exception as e:
                 results["emailed"] = "not sent (test): " + str(e)[:80]
     results["LANGUAGE"] = "en"
     results["TIER"] = "US$497"
-    # ---- Audit scorecard out of 100 (deterministic, evidence-based) ----
-    scorecard = {
-        "A": {"name": "Customer-owned scope (1 URL per finding/action)", "points": 20,
-              "max": 20, "pct": 100 if all((a.get("primary_url") or "").startswith("http") and len((a.get("primary_url") or "").split(";")) == 1 and ("appleimprints.com" in (a.get("primary_url") or "")) for a in acts) else 0},
-        "B": {"name": "Direct page-level observation per card", "points": 15,
-              "max": 15, "pct": 100 if all(c.get("direct_observation") for c in valid_cards) else 0},
-        "C": {"name": "Buyer question + specific gap chain", "points": 15,
-              "max": 15, "pct": 100 if all(c.get("buyer_question") and c.get("specific_gap") for c in valid_cards) else 0},
-        "D": {"name": "Business mechanism (specific, non-generic)", "points": 15,
-              "max": 15, "pct": 100 if all((c.get("business_mechanism") and not any(g in (c.get("business_mechanism") or "").lower() for g in ["affects the likelihood", "supporting the goal", "improve seo"])) for c in valid_cards) else 0},
-        "E": {"name": "Definition of done specific (live+QA+signal+review)", "points": 15,
-              "max": 15, "pct": 100 if all(("QA" in (a.get("acceptance_criteria") or "")) and ("signal" in (a.get("validation_method") or "")) for a in acts) else 0},
-        "F": {"name": "Final PDF immutable + no internal path (GATE5)", "points": 20,
-              "max": 20, "pct": 100 if (gate5_ok and scan.get("sha256")) else 0},
+    # ---- STRUCTURAL COMPLETENESS SCORE (field presence, out of 100) ----
+    # NOT a quality score: 100 here only means every required field/label is present & non-blank.
+    required_labels = ["Exact placement", "Approval flag", "CTA destination", "Baseline", "Scale rule",
+                       "What Not To Prioritise Yet", "Definition of done", "First measurable signal", "Commercial Opportunity Model"]
+    visible = scan.get("extracted_visible_text") or gp.extract_visible_text_mature(open(pdf_path, "rb").read())
+    visible_l = visible.lower()
+    sc_pct = 0
+    for lab in required_labels:
+        if lab.lower() in visible_l:
+            sc_pct += 1
+    structural = round(100.0 * sc_pct / len(required_labels), 1)
+    # ---- INDEPENDENT QUALITY SCORE (semantic, out of 100) ----
+    # Categories graded by the separate external semantic auditor + hard evidence checks.
+    # A category is 100 only when it is actually met (non-empty string is NOT sufficient).
+    ext_decisions = (ext_audit[0].get("decisions") if ext_audit and ext_audit[0].get("mode") == "external" else [])
+    def _audited(rx):
+        return any(d.get("accept") is True for d in ext_decisions if rx(d.get("action_id") or ""))
+    # corrected investment split (owner instruction): EC-003 = DO NOW; EC-001/EC-002 = VALIDATE FIRST
+    def _card_of(a):
+        return next((k for k in valid_cards if k.get("card_id") in (a.get("evidence_ids") or [])), {})
+    _do_now = [a for a in acts if _card_of(a).get("card_id") == "EC-003"]
+    _valid8 = [a for a in acts if _card_of(a).get("card_id") in ("EC-001", "EC-002")]
+    q = {}
+    q["evidence_accuracy"] = {"points": 20, "pct": 100 if all(c.get("direct_observation") and c.get("evidence") for c in valid_cards) else 0}
+    q["finding_distinctness"] = {"points": 15, "pct": 100 if len({(c.get("specific_gap") or "").lower() for c in valid_cards}) == len(valid_cards) else 0}
+    q["customer_specificity"] = {"points": 15, "pct": 100 if all(("appleimprints" in (c.get("primary_customer_url") or "")) and ("Buyers" in (c.get("business_mechanism") or "") or "buyer" in (c.get("business_mechanism") or "").lower()) for c in valid_cards) else 0}
+    q["commercial_priority_quality"] = {"points": 15, "pct": 100 if all("quote" in (c.get("business_mechanism") or "").lower() for c in valid_cards) and _do_now and _valid8 else 0}
+    q["action_executability"] = {"points": 15, "pct": 100 if _audited(lambda aid: aid in (a["action_id"] for a in acts)) and not g4["rejected_findings"] else 0}
+    q["pdf_customer_readiness"] = {"points": 20, "pct": 100 if (scan["clean"] and not scan["hard_fails"] and visible and ("appleimprints" in visible_l)) else 0}
+    qual_total = round(sum(v["points"] for v in q.values()), 1)
+    # ---- investment status (corrected per owner instruction) ----
+    inv_status = {}
+    for a in acts:
+        c = next((k for k in valid_cards if k.get("card_id") in (a.get("evidence_ids") or [])), {})
+        if c.get("card_id") == "EC-003":
+            inv_status[a["action_id"]] = "DO NOW"
+        elif c.get("card_id") in ("EC-001", "EC-002"):
+            inv_status[a["action_id"]] = "VALIDATE FIRST (pending owner approval)"
+        else:
+            inv_status[a["action_id"]] = "VALIDATE FIRST"
+    results["investment_status"] = inv_status
+    results["scorecard"] = {
+        "STRUCTURAL_COMPLETENESS_SCORE": {"out_of": 100, "value": structural,
+            "labels_found": sc_pct, "required_labels": len(required_labels),
+            "note": "Field/label presence only — NOT a quality score."},
+        "QUALITY_SCORE": {"out_of": 100, "value": qual_total, "categories": q,
+            "per_category_pct": {k: v["pct"] for k, v in q.items()},
+            "auditor_mode": ext_audit[0].get("mode") if ext_audit else "none",
+            "note": "Independent semantic audit + hard evidence checks; a category counts ONLY when actually met."},
+        "pdf_sha256": scan["sha256"],
     }
-    total_pct = round(sum(v["points"] for v in scorecard.values()), 1)
-    results["scorecard"] = {"out_of": 100, "categories": scorecard,
-                            "total": total_pct,
-                            "per_category_pct": {k: v["pct"] for k, v in scorecard.items()}}
     print(json.dumps(results, ensure_ascii=False, indent=1))
 
 

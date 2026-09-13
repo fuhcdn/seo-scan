@@ -1188,7 +1188,7 @@ def html_to_pdf(html_path, pdf_path, chromium=None):
               file=sys.stderr)
         return False
     cmd = [chromium, "--headless", "--no-sandbox", "--disable-gpu",
-           "--no-margins", "--print-to-pdf=" + pdf_path,
+           "--no-margins", "--no-pdf-header-footer", "--print-to-pdf=" + pdf_path,
            "file://" + os.path.abspath(html_path)]
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
