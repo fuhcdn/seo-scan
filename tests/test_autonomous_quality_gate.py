@@ -388,6 +388,17 @@ def run_tests():
     # Test AA — canonical delivery service is importable by BOTH production and gates paths.
     _both = _vpdT is not None
     results.append(("AA-canonical-service-shared", _both, "sample", "pipeline/verified_pdf_delivery.py is the single shared service"))
+    # Test AB — CUSTOMER_EMAIL_NO_INTERNAL_ID: completed-report email subject/body
+    # must never contain the internal order ID (customer-safe reference only).
+    from payment_confirmation_email import customer_safe_reference as _csr
+    _oid = "ORD-0D4E9EBD1991"
+    _refAB = _csr(_oid)
+    _no_leak = ("ORD-" not in _refAB) and (_csr(_oid) == _refAB)  # safe + idempotent
+    # and the runner's subject builders must use the ref (grep source)
+    _runner_src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline", "pipeline_runner.py"), encoding="utf-8").read()
+    _leak_in_src = bool(_reT.search(r'subject = f"[^"]*\{status\.get\(.order_id.\)\}', _runner_src))
+    results.append(("AB-customer-email-no-internal-id", _no_leak and not _leak_in_src, "sample",
+                    f"ref={_refAB}; subject uses customer-safe reference (no internal order id)"))
 
     print("=" * 60)
     ok_count = 0

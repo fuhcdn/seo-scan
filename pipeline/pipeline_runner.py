@@ -640,8 +640,14 @@ def _smtp_send(pdf_path, to_addr, subject, from_addr, smtp_host, smtp_port, user
     msg["From"] = from_addr
     msg["To"] = to_addr
     msg["Subject"] = subject
+    # Customer replies route to the support inbox (env-configured; identity NOT
+    # changed here — this only adds a header when the owner sets REPLY_TO_EMAIL).
+    reply_to = (os.environ.get("REPLY_TO_EMAIL", "") or "").strip()
+    if reply_to:
+        msg["Reply-To"] = reply_to
     msg.attach(MIMEText(
         "你的 AI SEO 審計報告已完成，完整 PDF 報告請見附件。\n\n"
+        "如有任何問題，請回覆本電郵或電郵 hello@seoscanaudit.com。"
         "謝謝選用我們的服務。", "plain", "utf-8"))
     if pdf_path and os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
         with open(pdf_path, "rb") as fh:
@@ -738,15 +744,23 @@ def step_deliver(status, pdf_path):
                 "ja": "AI SEO レポートが完成しました。PDF は添付をご覧ください。— seoscanaudit.com",
                 "es": "Su informe SEO de IA está listo. El PDF completo está adjunto. — seoscanaudit.com",
             }.get(_dlang, "Your AI SEO report is ready. The full PDF is attached. — seoscanaudit.com")
+            # Customer-safe subject: use the opaque reference, NEVER the internal
+            # order_id (customer-facing emails must not expose internal IDs).
+            from payment_confirmation_email import customer_safe_reference as _csref
+            _ref = _csref(status.get("order_id", ""))
             _dsubj = {
-                "en": f"Your AI SEO Audit Report — {status.get('order_id')}",
-                "zh-Hant": f"你的 AI SEO 審計報告 — {status.get('order_id')}",
-                "zh-Hans": f"你的 AI SEO 审计报告 — {status.get('order_id')}",
-                "ja": f"AI SEO 監査レポート — {status.get('order_id')}",
-                "es": f"Su informe de auditoría SEO — {status.get('order_id')}",
-            }.get(_dlang, f"Your AI SEO Audit Report — {status.get('order_id')}")
+                "en": f"Your AI SEO Audit Report — {_ref}",
+                "zh-Hant": f"你的 AI SEO 審計報告 — {_ref}",
+                "zh-Hans": f"你的 AI SEO 审计报告 — {_ref}",
+                "ja": f"AI SEO 監査レポート — {_ref}",
+                "es": f"Su informe de auditoría SEO — {_ref}",
+            }.get(_dlang, f"Your AI SEO Audit Report — {_ref}")
             subject = _dsubj
             text_body = _dtext
+            # 客戶回覆路線:support 信箱(依 REPLY_TO_EMAIL env;identity 唔改)
+            _reply_to = (os.environ.get("REPLY_TO_EMAIL", "") or "").strip()
+            if _reply_to:
+                text_body = text_body + "\n\n如有任何問題,請電郵 " + _reply_to + "。"
             # 附件 PDF（Resend 支援 base64 附件）
             attachments = []
             if pdf_path and os.path.exists(pdf_path) and os.path.getsize(pdf_path) > 0:
@@ -816,7 +830,9 @@ def step_deliver(status, pdf_path):
             username = (os.environ.get("SMTP_USER") or from_addr).strip()
             password = (os.environ.get("SMTP_PASSWORD") or os.environ.get("SMTP_PASS") or "").strip()
             implicit_ssl = (backend == "smtp_ssl")
-            subject = f"你的 AI SEO 審計報告 — {status.get('order_id')}"
+            from payment_confirmation_email import customer_safe_reference as _csref2
+            _ref2 = _csref2(status.get("order_id", ""))
+            subject = f"你的 AI SEO 審計報告 — {_ref2}"
 
             last_err = None
             for attempt in range(1, DELIVERY_MAX_ATTEMPTS + 1):
