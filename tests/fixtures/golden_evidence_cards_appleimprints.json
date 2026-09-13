@@ -1,0 +1,222 @@
+{
+ "customer": {
+  "company": "Apple Imprints",
+  "primary_domain": "appleimprints.com",
+  "owned_domains": [
+   "appleimprints.com"
+  ],
+  "business_goal": "more sales-revenue",
+  "market": "USA (Buffalo, NY + ships nationally)",
+  "offers": [
+   "Screen printing",
+   "Embroidery",
+   "DTG",
+   "DTF",
+   "Debossing",
+   "Custom apparel & promo products"
+  ],
+  "primary_customer_action": "quote",
+  "tier": "US$497",
+  "report_language": "en",
+  "vertical": "custom apparel decoration / quote-based service SME",
+  "known_competitors": [
+   "apparelglobe.com",
+   "radprint.co",
+   "kustomimprints.com"
+  ],
+  "business_model": "quote-based custom product/service (screen printing, embroidery, DTG/DTF, debossing)"
+ },
+ "golden_evidence_cards": [
+  {
+   "card_id": "EC-001",
+   "primary_customer_url": "https://appleimprints.com/screen-printing/",
+   "page_type": "service page",
+   "page_heading": "Apple Imprint's Screen Printing Services",
+   "direct_observation": "Page describes methods (spot color, four-color process, simulated process, specialty printing) but shows the heading and method names repeatedly across the page; page does not state any minimum order quantity, any price range, any per-piece price, or any turnaround time anywhere in the visible text. CTA is the global 'Get a Quote' nav link.",
+   "buyer_question": "How many pieces must I order and roughly what will screen printing cost me before I contact you?",
+   "specific_gap": "No minimum-order, price, or turnaround information on the screen-printing service page, so a comparison-minded buyer cannot pre-qualify their order.",
+   "business_mechanism": "The buyer question 'minimums + price' is a pre-sales qualification step; a page that omits it forces every visitor to submit a quote form before they can even self-qualify, which filters out smaller or price-sensitive buyers and lowers the pool of qualified enquiries that reach the goal (more sales-revenue).",
+   "recommended_module": "Add a 'Pricing & Minimums' section to this exact screen-printing page",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: every MOQ number, price factor, per-color setup fee and turnaround day must be confirmed by the Apple Imprints owner before any copy is published. Nothing below is confirmed fact.",
+    "owner_confirmation_questions": [
+     "What is the current minimum order quantity?",
+     "Does a setup/digitisation fee apply, and how is it charged?",
+     "Which variables determine customer price (quantity, ink colors, print locations, blank garment cost)?",
+     "What is the normal turnaround range?",
+     "What rush-order policy can be promised publicly?",
+     "What response-time SLA can be promised publicly for quotes?"
+    ],
+    "required_page_module_fields": [
+     "Minimum-order policy",
+     "Price-factor explanation",
+     "Setup-fee policy",
+     "Standard turnaround",
+     "Rush-order handling",
+     "Exact quote CTA"
+    ],
+    "approved_copy_placeholder": "[Insert Sales/Operations-approved wording before publication.]",
+    "exact_module_placement": "Insert a 'Pricing & Minimums' block immediately after the 'Specialty Printing' method list and before the final 'Get a Quote' CTA, on the screen-printing service page.",
+    "approval_dependency": "Sales/Operations must approve the exact MOQ, per-color setup fee, and turnaround window before publish. Do not commit any specific number that is unconfirmed.",
+    "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (existing quote form) with text 'Get an exact quote'.",
+    "qa": "Verify on mobile (form stacks) and desktop (pricing table does not overflow) after publish.",
+    "baseline_metrics": "Record quote-form submissions and session count on this exact page for 14 business days before the change.",
+    "scale_rule": "A pattern can expand from screen-printing-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA."
+   },
+   "evidence": "Direct page read on 2026-09-13 (headings + body verified; no price/minimum/turnaround tokens present).",
+   "first_signal": "exact quote CTA click rate and quote-form start on the screen-printing page",
+   "roadmap_preparation": "Prepare the screen-printing page pricing/minimums module draft with approved-copy placeholders; collect Sales/Operations approval of MOQ, price-factor, setup-fee and turnaround wording.",
+   "publication_condition": "Publish only after Sales/Operations approves the MOQ/price-factor/setup-fee/turnaround wording."
+  },
+  {
+   "card_id": "EC-002",
+   "primary_customer_url": "https://appleimprints.com/get-a-quote-2/",
+   "page_type": "conversion/quote page",
+   "page_heading": "Get A Quote!",
+   "direct_observation": "Quote form is present ('First Name * Last Name * Email Address * Phone') with the line 'Within 24 hours or less! If rush is needed, please call us!' There is no statement describing what happens after submission, no reference to any past work/proof, and no expectation-setting about the next step, pricing, or samples.",
+   "buyer_question": "After I submit this form, what happens next and why should I trust Apple Imprints to do my order?",
+   "specific_gap": "Quote page collects contact details but gives no post-submission expectation, no proof/reference, and no reason for a wary first-time buyer to trust a small shop.",
+   "business_mechanism": "Trust is a decision-stage blocker for a small, lesser-known decorator; a quote page that sends no trust signal makes hesitant first-time buyers more likely to abandon rather than submit the form, directly suppressing quote submissions that drive the goal (more sales-revenue).",
+   "recommended_module": "Add a 'What happens next' 3-step trust/process explainer with a proof link, under the quote form",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: the stated response-time ('one business day') and any service promise must be approved by the owner before publish. Nothing below is confirmed SLA copy.",
+    "exact_three_steps": [
+     "Step 1 — 'We review your order within one business day.'",
+     "Step 2 — 'We reply with an exact quote, a proof, and a timeline for your design.'",
+     "Step 3 — 'Approve the proof and we start production; rush is available by phone.'"
+    ],
+    "exact_trust_proof_route": "Link the words 'completed orders' to https://appleimprints.com/gallery/ as visible proof.",
+    "exact_module_placement": "Render the 3-step explainer BELOW the quote form fields and ABOVE the 'Within 24 hours' line, so it does not push the form off the first screen on mobile.",
+    "approval_who": "The 'one business day' response-time claim must be approved by the owner/service manager before publish; do not restate an unconfirmed SLA.",
+    "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (the form itself).",
+    "qa": "Mobile: form fields remain above the fold; Desktop: 3-step block renders inline without overflow; proof link opens /gallery/.",
+    "baseline_metrics": "Record form-start and form-submit rate for 14 business days before the change.",
+    "scale_rule": "A pattern can expand from quote page-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
+    "owner_confirmation_questions": [
+     "What response-time SLA can be promised publicly for quotes?",
+     "Which post-submission expectations can the owner publicly promise?",
+     "Can the gallery be linked as proof of completed work?"
+    ],
+    "required_page_module_fields": [
+     "Response-time result (e.g. 'we reply within one business day')",
+     "Post-submission steps",
+     "Proof link",
+     "Exact quote CTA"
+    ],
+    "approved_copy_placeholder": "[Insert Sales/Operations-approved wording before publication.]"
+   },
+   "evidence": "Direct page read on 2026-09-13 (form fields + 'Within 24 hours or less!' string verified).",
+   "first_signal": "quote form-start to quote form-submit completion rate",
+   "roadmap_preparation": "Prepare the quote-page post-submission expectation + trust block draft with placeholders; collect Owner/Service-Manager approval of response-time SLA, quote-process and service wording.",
+   "publication_condition": "Publish only after Owner/Service Manager approves the response-time SLA and quote-process wording."
+  },
+  {
+   "card_id": "EC-003",
+   "primary_customer_url": "https://appleimprints.com/gallery/",
+   "page_type": "proof/portfolio page",
+   "page_heading": "Our Works",
+   "direct_observation": "Gallery page exists with heading 'Our Works' and text 'browse our gallery of completed orders that have satisfied...' but it is a single image wall with no captions, no per-item service/technique tag, no link back to the matching service pages, and no testimonial text or case detail.",
+   "buyer_question": "Which of these pieces were done with screen printing vs embroidery, and can I see a completed example of my specific project type?",
+   "specific_gap": "Gallery images are unlabelled so a decoration buyer cannot map a completed piece to the service they are considering, and the page does not feed the relevant service page or quote page.",
+   "business_mechanism": "Proof works only if a buyer can connect it to their intended service; unlabelled, un-linked gallery images do not build that connection, so the trust/proof asset fails to move evaluation-stage buyers toward the quote, limiting the goal (more sales-revenue).",
+   "recommended_module": "Add captions/technique tags to the first 12 priority gallery items and link each to its service page and the quote form",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: the content owner and the production lead must verify each item's actual technique before any tag is published.",
+    "caption_taxonomy": "Tag every captioned item with a technique from the service list — screen-printing / embroidery / DTG / DTF / debossing — plus item type (t-shirt / polo / hoodie / hat / tote).",
+    "technique_service_mapping": "screen-printing via /screen-printing/; embroidery via /embroidery/; DTG via /directo-to-garment-dtg/; DTF via /direct-to-film-dtf/; debossing via /debossing/.",
+    "exact_module_placement": "On the gallery page, add a caption + technique tag under each of the first 12 priority images and a 'Get a quote for a similar piece' link; each caption links to the matching service page and to the quote form.",
+    "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ ('Get a quote for a similar piece').",
+    "approval_dependency": "Content owner writes captions; production lead (service owner) confirms each item's actual technique before the tag is published.",
+    "qa": "Mobile + desktop: captions wrap, links resolve, images do not reflow; every tagged item links to the correct service page and quote route.",
+    "baseline_metrics": "Record gallery-to-quote link clicks and session count on the gallery page for 14 business days before the change.",
+    "scale_rule": "A pattern can expand from gallery-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
+    "owner_confirmation_questions": [
+     "Can the first 12 gallery items be publicly captioned and tagged?",
+     "Which service page should each item link to (screen/embroidery/DTG/DTF/debossing)?",
+     "Can the gallery link to the quote form as 'Get a quote for a similar piece'?"
+    ],
+    "required_page_module_fields": [
+     "Caption taxonomy (technique + item type)",
+     "Technique-to-service-page mapping",
+     "Quote CTA route"
+    ],
+    "approved_copy_placeholder": "[Insert approved caption/tag copy before publication.]"
+   },
+   "evidence": "Direct page read on 2026-09-13 (heading + body verified; no captions/links/tags present).",
+   "first_signal": "gallery caption/service-page click and gallery-to-quote click",
+   "roadmap_preparation": "Prepare gallery caption/tag taxonomy for the first 12 priority items with service-page + quote CTA links; collect Production-Lead approval of the technique/service mapping.",
+   "publication_condition": "Publish now after Production Lead approves the technique/service mapping (DO NOW pilot)."
+  },
+  {
+   "card_id": "EC-004",
+   "primary_customer_url": "https://appleimprints.com/",
+   "page_type": "homepage",
+   "page_heading": "Your Brand. Our Mission.",
+   "direct_observation": "Homepage presents five decoration-method cards (Screen Printing, Embroidery, Debossing, DTG, DTF) followed by an ABOUT US section, but gives no guidance a first-time buyer can use to choose which method fits their project and quantity; every method card routes to the same generic Get a Quote nav link rather than to the relevant service page, so a first-time buyer cannot self-route.",
+   "buyer_question": "Which of these decoration methods fits my project and quantity, and how are they different?",
+   "specific_gap": "No method-selection guidance or comparison on the homepage, so a first-time business buyer cannot match their order to the right service and instead faces a generic quote form.",
+   "business_mechanism": "An awareness/evaluation buyer arrives with a need for custom apparel but no method knowledge; without a method-selection aid that maps project type and quantity to a technique, the buyer stalls on the homepage instead of progressing to the relevant service page and then to the quote, suppressing qualified enquiries toward the goal (more sales-revenue).",
+   "recommended_module": "Add a Which method is right for your project selection aid on the homepage, with quantity and project questions that route each answer to the relevant service page and quote form.",
+   "evidence": "Direct page read on 2026-09-13 (headings verified: Screen Printing, Embroidery, Debossing, DTG, DTF; About; no method-selection guidance present).",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: the method-to-project routing after the homepage method-selection aid must be approved by Sales/Operations before any route is published. A DO NOW draft module/layout may be prepared, but its publication and routing rules are VALIDATE FIRST.",
+    "owner_confirmation_questions": [
+     "Which decoration method maps to which project type and quantity?",
+     "Can each method answer route to the matching service page and quote form?"
+    ],
+    "required_page_module_fields": [
+     "Method-selection aid",
+     "Quantity/project questions",
+     "Route-to-service-page links",
+     "Exact quote CTA"
+    ],
+    "approved_copy_placeholder": "[Insert Sales/Operations-approved method-routing wording before publication.]",
+    "exact_module_placement": "Insert the method-selection aid between the hero and the method cards on the homepage.",
+    "approval_dependency": "Sales/Operations must approve the method-to-project routing before publish.",
+    "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (quote form) routed from each method answer.",
+    "qa": "Verify on mobile (aid stacks) and desktop (no overflow) after publish; every route link resolves.",
+    "baseline_metrics": "Record homepage to service-page and homepage to quote clicks for 14 business days before the change.",
+    "scale_rule": "A pattern can expand from homepage-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA."
+   },
+   "first_signal": "method-selection completion and homepage method-to-service-page click",
+   "roadmap_preparation": "Prepare the homepage method-selection routing draft layout; collect Sales/Operations approval of the method-to-project routing rules before any publication.",
+   "publication_condition": "Publish only after Sales/Operations approves the method-to-project routing rules; otherwise retain VALIDATE FIRST and do not route visitors on unapproved rules."
+  },
+  {
+   "card_id": "EC-005",
+   "primary_customer_url": "https://appleimprints.com/embroidery/",
+   "page_type": "service page",
+   "page_heading": "Apple Imprint's Embroidery Services",
+   "direct_observation": "Embroidery page is marketing prose (Timeless, Professional Appearance; Embroidery adds a classic, high-end look) with no example or proof image on the page, no link to the gallery showing embroidered work, and no minimum or price or turnaround context. A buyer evaluating embroidery cannot see an Apple Imprints embroidered example without leaving the page.",
+   "buyer_question": "Can I see an embroidered example, and roughly what does embroidery cost and what is the minimum?",
+   "specific_gap": "Embroidery page gives no on-page proof, no gallery cross-link, and no minimum/price/turnaround guidance, so an evaluation-stage buyer cannot judge quality or pre-qualify.",
+   "business_mechanism": "Proof and pricing-lite are the evaluation-stage inputs; an embroidery page with zero proof and no gallery link fails to move a quality-conscious buyer toward the quote, so it underconverts for the goal (more sales-revenue).",
+   "recommended_module": "Add on-page embroidery example image(s) plus a link to the gallery proof and a Get an exact quote route on the embroidery service page.",
+   "evidence": "Direct page read on 2026-09-13 (heading and body verified; no proof image, no gallery link, no minimum/price/turnaround present).",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: confirm the example image and any minimum/price/turnaround wording before publish.",
+    "owner_confirmation_questions": [
+     "Which embroidered piece can be shown as public proof?",
+     "What minimum, price factors and turnaround can be promised publicly for embroidery?",
+     "Can the gallery be linked as embroidered proof?"
+    ],
+    "required_page_module_fields": [
+     "Example proof image",
+     "Gallery proof link",
+     "Embroidery-specific quote route"
+    ],
+    "approved_copy_placeholder": "[Insert Sales/Operations-approved embroidery wording before publication.]",
+    "exact_module_placement": "Insert below the Timeless, Professional Appearance intro and above the footer CTA on the embroidery page.",
+    "approval_dependency": "Sales/Operations and Production Lead must confirm the example and any minimum/price/turnaround before publish.",
+    "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (quote form) with text Get an exact embroidery quote.",
+    "qa": "Mobile and desktop: example image renders, gallery link resolves, no text clipped.",
+    "baseline_metrics": "Record embroidery-page to quote clicks and session count for 14 business days before the change.",
+    "scale_rule": "A pattern can expand from embroidery-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
+    "scope_note": "ACT-005 scope: embroidery proof image, gallery cross-link, and the embroidery-specific quote route ONLY. Pricing / minimum / turnaround information is deferred until the ACT-001 owner-approved pricing-information pattern has been validated and can be adapted for embroidery; ACT-005 must NOT duplicate the ACT-001 pricing action."
+   },
+   "first_signal": "embroidery proof/gallery click and embroidery-page-to-quote click",
+   "roadmap_preparation": "Prepare the embroidery proof/gallery cross-link + embroidery quote route draft with placeholders; collect Sales/Operations + Production Lead approval; defer pricing/minimum/turnaround until ACT-001 is validated.",
+   "publication_condition": "Publish only after Sales/Operations + Production Lead approves the embroidery proof/gallery/quote route; pricing deferred until ACT-001 validated."
+  }
+ ]
+}

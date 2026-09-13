@@ -1,5 +1,5 @@
-# SEO Scan — Git ignore (protect secrets)
-# 機密/執行期生成，一律唔入 repo
+# SEO Scan — Git ignore (protect secrets + block report/review artifacts)
+# 機密/執行期生成/審查暫存/成品輸出，一律唔入 repo
 secrets.env
 output/
 pipeline/out/
@@ -20,3 +20,33 @@ secrets.env.bak
 *.env.bak
 pipeline/research/
 research/
+
+# ---- repository hygiene: report outputs / review artifacts / vendored libs ----
+# 審查與暫存 scripts
+_review/
+review_artifacts/
+# 本地 wheel / vendored 庫原始碼（pypdf 以 requirements.txt 依賴宣告）
+*.whl
+pypdf_src/
+pypdf.whl
+# 報告最終輸出 PDF（Golden Reference PDF 只保留喺 tests/fixtures/）
+FINAL*.pdf
+*_FINAL*.pdf
+*gate*.pdf
+*.for-email.pdf
+# 提取嘅 visible text / tokens（只保留喺 fixtures）
+*tokens.txt
+*visible-text*.txt
+*extracted-visible-text.txt
+html.b64
+pdf.b64
+research.json.b64
+# 臨時 debug/extract scripts
+_*.py
+/dbg*.py
+/extract*.py
+/dump*.py
+dump.py
+extract*.py
+# 舊 TOP-LEVEL 報告 txt
+/tests/fixtures/*.txt*

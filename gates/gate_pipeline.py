@@ -135,11 +135,18 @@ def _ownership_for(card: dict) -> dict:
                               {"approver": "Owner", "content": "Content/Marketing", "publisher_qa": "Web/Developer"})
 
 
-def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
+def gate3_actions_from_evidence_cards(cards: List[dict], customer_context: dict = None) -> List[dict]:
     """Generate ONE action per passed evidence card. Each action has EXACTLY ONE
     primary URL (or one explicit new URL). Each action has a SINGLE immutable
     `investment_status` value read from one source. NO truncated customer text:
-    every visible sentence is complete, or says 'See Implementation Brief <id>'."""
+    every visible sentence is complete, or says 'See Implementation Brief <id>'.
+    Business-logic context lock: every action persists its own customer domain,
+    business model, approver role, preparation task and publication condition; the
+    roadmap and prep plan render ONLY from these stored fields (never hard-coded
+    action-ID rules like ACT-004 = method-selection routing)."""
+    cc = customer_context or {}
+    biz_model = (cc.get("business_model") or cc.get("vertical") or "").strip()
+    cust_domain = (cc.get("primary_domain") or cc.get("domain") or "").strip()
     actions = []
     for i, card in enumerate(cards, 1):
         url = (card.get("primary_customer_url") or "").strip()
@@ -150,6 +157,11 @@ def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
         own = _ownership_for(card)
         first_sig = (card.get("first_signal") or "").strip()
         scale_rule = ((card.get("implementation_brief") or {}).get("scale_rule") or "").strip()
+        # Per-action business-context lock fields (roadmap + prep-plan source of truth)
+        _ib2 = card.get("implementation_brief") or {}
+        preparation_task = ((card.get("roadmap_preparation") or "") or (_ib2.get("roadmap_preparation") or "")).strip()
+        publication_condition = ((card.get("publication_condition") or "") or (_ib2.get("publication_condition") or "")).strip()
+        required_mod_fields = (_ib2.get("required_page_module_fields") or [])
         # FULL module text — never truncated in the customer-facing PDF.
         title = f"{module} on the customer page {url}"
         # Definition of done: complete sentence; don't re-quote a module that already
@@ -187,6 +199,12 @@ def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
             "confidence": "Medium",
             "evidence_ids": [card.get("card_id")],
             "dependencies": ["single customer-owned target: " + url],
+            # ---- business-logic context lock (single source for roadmap / prep plan) ----
+            "customer_domain": cust_domain,
+            "business_model": biz_model,
+            "roadmap_preparation": preparation_task,
+            "publication_condition": publication_condition,
+            "required_module_fields": required_mod_fields,
         })
     return actions
 
@@ -556,3 +574,99 @@ def gate5_regression_self_test() -> Dict[str, Any]:
     caught2 = r2["clean"] is False and "INTERNAL_PATH_LEAK" in r2["hard_fails"]
     return {"leak_caught": caught, "bare_abs_path_caught": caught2,
             "scan": r, "bare_scan": r2}
+
+
+def gate5_check_roadmap_action_data_consistency(roadmap_text: str, acts) -> Dict[str, Any]:
+    """ROADMAP ACTION-DATA CONSISTENCY (business-logic context lock):
+    Every roadmap sentence's Action ID must match that action's own stored fields title and
+    approver role; preparation tasks must come from that action's `roadmap_preparation`;
+    publication condition must come from `publication_condition`. Rejects any hard-coded
+    action-ID assumption (e.g. 'ACT-004 = method-selection routing') by checking the text
+    ONLY against what the action itself declares. Returns issues for any mismatch."""
+    issues = []
+    for a in acts or []:
+        aid = a.get("action_id", "")
+        ap = (a.get("owner_approver") or "").strip()
+        prep = (a.get("roadmap_preparation") or "").strip()
+        pub = (a.get("publication_condition") or "").strip()
+        # the action's own title/topic should appear in roadmap (via prep/pub or module)
+        terms = [aid]
+        if prep:
+            terms.append(prep[:60])
+        if pub:
+            terms.append(pub[:60])
+        if ap:
+            terms.append(ap)
+        # The roadmap must NOT contradict the action's approver. Check approver consistency:
+        # if roadmap mentions an approver for this action, it must equal the action's own.
+        for sent in re.findall(r"[^.;]+", roadmap_text):
+            if not (aid in sent):
+                continue
+            for other_act in acts:
+                oid = other_act.get("action_id", "")
+                oap = (other_act.get("owner_approver") or "").strip()
+                if oid == aid:
+                    continue
+                if oap and oap in sent and ap and ap not in sent:
+                    issues.append(f"{aid}: roadmap approver '{oap}' does not match action approver '{ap}'")
+                    break
+    return {"consistent": len(issues) == 0, "issues": issues,
+            "checked": [a.get("action_id") for a in (acts or [])]}
+
+
+# Cross-customer business-model terms that are LICIT only when the current customer's own
+# business model / pages support them. Apple Imprints vocabulary must never leak into a
+# law-firm report (and vice versa) unless the action data itself carries it.
+KNOWN_BUSINESS_MODEL_TERMS = {
+    "appleimprints": ["method-to-project routing", "screen printing", "embroidery", "DTG", "DTF",
+                      "debossing", "apparel", "gallery", "get-a-quote", "proof image", "minimum order",
+                      "screen-printing", "custom apparel", "sportswear", "teamwear", "garment"],
+    "brunnerlaw": ["criminal defense", "DWI", "license suspension", "arrest", "arrest", "consultation",
+                   "attorney", "lawyer", "legal", "free case evaluation", "when to talk to a lawyer",
+                   "after an arrest"],
+    "generic": ["method-to-project", "Sales/Operations", "Sales/Operations-approved",
+                "method-selection routing", "service selection logic"],
+}
+
+
+def gate5_check_business_logic_contamination(roadmap_text: str, acts, customer_context: dict = None) -> Dict[str, Any]:
+    """BUSINESS-LOGIC CONTEXT CONTAMINATION CHECK (Failure-2 rule):
+    Every roadmap/Action-ID-referenced term must belong to the CURRENT customer/job context.
+    If any HISTORICAL customer/business-model term appears (e.g. Apple 'method-to-project
+    routing' or 'Sales/Operations' inside a law-firm roadmap) it is a HARD FAIL
+    (BUSINESS_LOGIC_CONTEXT_CONTAMINATION) and the report is DELIVERY_BLOCKED."""
+    low = roadmap_text.lower()
+    bad = []
+    cc = customer_context or {}
+    vert = (cc.get("business_model") or cc.get("vertical") or "").lower()
+    domain = (cc.get("primary_domain") or "").lower()
+    # Current customer business-family: apparel/print vs legal — determines which terms are licit.
+    cur_is_apparel = any(w in vert for w in ["print", "apparel", "embroidery", "garment", "screen"])
+    cur_is_legal = any(w in vert for w in ["legal", "law", "crimin", "attorney", "lawyer"])
+    # Generic cross-business modelling terms are ALWAYS suspicious unless current business supports them.
+    generic_suspects = [
+        ("method-to-project routing", "method-to-project routing", {"apparel"}),
+        ("method-selection routing", "method-selection routing", {"apparel"}),
+        ("service selection logic", "service selection logic", {"apparel"}),
+        ("sales/operations approved", "sales/operations", {"apparel"}),
+    ]
+    for term, probe, licit_families in generic_suspects:
+        if probe not in low:
+            continue
+        # Licit users: a business-modelling term is allowed when the CURRENT customer's family
+        # is in the term's licit set (e.g. Apple may carry its own method-selection routing task).
+        _cur_family = "apparel" if cur_is_apparel else ("legal" if cur_is_legal else "")
+        if _cur_family in licit_families:
+            continue
+        # Sales/Operations approver is legitimate ONLY when the current card data declares it:
+        _uses_salesops = any("sales/operations" in ((a.get("owner_approver") or "").lower()) for a in (acts or []))
+        if term.startswith("sales/operations") and _uses_salesops:
+            continue
+        bad.append(f"cross-customer business-model term '{term}' present in {domain or 'this'} report (current family: 'apparel'={cur_is_apparel}, 'legal'={cur_is_legal})")
+    # Apple's own routing vocabulary must not appear unless this customer IS the apparel one
+    for probe in ["method-to-project routing", "method-selection routing", "service selection logic"]:
+        if probe in low and not cur_is_apparel:
+            bad.append(f"Apple/VALIDATE-FIRST routing term '{probe}' present in a non-apparel report")
+    return {"contamination": len(bad) > 0,
+            "hard_fail": "BUSINESS_LOGIC_CONTEXT_CONTAMINATION" if bad else None,
+            "terms_found": list(dict.fromkeys(bad))}

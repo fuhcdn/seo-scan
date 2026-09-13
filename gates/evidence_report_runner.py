@@ -133,7 +133,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
             base = (ib.get("baseline_metrics") or "") + " " + (ib.get("baseline_and_review") or "")
             scale = ib.get("scale_rule") or ""
             briefs += f"""<div class="card">
-<h4>Implementation brief — {a['action_id']} ({_esc(c.get('card_id') or '')})</h4>
+<h4>Implementation brief — {a['action_id']}</h4>
 {approv_block}
 {_row('Exact placement', placed)}
 {_row('Scope note', scope_note) if scope_note else ''}
@@ -148,21 +148,30 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
 {_row('Baseline & review criteria', base)}
 {_row('Scale rule', scale)}
 </div>"""
-    # First 7-Day Win — lowest-effort, reversible, single customer-owned URL action.
-    # For all-VALIDATE_FIRST customers (e.g. law firm) it targets that action and states the
-    # owner approval that must precede publish, so it stays honest.
-    qw = next((a for a in acts if (a.get("investment_status") or "") == "DO_NOW"), None)
-    if qw is None and acts:
-        qw = min(acts, key=lambda a: len((a.get("recommended_module") or "") or ""))  # lowest effort
-    if qw:
-        cq = next((k for k in cards if k.get("card_id") in (qw.get("evidence_ids") or [])), {})
-        qw_status = "DO NOW" if (qw.get("investment_status") or "") == "DO_NOW" else "VALIDATE FIRST (owner approval required before publication)"
+    # First 7-Day Win / First 7-Day Preparation Plan — SHARED RULE:
+    #   If at least one action is DO_NOW  -> select the highest-priority eligible DO_NOW
+    #   If zero DO_NOW actions           -> NEVER pick a VALIDATE_FIRST action; render a
+    #        customer-facing "First 7-Day Preparation Plan" with safe, non-publication
+    #        activities only (collect owner/attorney-approved inputs, prepare drafts with
+    #        placeholders, record baselines, confirm boundaries, schedule approver review).
+    _do_now_list = [a for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
+    if _do_now_list:
+        qw = _do_now_list[0]  # highest-priority eligible DO NOW action
         quick = f"""<div class="card"><h4>First 7-Day Win</h4>
-<p><strong>{_esc(qw['action_id'])}</strong> — {_esc(qw.get('recommended_module',''))} <span class="src">[{_esc(qw_status)}]</span></p>
+<p><strong>{_esc(qw['action_id'])}</strong> — {_esc(qw.get('recommended_module',''))} <span class="src">[DO NOW]</span></p>
 <p><strong>Single customer page:</strong> {_esc(qw['primary_url'])}</p>
-<p>Why this is the First 7-Day Win: it is low-risk and reversible, targets a single customer-owned URL, and directly improves the conversion journey for the goal ({_esc(customer.get('business_goal',''))}). See Implementation Brief {_esc((cq.get('card_id') or ''))} for the full brief.</p></div>"""
+<p>Why this is the First 7-Day Win: it is low-risk and reversible, targets a single customer-owned URL, and directly improves the conversion journey for the goal ({_esc(customer.get('business_goal',''))}). See Implementation Brief {_esc(qw['action_id'])} for the full brief.</p></div>"""
     else:
-        quick = ""
+        # Zero DO NOW: a First 7-Day Preparation Plan, never a publishable action.
+        prep_items = []
+        for a in acts:
+            _ap = a.get("owner_approver") or "Owner"
+            _prep = (a.get("roadmap_preparation") or "").strip() or f"prepare the {a.get('action_id')} draft module with approved-copy placeholders"
+            prep_items.append(f"<li><strong>{_esc(a['action_id'])}</strong> ({_esc(_ap)}): {_esc(_prep)}</li>")
+        quick = f"""<div class="card"><h4>First 7-Day Preparation Plan</h4>
+<p>No action is eligible to go live in Days 0-7: every action in this report requires owner/attorney-approved content before publication (all are <span class="src">VALIDATE FIRST</span>). Days 0-7 are used to prepare, not to publish.</p>
+<ul>{''.join(prep_items)}</ul>
+<p><strong>Day 7:</strong> the approver reviews each prepared draft — approves, rejects or requests changes. No public website action is labelled DO NOW until approval exists.</p></div>"""
     # Investment Decision Matrix — read statuses from the single source
     do_now = [a for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
     vf = [a for a in acts if (a.get("investment_status") or "") == "VALIDATE_FIRST"]
@@ -200,6 +209,11 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
 </div>"""
     # ---- CUSTOMER JOURNEY MAP (customer-specific, data-driven) ----
     journey_rows = ""
+    # FAILURE-3: map internal Evidence Card IDs -> customer-facing ACTION IDs (ACT-001..).
+    _c2a = {}
+    for _a in acts:
+        for _cid in (_a.get("evidence_ids") or []):
+            _c2a[_cid] = _a.get("action_id", "ACT-?")
     jd = journey_rows_data or [
         ("Service evaluation", "/screen-printing/", "price/minimum/turnaround clarity missing", "ACT-001", "quote-form submissions / CTA clicks on the screen-printing page"),
         ("Proof / evaluation", "/gallery/", "unlabelled proof, no service mapping", "ACT-003", "gallery-to-quote link clicks"),
@@ -212,6 +226,14 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
             stage, page, friction, aid, sig = (jr.get("stage") or ""), (jr.get("page") or ""), (jr.get("friction") or ""), (jr.get("action") or "—"), (jr.get("first_signal") or "")
         else:
             stage, page, friction, aid, sig = jr
+        # FAILURE-3 FIX: the customer-facing Journey Map must show ACTION IDs (ACT-001..005),
+        # never internal Evidence Card IDs (GB-001..). Map card_id -> action_id here.
+        if aid and not aid.startswith("ACT-"):
+            _mapped = _c2a.get(aid)
+            if _mapped:
+                aid = _mapped
+            else:
+                aid = "ACT-?"  # never expose an internal card ID to the customer
         journey_rows += (f"<tr><td>{_esc(stage)}</td><td>{_esc(page)}</td><td>{_esc(friction)}</td>"
                          f"<td>{_esc(aid)}</td><td>{_esc(sig)}</td></tr>")
     journey_html = f"""<h2>Customer Journey Map</h2>
@@ -224,26 +246,32 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
     r0_parts = []
     r1_parts = []
     r2_parts = []
-    r3_parts = []
     # Days 0-7 — only DO_NOW actions may be live here
     for a in acts:
         if (a.get("investment_status") or "") == "DO_NOW":
-            r0_parts.append(f"ACT-{a['action_id'].replace('ACT-','')} live ({a['action_id']} {a.get('recommended_module','')[:50]}); low-risk, reversible, no owner-approved figures required.")
-    r0 = ("Days 0-7", (" ".join(r0_parts) if r0_parts else "No DO NOW actions eligible for Days 0-7; prepare drafts for the VALIDATE FIRST actions."))
-    # Days 8-30 — collect approvals, prepare drafts, no publication
-    r1_items = []
+            r0_parts.append(f"{a['action_id']} live ({a.get('recommended_module','')}); low-risk, reversible, no owner-approved figures required.")
+    r0 = ("Days 0-7", (" ".join(r0_parts) if r0_parts else "No action is eligible to go live in Days 0-7. Use Days 0-7 to prepare: this report has no DO NOW action because every published module requires owner/attorney-approved content first (see First 7-Day Preparation Plan)."))
+    # Days 8-30 — collect approvals, prepare drafts, record baselines (no publication) —
+    #   rendered ONLY from each action's own business-context fields (roadmap_preparation).
     for a in acts:
         if (a.get("investment_status") or "") == "VALIDATE_FIRST":
             _ap = a.get("owner_approver") or "Owner"
-            r1_items.append(f"{a['action_id']} draft layout prepared; collect owner-approved inputs (approver {_esc(_ap)})")
-    _has_act4 = any(a.get("action_id") == "ACT-004" for a in acts)
-    r1 = ("Days 8-30", "Collect owner-approved policy/process inputs and prepare draft modules: " + "; ".join(r1_items) + f"; record 14-day baselines for all pages." + (" ACT-004: prepare the draft layout AND collect Sales/Operations-approved method-to-project routing rules." if _has_act4 else ""))
-    # Days 31-60 — publish only owner-approved VALIDATE FIRST; DO NOW stays live
-    r2_pub = [f"{a['action_id']} published only after owner approval" for a in acts if (a.get("investment_status") or "") == "VALIDATE_FIRST"]
+            _prep = (a.get("roadmap_preparation") or "").strip()
+            if not _prep:
+                _prep = f"prepare the {a['action_id']} draft module with approved-copy placeholders"
+            r1_parts.append(f"{a['action_id']} ({_ap}): {_prep}")
+    r1 = ("Days 8-30", "Collect owner-approved policy/process inputs and prepare draft modules (no publication yet): " + ("; ".join(r1_parts) if r1_parts else "prepare draft modules.") + "; record 14-day baselines for all pages.")
+    # Days 31-60 — publish only owner-approved VALIDATE FIRST (per action publication_condition);
+    #   DO NOW stays live. Rendered ONLY from each action's own publication_condition field.
+    r2_pub = []
+    for a in acts:
+        if (a.get("investment_status") or "") == "VALIDATE_FIRST":
+            _pc = (a.get("publication_condition") or "").strip()
+            r2_pub.append(f"{a['action_id']}: {_pc}" if _pc else f"{a['action_id']}: published only after {a.get('owner_approver') or 'owner'} approval")
     r2_keep = [f"{a['action_id']} remains live (DO NOW)" for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
-    r2 = ("Days 31-60", "; ".join(r2_pub + r2_keep) + "; measure page CTA/form behaviour." + (" ACT-004: publish ONLY after the method-to-project routing rules are approved; if approval is not provided, retain VALIDATE FIRST and do not route visitors using unapproved business rules." if _has_act4 else ""))
-    # Days 61-90 — measure against baseline, expand only proven pattern
-    r3 = ("Days 61-90", "Measure every page against its 14-day baseline using the action-specific first signal; extend only the proven pattern per the card's quantified scale rule (rate improves vs baseline + lead quality not down + no confusion + owner approval)." + (" ACT-004: measure method-selection completion and homepage-to-service-page clicks against baseline only after the approved module is live." if _has_act4 else "") + " Do not spend on deferred work (paid links, redesign, new store, unbudgeted expansion) unless evidence supports it.")
+    r2 = ("Days 31-60", "; ".join(r2_pub + r2_keep) + "; measure page CTA/form behaviour against baseline after each approved module is live.")
+    # Days 61-90 — measure against baseline, expand only proven pattern (per action scale rule)
+    r3 = ("Days 61-90", "Measure every published page against its 14-day baseline using that action's first signal; extend only a proven pattern per its quantified scale rule (rate improves vs baseline + lead quality not down + no confusion + owner approval). Do not spend on deferred work (paid ads, redesign, unbudgeted expansion) unless evidence supports it.")
     roadmap = f"""<h2>90-Day Execution Roadmap</h2><div class="card">
 <p><strong>{_esc(r0[0])}:</strong> {_esc(r0[1])}</p>
 <p><strong>{_esc(r1[0])}:</strong> {_esc(r1[1])}</p>
@@ -304,7 +332,15 @@ def main():
                     "brunnerlaw": "gate1_brunnerlaw_pages.py"}
     cards_json = _CARDS_FILES.get(_cust, "golden_evidence_cards_appleimprints.json")
     pages_py = _PAGES_FILES.get(_cust, "gate1_appleimprints_pages.py")
-    cards_file = json.load(open(os.path.join(here, cards_json), encoding="utf-8"))
+    # Golden Reference test data lives in tests/fixtures/ (tracked, reproducible); fall back to gates/.
+    _fixtures_dir = os.path.join(here, "..", "tests", "fixtures")
+    _card_path = os.path.join(_fixtures_dir, cards_json)
+    if not os.path.exists(_card_path):
+        _card_path = os.path.join(here, cards_json)
+    _pages_path = os.path.join(_fixtures_dir, pages_py)
+    if not os.path.exists(_pages_path):
+        _pages_path = os.path.join(here, pages_py)
+    cards_file = json.load(open(_card_path, encoding="utf-8"))
     cards = cards_file["golden_evidence_cards"]
     customer = cards_file["customer"]
     journey_rows_data = cards_file.get("customer_journey", [])
@@ -314,7 +350,7 @@ def main():
     _cust_domain = _cust_domain.rstrip("/")
 
     import importlib.util
-    sp = importlib.util.spec_from_file_location("g1p", os.path.join(here, pages_py))
+    sp = importlib.util.spec_from_file_location("g1p", _pages_path)
     g1m = importlib.util.module_from_spec(sp); sp.loader.exec_module(g1m)
     pages = g1m.structured_pages
 
@@ -329,7 +365,7 @@ def main():
     results["GATE2"] = {"valid": len(valid_cards) == len(cards),
                         "cards": [{"id": v["card_id"], "valid": v["valid"], "blank": v["blank_fields"]} for v in g2v]}
     # ---- GATE 3 ----
-    acts = gp.gate3_actions_from_evidence_cards(valid_cards)
+    acts = gp.gate3_actions_from_evidence_cards(valid_cards, customer_context=customer)
     all_single = all(len((a.get("primary_url") or "").split(";")) == 1 for a in acts)
     results["GATE3"] = {"valid": bool(acts) and all_single, "action_count": len(acts)}
     # ---- GATE 4 ----
@@ -359,15 +395,31 @@ def main():
     # immutable investment_status. Block if any VALIDATE_FIRST action gets a publication word.
     import re as _re
     _rstart = html_doc.find("<h2>90-Day Execution Roadmap</h2>")
-    _rm = html_doc[_rstart: _rstart + 1800] if _rstart >= 0 else ""
+    _rend = html_doc.find("<h2>", _rstart + 5) if _rstart >= 0 else -1
+    _rm = html_doc[_rstart: (_rend if _rend > _rstart else _rstart + 8000)]
     _rm_text = _re.sub(r"<[^>]+>", " ", _rm)
-    rm_ok = gp.gate5_check_roadmap_status_consistency(_rm_text, acts)
+    _rm_text_full = _re.sub(r"<[^>]+>", " ", html_doc[_rstart: (_rend if _rend > _rstart else _rstart + 8000)])
+    rm_ok = gp.gate5_check_roadmap_status_consistency(_rm_text_full, acts)
     this_pc = gp.gate5_check_priority_consistency(acts)
+    # FAILURE-2: business-logic context contamination + roadmap action-data consistency on the
+    # FULL rendered document (not just first N chars) — any cross-customer term is a HARD FAIL.
+    _full_html_text = _re.sub(r"<[^>]+>", " ", html_doc)
+    _blc = gp.gate5_check_business_logic_contamination(_full_html_text, acts, customer_context=customer)
+    _radc = gp.gate5_check_roadmap_action_data_consistency(_rm_text, acts)
+    _blk_causes = []
     if not rm_ok["consistent"] or not this_pc.get("consistent"):
-        print(json.dumps({"overall": "DELIVERY_BLOCKED",
-                          "reason": "PRIORITY_CONSISTENCY_FAIL: " + "; ".join(rm_ok["issues"] or []) + (";" if rm_ok["issues"] else "") + str(this_pc.get("conflict", ""))}, indent=1))
+        _blk_causes.append("PRIORITY_CONSISTENCY_FAIL: " + "; ".join(rm_ok["issues"] or []) + (str(this_pc.get("conflict", "")) if this_pc.get("conflict") else ""))
+    if _blc.get("contamination"):
+        _blk_causes.append("BUSINESS_LOGIC_CONTEXT_CONTAMINATION: " + "; ".join(_blc["terms_found"]))
+    if not _radc.get("consistent"):
+        _blk_causes.append("ROADMAP_ACTION_DATA_MISMATCH: " + "; ".join(_radc["issues"]))
+    if _blk_causes:
+        print(json.dumps({"overall": "DELIVERY_BLOCKED", "reason": " | ".join(_blk_causes),
+                          "business_logic": _blc, "roadmap_action_data": _radc}, indent=1))
         return
     results["GATE5_ROADMAP_STATUS_CHECK"] = {"consistent": rm_ok["consistent"], "issues": rm_ok["issues"], "checked": rm_ok["checks"]}
+    results["GATE5_BUSINESS_LOGIC_CHECK"] = _blc
+    results["GATE5_ROADMAP_ACTION_DATA_CHECK"] = _radc
     _company_slug = re.sub(r"[^A-Za-z0-9]+", "-", (customer.get("company") or "Report").strip()).strip("-")
     _stamp = "2026-09-13"
     html_path = os.path.join(out_dir, f"SEO-Opportunity-Diagnostic-{_company_slug}-{_stamp}-5gate.html")
@@ -507,6 +559,10 @@ def main():
     has_roadmap = "90-Day Execution Roadmap" in visible
     role_owned = all(a.get("owner_approver") and a.get("owner_content") and a.get("owner_publisher_qa") for a in acts)
     _do_now_ids = [a.get("action_id") for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
+    # FAILURE-1: zero DO_NOW + a VALIDATE_FIRST labelled First 7-Day Win = invalid. Correct
+    # all-VALIDATE_FIRST report renders a "First 7-Day Preparation Plan" instead.
+    _invalid_f7 = bool(not _do_now_ids and "First 7-Day Win" in visible)
+    _has_prep_plan = "First 7-Day Preparation Plan" in visible
     _pri_note = ("no priority ambiguity (each action's status renders from the single investment_status source; all VALIDATE FIRST need owner approval)" +
                  (f", with {', '.join(_do_now_ids)} as DO NOW" if _do_now_ids else ", and no action is DO NOW because every published module needs owner confirmation"))
     q["commercial_priority_quality"] = _q("commercial_priority_quality", 15, [
@@ -514,8 +570,10 @@ def main():
         4 if pri_ambig else 0,
         2 if not has_journey else 0,
         2 if not has_roadmap else 0,
-        1 if not role_owned else 0],
-        f"5 actions with {_pri_note}, plus Customer Journey Map, 90-Day Roadmap and role-level ownership present")
+        1 if not role_owned else 0,
+        4 if _invalid_f7 else 0,
+        2 if (not _do_now_ids and not _has_prep_plan) else 0],
+        f"5 actions with {_pri_note}; when no DO NOW exists a 'First 7-Day Preparation Plan' (never a VALIDATE FIRST win) is used; plus Customer Journey Map, 90-Day Roadmap and role-level ownership present")
     # (5) ACTION EXECUTABILITY 15 — action-specific measurement, quantified scale rule, full brief,
     #     external accept, no rejected actions, no overlapping scope
     generic_sig = [a for a in acts if (a.get("first_signal") or "").lower() in ("", "n/a", "cta clicks", "clicks")
@@ -534,11 +592,15 @@ def main():
         1 if g4["rejected_findings"] else 0],
         "every action has an action-specific first signal and a quantified scale rule (baseline-compared, no undefined 'two review points'), a full implementation brief, is accepted by the independent external auditor, and none was rejected")
     # (6) PDF CUSTOMER READINESS 20 — GATE5 clean + action-specific signals rendered + no template language
+    # FAILURE-3: internal Evidence Card IDs (GB-/EC-) are allowed ONLY in the non-customer-facing
+    # Source / Evidence Appendix. Check the customer-facing text BEFORE that heading.
+    _cust_visible = visible.split("Source / Evidence Appendix")[0]
     q["pdf_customer_readiness"] = _q("pdf_customer_readiness", 20, [
         10 if not (scan["clean"] and not scan["hard_fails"] and visible and _owned in visible_l) else 0,
         5 if "Founding finding" in visible or "Founding decision" in visible else 0,  # template defect
-        5 if any(lab not in visible for lab in ["First measurable signal", "Scale rule"]) else 0],
-        "GATE5 scan is clean with no internal path/file-URI/placeholder/secret/order-ID, the rendered PDF uses customer-facing 'Finding N' (no 'Founding finding' template defect), and the action-specific signals and scale rules are present in the visible text")
+        5 if any(lab not in visible for lab in ["First measurable signal", "Scale rule"]) else 0,
+        6 if re.search(r"\b(?:GB|EC)-\d{3}\b", _cust_visible) else 0],  # FAILURE-3: no internal Evidence Card IDs in customer-facing text (appendix allowed)
+        "GATE5 scan is clean with no internal path/file-URI/placeholder/secret/order-ID; the rendered PDF uses customer-facing 'Finding N' (no 'Founding finding'), has no internal Evidence Card IDs (GB-/EC-) in the customer-visible text (source appendix excluded), and the action-specific signals and scale rules are present")
     qual_total = round(sum(v["points"] for v in q.values()), 1)
     qual_notes = {
         "action_count": len(acts),

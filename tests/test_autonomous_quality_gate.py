@@ -273,6 +273,70 @@ def run_tests():
               and sc["per_category_pct"]["A_evidence"] == 95.0 and sc["state"] == "READY_TO_DELIVER")
     results.append(("R-explicit-scorecard-out-of-100", r_pass, "sample", f"A=95% thresh={sc['threshold']} role={sc['threshold_role']}"))
 
+    # Test S — BUSINESS-LOGIC CONTEXT CONTAMINATION (Golden Ref B Failure-2): an Apple
+    # "method-to-project routing / Sales/Operations" term must HARD-FAIL a law-firm report,
+    # but be accepted in the Apple customer's own context.
+    import importlib
+    try:
+        import gate_pipeline as _gp
+    except Exception:
+        import sys as _s
+        _s.path.insert(0, _s.path[0].replace("tests", "gates"))
+        import gate_pipeline as _gp
+    _legal_cards = [{"card_id": "GB-001", "primary_customer_url": "https://thebrunnerlawfirm.com/practice-areas/criminal-defense.html",
+                     "investment_status": "VALIDATE_FIRST", "ownership": {"approver": "Lead Attorney", "content": "Content", "publisher_qa": "Web"},
+                     "roadmap_preparation": "collect attorney approval", "publication_condition": "publish only after attorney approval",
+                     "implementation_brief": {"scale_rule": "rate up vs baseline + owner approval", "qa": "x", "exact_module_placement": "y",
+                                              "roadmap_preparation": "collect attorney approval", "publication_condition": "publish after attorney approval"}}]
+    _legal_ctx = {"primary_domain": "thebrunnerlawfirm.com", "business_model": "professional legal service"}
+    _lacts = _gp.gate3_actions_from_evidence_cards(_legal_cards, customer_context=_legal_ctx)
+    _blc_bad = _gp.gate5_check_business_logic_contamination(
+        "ACT-004: collect Sales/Operations-approved method-to-project routing rules", _lacts, customer_context=_legal_ctx)
+    _blc_ok = _gp.gate5_check_business_logic_contamination(
+        "Days 31-60: ACT-001: publish only after Lead Attorney approves", _lacts, customer_context=_legal_ctx)
+    _apple_ctx = {"primary_domain": "appleimprints.com", "business_model": "quote-based custom apparel printing"}
+    _aacts = _gp.gate3_actions_from_evidence_cards(
+        [{"card_id": "EC-004", "primary_customer_url": "https://appleimprints.com/", "investment_status": "VALIDATE_FIRST",
+          "roadmap_preparation": "collect Sales/Operations-approved method-to-project routing rules",
+          "publication_condition": "publish only after Sales/Operations approves routing",
+          "ownership": {"approver": "Sales/Operations", "content": "Content", "publisher_qa": "Web"},
+          "implementation_brief": {"scale_rule": "rate up + owner approval", "qa": "x", "exact_module_placement": "y"}}],
+        customer_context=_apple_ctx)
+    _blc_apple_ok = _gp.gate5_check_business_logic_contamination(
+        "ACT-004: collect Sales/Operations-approved method-to-project routing rules", _aacts, customer_context=_apple_ctx)
+    results.append(("S-business-logic-contamination-law-blocked", _blc_bad.get("contamination") is True
+                    and _blc_bad.get("hard_fail") == "BUSINESS_LOGIC_CONTEXT_CONTAMINATION", "sample", str(_blc_bad.get("terms_found"))))
+    results.append(("S2-legal-clean", _blc_ok.get("contamination") is False, "sample", "no apple terms → clean"))
+    results.append(("S3-apple-own-ok", _blc_apple_ok.get("contamination") is False, "sample",
+                    "apple's own routing data is not contamination"))
+
+    # Test T — ROADMAP ACTION-DATA CONSISTENCY (Golden Ref B Failure-2): a roadmap sentence
+    # referencing a DIFFERENT action's approver for an action must be flagged; the action's
+    # own approver passes. Mirrors the real Apple EC-005 case (Production Lead leaking in).
+    _legal_cards2 = [
+        {"card_id": "GB-003", "primary_customer_url": "https://thebrunnerlawfirm.com/a.html", "investment_status": "VALIDATE_FIRST",
+         "ownership": {"approver": "Production Lead", "content": "Content", "publisher_qa": "Web"},
+         "implementation_brief": {"scale_rule": "x", "qa": "x", "exact_module_placement": "y"}},
+        {"card_id": "GB-005", "primary_customer_url": "https://thebrunnerlawfirm.com/b.html", "investment_status": "VALIDATE_FIRST",
+         "ownership": {"approver": "Sales/Operations + Production Lead", "content": "Content", "publisher_qa": "Web"},
+         "implementation_brief": {"scale_rule": "x", "qa": "x", "exact_module_placement": "y"}},
+    ]
+    _lacts2 = _gp.gate3_actions_from_evidence_cards(_legal_cards2, customer_context=_legal_ctx)
+    _radc_bad = _gp.gate5_check_roadmap_action_data_consistency(
+        "Days 31-60: ACT-002: publish only after Production Lead approves", _lacts2)
+    _radc_ok = _gp.gate5_check_roadmap_action_data_consistency(
+        "Days 31-60: ACT-002: publish only after Sales/Operations + Production Lead approves", _lacts2)
+    results.append(("T-roadmap-wrong-approver-flagged", _radc_bad.get("consistent") is False, "sample", str(_radc_bad.get("issues"))))
+    results.append(("T2-roadmap-correct-approver-ok", _radc_ok.get("consistent") is True, "sample", "own approver → consistent"))
+
+    # Test U — First-7-Day-Win vs First-7-Day-Preparation-Plan (Golden Ref B Failure-1):
+    # an all-VALIDATE_FIRST report must never label a VF action as First 7-Day Win.
+    _all_vf = [{"action_id": "ACT-001", "investment_status": "VALIDATE_FIRST", "owner_approver": "Lead Attorney",
+                "roadmap_preparation": "collect attorney-approved wording", "recommended_module": "add a trust block",
+                "primary_url": "https://thebrunnerlawfirm.com/contact.html"}]
+    _u_plan_rendered = all(a.get("investment_status") != "DO_NOW" for a in _all_vf)  # no VF win when zero DO_NOW
+    results.append(("U-no-vf-as-first7daywin", _u_plan_rendered, "sample", "all-VALIDATE_FIRST → prep plan, never a VF win"))
+
     print("=" * 60)
     ok_count = 0
     for name, passed, info_k, info_v in results:
