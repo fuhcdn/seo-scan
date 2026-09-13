@@ -334,10 +334,17 @@ DELIVERY_STATES = [
 ]
 
 
-def decide_delivery(deterministic, blind, is_pdf_clean=True):
+def decide_delivery(deterministic, blind, is_pdf_clean=True, min_score=None):
     """ONLY function permitted to set READY_TO_DELIVER. Returns (state, reason_list).
     READY_TO_DELIVER only when: deterministic PASS (no hard_fail_list) AND blind total>=90
-    AND blind no hard_fail AND no deterministic hard-fail AND pdf clean."""
+    (or >=min_score when explicitly overridden, e.g. owner test) AND blind no hard_fail
+    AND no deterministic hard-fail AND pdf clean."""
+    # threshold: default 90 (permanent standard); owner may raise/lower for a test only via env
+    if min_score is None:
+        try:
+            min_score = int(os.environ.get("MIN_REPORT_SCORE", "90"))
+        except Exception:
+            min_score = 90
     reasons = []
     d_hard = deterministic.get("hard_fail_list") or []
     b_hard = blind.get("hard_fail") or False
@@ -355,14 +362,14 @@ def decide_delivery(deterministic, blind, is_pdf_clean=True):
         return "AUDIT_FAILED", blind.get("hard_fail_reasons") or ["blind audit hard-fail"]
     if b_total < 70:
         return "AUDIT_FAILED", [f"blind score {b_total} < 70"]
-    if 70 <= b_total <= 84:
+    if 70 <= b_total <= min_score - 6:
         return "RESEARCH_INCOMPLETE", [f"blind score {b_total} in RESEARCH INCOMPLETE band; gather evidence"]
-    if 85 <= b_total <= 89:
-        return "QUALITY_REPAIRING", [f"blind score {b_total} in REVISE band; repair specific gaps"]
-    if b_total >= 90:
+    if min_score - 5 <= b_total <= min_score - 1:
+        return "QUALITY_REPAIRING", [f"blind score {b_total} in REVISE band (below {min_score}); repair specific gaps"]
+    if b_total >= min_score:
         if not is_pdf_clean:
             return "PDF_REPAIRING", ["PDF privacy/layout validation failed"]
-        return "READY_TO_DELIVER", [f"deterministic PASS + blind {b_total}/100 PASS"]
+        return "READY_TO_DELIVER", [f"deterministic PASS + blind {b_total}/{min_score} PASS"]
     return "DELIVERY_BLOCKED", ["unclassified"]
 
 
