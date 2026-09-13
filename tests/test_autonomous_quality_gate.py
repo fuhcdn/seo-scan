@@ -186,6 +186,24 @@ def run_tests():
     i_pass = leak_path > 0 and len(leak_terms) > 0
     results.append(("I-post-render-leakage-blocked", i_pass, "path_terms", (leak_path, leak_terms)))
 
+    # ---- Test J: business-model mismatch — quote path for ecommerce (buy) must be rejected ----
+    _fit_ok, _fit_note = AG.evaluate_business_model_fit if hasattr(AG, "evaluate_business_model_fit") else (True, "n/a")
+    # direct unit of the helper from quality_gate
+    import quality_gate as QG
+    _j_fit, _j_note = QG.business_model_fit("Add a quote request form", "customer compares cost",
+                                            "shop", "buy", "UK")
+    j_pass = (_j_fit is False)
+    results.append(("J-business-model-mismatch-rejected", j_pass, "fit_note", _j_note))
+
+    # ---- Test K: generic-action failure — catch generic advice without a specific observed gap ----
+    # generic actions must not pass the action rationale check (vetted by blind/deterministic generic counts)
+    res_k = mk_research(npages=8, nserp_valid=5, ncomp=3)
+    acts_k = mk_actions(5)
+    acts_k[0]["title"] = "Improve content"
+    det_k = AG.deterministic_validate(res_k, mk_findings(3), acts_k, "ENTRY_REPORT", mk_order(), doc_text="clean")
+    k_generic = det_k.get("generic_action_count", 0) > 0
+    results.append(("K-generic-action-flagged", k_generic, "generic_action_count", det_k.get("generic_action_count")))
+
     print("=" * 60)
     ok_count = 0
     for name, passed, info_k, info_v in results:

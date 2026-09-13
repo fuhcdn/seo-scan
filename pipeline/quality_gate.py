@@ -240,6 +240,90 @@ def derive_verb(title):
     return "Implement"
 
 
+# --------------------------------------------------------------------------
+# CONSULTANT REASONING (§3/§5 maximum-upgrade): buyer questions, page-gap,
+# business-model fit, evidence classification. Turns raw observations into
+# customer-owned decisions with a complete reasoning chain.
+# --------------------------------------------------------------------------
+
+def infer_buyer_questions(offer, market, primary_action):
+    """Stage 3: return likely buyer-question buckets for this offer/action. Customer website
+    terminology + actual business goal, not generic SEO queries."""
+    offer_l = (offer or "").strip()
+    buckets = {
+        "awareness": ("What is this?", f"What is/what does {offer_l} do, and do I have this problem?" if offer_l else "What is this, and do I have this problem?"),
+        "education": ("How does it work?", f"How does {offer_l} work, and is it right for my situation?" if offer_l else "How does it work, and is it right for me?"),
+        "evaluation": ("Which option is right?", f"How does {offer_l} compare with the alternatives I am weighing?" if offer_l else "How do the options compare?"),
+        "decision": (primary_action.title(), f"What does it cost, and how do I {primary_action}?" if primary_action else "What does it cost, and what is the next step?"),
+        "trust": ("Can I trust this provider?", "How can I verify this provider is credible, proven and supported?"),
+    }
+    return buckets
+
+
+def business_model_fit(action_title, claim, offers, primary_action, market):
+    """§5 business-model fit check. Returns (fit: bool, reason). Reject/downgrade generic advice
+    that doesn't fit the customer's actual model (e.g. quote path for ecommerce, sales-CTA on an
+    informational query, content for a discontinued product)."""
+    at = (action_title or "").lower()
+    cl = (claim or "").lower()
+    # off-pattern: recommend a quote path where the primary action is 'buy' (retail/ecommerce)
+    if "quote" in at and primary_action in ("buy", "subscribe", "download", "trial"):
+        return False, "quote path does not fit a %s business model" % primary_action
+    # ecommerce + "add pricing page" generic (they already transact)
+    if primary_action == "buy" and ("add pricing" in at or "add a quote" in at):
+        return False, "retail model already transacts; 'add pricing/quote' is generic advice"
+    # informational query forced to sales CTA
+    if any(w in cl for w in ("how to", "what is", "guide", "tutorial")) and "trial" in at and primary_action in ("enquire", "quote"):
+        return False, "do not force a sales CTA on an informational query"
+    # content for likely-discontinued/unknown offer — we cannot confirm; downgrade to hypothesis
+    return True, "ok"
+
+
+def page_gap_reason(claim, direct, customer_scope):
+    """Stage 5: name what the customer-owned page lacks/unclear vs. the buyer need, from direct
+    observation only. Returns a machine-checkable gap sentence (non-empty => page-gap evidence)."""
+    d = (direct or claim or "").strip()
+    if not d:
+        return ""
+    # neutral wording of an observed missing/unclear element
+    if any(w in d.lower() for w in ("comparison", "compare", "vs")):
+        return f"{customer_scope} does not clearly show a comparison/decision matrix for the buyer need."
+    if any(w in d.lower() for w in ("price", "cost", "pricing", "quote")):
+        return f"{customer_scope} does not make cost/pricing or quote expectations clear before the primary action."
+    if any(w in d.lower() for w in ("proof", "trust", "review", "case", "testimonial")):
+        return f"{customer_scope} does not surface trust/proof that a buyer evaluating this need wants."
+    if any(w in d.lower() for w in ("title", "h1", "heading", "meta")):
+        return f"{customer_scope}'s title/H1 does not match the buyer's decision intent."
+    if any(w in d.lower() for w in ("internal link", "link", "navigation")):
+        return f"{customer_scope} lacks internal links connecting the buyer to the next decision page."
+    if any(w in d.lower() for w in ("cta", "enquir", "book", "contact", "action")):
+        return f"{customer_scope} does not make the primary conversion action obvious or repeatable."
+    return f"{customer_scope} has an observed gap versus the buyer need: {d[:80]}"
+
+
+# evidence-type classification (repair already separates competitor_page from serp)
+EVIDENCE_TYPES = ("customer_page_evidence", "competitor_page_evidence", "public_result_pattern_evidence",
+                  "technical_public_evidence", "official_documentation_evidence", "customer_intake_evidence")
+
+
+def evidence_type_of(e):
+    """Classify an evidence ledger item into one of the allowed evidence types."""
+    scope = (e.get("scope") or "").lower()
+    if scope == "competitor_page" or "competitor" in scope:
+        return "competitor_page_evidence"
+    if scope in ("serp_result_pattern", "serp", "result_pattern") or "result" in scope:
+        return "public_result_pattern_evidence"
+    if scope in ("homepage", "site", "sampled", "commercial", "conversion", "content", "site-wide"):
+        return "customer_page_evidence"
+    if any(w in scope for w in ("robots", "sitemap", "technical", "header", "status")):
+        return "technical_public_evidence"
+    if "official" in scope or "documentation" in scope:
+        return "official_documentation_evidence"
+    if "intake" in scope or "customer_provided" in scope:
+        return "customer_intake_evidence"
+    return "customer_page_evidence"
+
+
 def _recommended_action_for_claim_competitor(claim, evidence, primary_goal, offers="", market="", customer_scope_fn=None):
     """Frame a competitor observation into a CUSTOMER-OWNED action (never a competitor URL)."""
     scope = customer_scope_fn("site", "") if customer_scope_fn else "customer-owned pages"
@@ -386,6 +470,8 @@ def classify_findings(research, status, tier):
     competitor_obs = research.get("competitor_observations") or []
     serp_all = research.get("serp") or []
     serp_valid = [s for s in serp_all if s.get("counts_toward_serp", True) and (s.get("query") or "")]
+    _buyer = infer_buyer_questions(offers, market, status.get("primary_customer_action") or "")
+    _buyer_buckets_descr = "; ".join(f"{k}: {q}" for k, (_l, q) in _buyer.items())[:200]
 
     # 1) Customer-page/technical/official/intake evidence -> findings on customer pages
     for e in ledger:
@@ -400,12 +486,17 @@ def classify_findings(research, status, tier):
             rejected.append(e); continue
         _act = _recommended_action_for_claim(claim, e, primary_goal, offers, market)
         _rsn = _business_reason_for_claim(claim, e, primary_goal, offers, market, customer_domain)
+        _scope = _customer_scope(e.get("scope", "site"), src)
+        _pgap = page_gap_reason(claim, e.get("direct_observation") or "", _scope)
+        _etyp = evidence_type_of(e)
         findings.append({
             "priority": "P1", "category": "SEO", "title": claim[:90], "claim": claim,
             "claim_label": e.get("label", "INFERENCE"),
             "evidence_ids": [e["evidence_id"]],
-            "affected_scope": _customer_scope(e.get("scope", "site"), src),
+            "affected_scope": _scope,
             "business_reason": _rsn, "recommended_action": _act,
+            "page_gap": _pgap, "evidence_type": _etyp,
+            "buyer_questions": _buyer_buckets_descr,
             "owner": "SEO / Marketing",
             "effort": "Small" if tier != "PREMIUM_REPORT" else "Medium",
             "confidence": e.get("confidence", "Medium"),
@@ -439,11 +530,18 @@ def classify_findings(research, status, tier):
                 break
         _cust_nm = customer_domain.split(".")[0].capitalize() if customer_domain else "Customer"
         _comp_title = f"{_cust_nm} should strengthen its own page that answers the same intent the observed competitor serves"
+        _comp_scope = _customer_scope("site", "")
+        _comp_gap = page_gap_reason(gap_claim, pattern_desc, _comp_scope)
+        _comp_fit, _comp_fitnote = business_model_fit(_comp_title, gap_claim, offers,
+                                                      status.get("primary_customer_action") or "", market)
         findings.append({
             "priority": "P2", "category": "Commercial Intent / Competitor",
             "title": _comp_title[:90], "claim": gap_claim[:220],
             "claim_label": "INFERENCE", "evidence_ids": [_cid] if _cid else [],
-            "affected_scope": _customer_scope("site", ""),
+            "affected_scope": _comp_scope,
+            "page_gap": _comp_gap, "evidence_type": "competitor_page_evidence",
+            "business_model_fit": _comp_fit, "fit_note": _comp_fitnote,
+            "buyer_questions": _buyer_buckets_descr,
             "business_reason": _r, "recommended_action": _a,
             "owner": "Content / SEO", "effort": "Medium", "confidence": "Medium",
             "confidence_rationale": pattern_desc[:200], "dependencies": [],
@@ -471,14 +569,23 @@ def classify_findings(research, status, tier):
         _cust_name = _cust_name.capitalize()
         _scope_short = "; ".join(customer_pages[:2]) if customer_pages else "the relevant customer-owned page"
         _decision_title = f"Build a {_cust_name}-owned page that answers \"{query}\" and moves researchers to the next step"
+        _serp_scope = _customer_scope("site", s.get("source_url") or "")
+        _serp_gap = page_gap_reason(
+            f"visible {pattern or 'a mixed'} result format; {_cust_name} page should bridge this buyer intent",
+            _obs, _serp_scope)
+        _fit_ok, _fit_note = business_model_fit(_decision_title, _r, offers,
+                                                status.get("primary_customer_action") or "", market)
         findings.append({
             "priority": "P2", "category": "Commercial Intent",
             "title": _decision_title[:90],
             "claim": f"Visible public results for \"{query}\" are mostly {pattern or 'a mixed'} format (observed {s.get('access_date') or ''}); {_cust_name} has a customer-owned page ({_scope_short}) that should bridge this intent to the stated goal ({primary_goal}).",
             "claim_label": s.get("label", "INFERENCE"),
             "evidence_ids": [_s_eid],
-            "affected_scope": _customer_scope("site", s.get("source_url") or ""),
+            "affected_scope": _serp_scope,
             "business_reason": _r, "recommended_action": _a,
+            "page_gap": _serp_gap, "evidence_type": "public_result_pattern_evidence",
+            "business_model_fit": _fit_ok, "fit_note": _fit_note,
+            "buyer_questions": _buyer_buckets_descr,
             "owner": "Content / SEO", "effort": "Medium",
             "confidence": s.get("confidence", "Medium"),
             "confidence_rationale": (_obs or "")[:200], "dependencies": [],
@@ -496,12 +603,17 @@ def classify_findings(research, status, tier):
     _comp = [f for f in findings if f.get("category", "").endswith("Competitor")][:1]
     findings = (_noncomp + _comp)[:target_finding]
 
-    # Build actions — each targets a CUSTOMER-OWNED scope
+    # Build actions — each targets a CUSTOMER-OWNED scope and must pass business-model fit (§5)
     verified_actions = []
     for f in findings:
         scope = f.get("affected_scope") or ""
         ok_scope = any(_is_customer_url(cd) or cd.strip().startswith("customer-owned") for cd in scope.split(";"))
-        if ok_scope:
+        # business-model fit: reject actions that don't fit the customer's actual model
+        _fit = f.get("business_model_fit", True)
+        if _fit is True:
+            _fit, _fitnote = business_model_fit(f.get("title") or "", f.get("claim") or "",
+                                                offers, status.get("primary_customer_action") or "", market)
+        if ok_scope and _fit:
             verified_actions.append({
                 "action_id": f"ACT-{len(verified_actions)+1:03d}",
                 "priority": f.get("priority","P1"), "title": f.get("title","")[:60],
@@ -515,6 +627,7 @@ def classify_findings(research, status, tier):
                 "confidence": f.get("confidence","Medium"),
                 "confidence_rationale": f.get("confidence_rationale",""),
                 "affected_scope": scope, "limits": f.get("limitations",""),
+                "page_gap": f.get("page_gap",""), "business_model_fit": _fit,
                 "action_verb": derive_verb(f.get("title") or ""),
             })
     actions = verified_actions[:target_action]

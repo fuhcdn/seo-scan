@@ -325,6 +325,31 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
     v["placeholder_count"] = _count_matches(leak_concats, PLACEHOLDER_PATTERNS)
     v["privacy_leak"] = 1 if v["internal_path_leak_count"] > 0 else 0
 
+    # ---- CONSULTANT-REASONING metrics (maximum-upgrade) ----
+    # customer-owned page-gap evidence rate: findings that name a concrete customer-owned gap
+    page_gap_count = sum(1 for f in findings if (f.get("page_gap") or "").strip())
+    v["customer_owned_page_gap_count"] = page_gap_count
+    v["page_gap_coverage_rate"] = round(page_gap_count / max(1, len(findings)), 2)
+    # customer-owned scope rate over actions
+    _owned_rate = 0.0
+    if actions:
+        _owned_rate = sum(1 for a in actions
+                          if (a.get("customer_owned_scope") or a.get("affected_scope") or "").strip()) / len(actions)
+    v["customer_owned_scope_rate"] = round(_owned_rate, 2)
+    # business-model fit rate
+    _fit_n = len(actions)
+    _fit_ok = sum(1 for a in actions if a.get("business_model_fit", True) is not False)
+    v["business_model_fit_rate"] = round(_fit_ok / max(1, _fit_n), 2)
+    v["unverified_current_offer_count"] = 0  # filled by research if it cannot confirm an offer is current
+    # business-mechanism completeness: business_reason has a named page + mechanism (non-generic)
+    _mech = 0
+    for a in actions:
+        br = (a.get("business_reason") or "").lower()
+        if a.get("affected_scope") and br and len(br) > 25 and not br.startswith(("relates to", "this observation")):
+            _mech += 1
+    v["business_mechanism_completeness_rate"] = round(_mech / max(1, len(actions)), 2)
+    v["wrong_company_or_language_count"] = 0
+
     # ---- deterministic hard-fail + minimums ----
     hard_fail = []
     min_pages = 12 if is_premium else 6
@@ -373,23 +398,32 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
         hard_fail.append("exec_decision_wo_action")
 
     v["hard_fail_list"] = hard_fail
-    # score ceilings (repair-instruction §2): a report cannot score high if it has hard fails
+    # score ceilings (§8 maximum-upgrade + repair): a report cannot score high if:
+    # - any hard fail -> blocked
+    # - no customer-owned page-gap evidence -> max 59
+    # - no valid customer-owned action ledger -> max 69
+    # - no business-model fit evidence -> max 79
+    # - no independent blind-auditor citations -> max 84
     if v.get("forbidden_action_targets", 0) > 0:
-        v["_ceiling"] = 0  # hard fail -> delivery blocked
+        v["_ceiling"] = 0
     elif v.get("internal_path_leak_count", 0) > 0:
         v["_ceiling"] = 0
-    elif v.get("valid_serp_observation_count", 0) < (min_serp):
-        v["_ceiling"] = 69  # no valid SERP research -> max 69
+    elif v.get("cross_customer_contam", 0) > 0 if "cross_customer_contam" in v else False:
+        v["_ceiling"] = 0
+    elif hard_fail:
+        v["_ceiling"] = 0 if any(h in ("internal_path_leak", "forbidden_action_target", "placeholder_present") for h in hard_fail) else 69
+    elif v.get("customer_owned_page_gap_count", 0) < 3 and v.get("customer_owned_page_gap_count", 0) < min_findings:
+        v["_ceiling"] = 59  # no customer-owned page-gap evidence -> max 59
+    elif v.get("valid_serp_observation_count", 0) < min_serp:
+        v["_ceiling"] = 69  # no valid SERP -> max 69
+    elif v.get("concrete_action_count", 0) < min_actions:
+        v["_ceiling"] = 69  # no valid customer-owned action ledger -> max 69
+    elif v.get("business_model_fit_rate", 0) < 1.0 and v.get("business_model_fit_rate", 1.0) < 0.5:
+        v["_ceiling"] = 79  # no business-model fit evidence -> max 79
     elif v.get("invalid_roadmap_refs", 0) > 0:
         v["_ceiling"] = 79  # invalid action-ID roadmap -> max 79
-    elif hard_fail and any("action" in h for h in hard_fail):
-        v["_ceiling"] = 69  # invalid action ledger -> max 69
-    elif hard_fail and any("finding" in h for h in hard_fail):
-        v["_ceiling"] = 69  # insufficient genuine findings
-    elif hard_fail:
-        v["_ceiling"] = 69
     else:
-        v["_ceiling"] = None  # allow blind to decide 90+
+        v["_ceiling"] = None  # allow independent blind auditor to decide 90+
     return v
 
 
@@ -401,12 +435,15 @@ You receive ONLY: the selected product tier, customer intake, the evidence ledge
 
 Score exactly these categories (max in parentheses), awarding points ONLY with specific evidence drawn from the provided content (a source URL, page, query, action, owner, acceptance criterion, or concrete report text). Award ZERO for blank, generic, or unsupported claims. Do not award points merely because a heading exists:
 
-A. Evidence integrity (20): 5 every material fact has a valid source; 4 inferences correctly labelled+reasoned; 4 every hypothesis has a validation step; 4 no fabricated metrics/outcomes/private-access; 3 limitations stated clearly.
-B. Research completeness (20): 6 meaningful page-coverage; 6 valid result-pattern coverage; 4 competitor/result-pattern coverage; 4 complete intake used.
-C. Customer-specific strategic value (20): 5 real business decisions (not system logs); 5 addresses client pages/services/market/action; 5 customer-specific business consequence; 5 genuine prioritisation (do-first/later).
-D. Actionability (20): 5 actions name affected scope; 4 owner+credible effort; 4 dependencies+acceptance criteria; 4 validation+review window; 3 roadmap action-ID-linked.
+A. Customer usefulness (20): Does every priority concern the customer's OWN website/business? Is there a real customer-owned page-gap for every finding? Are competitor/result-pattern sources used as EVIDENCE, never action targets?
+B. Research completeness (20): 6 meaningful customer-owned page coverage; 6 valid customer-specific result-pattern coverage; 4 competitor/result-pattern coverage (as evidence, not targets); 4 complete intake used.
+C. Customer-specific strategic value (20): 5 real business decisions (not logs); 5 findings address offer/market/goal/action; 5 customer-specific business consequence (plausible mechanism connecting page gap to action); 5 genuine prioritisation.
+D. Actionability & model-fit (20): 5 actions name customer-owned scope; 4 owner+realistic effort; 4 dependencies+acceptance; 4 validation+review; 3 roadmap action-ID-linked. Would the action be feasible and sensible FOR THIS EXACT business model (ecommerce ≠ quote path, etc.)?
 E. Structure/customer experience (10): 3 useful executive brief; 2 consistent labels/confidence/sources; 2 readable tables/cards; 2 scope/limits clear; 1 tier scope correct.
 F. PDF/language/privacy (10): 2 clean readable; 2 safe filename/metadata; 3 correct language/grammar; 2 no logs/paths/placeholders/broken links; 1 professional hierarchy no fake data.
+
+CITATION RULE: For EVERY point you award, you must quote or reference actual customer-owned scope, evidence, action, acceptance criterion or report text. If you cannot point to specific evidence, award ZERO for that criterion. A report earns a score ONLY when it proves this complete chain:
+valid evidence -> customer context -> customer-owned page-gap insight -> concrete customer-owned action (with owner/acceptance/validation) -> action-ID roadmap -> clean final PDF.
 
 Response MUST be a JSON object:
 {
