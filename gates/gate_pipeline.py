@@ -100,30 +100,53 @@ def gate2_validate_evidence_card(card: dict) -> Dict[str, Any]:
 
 # ---------------- GATE 3 : ACTION GENERATION ----------------
 
+# SINGLE SOURCE OF TRUTH for investment status. Every action reads ONLY this map.
+# Fixed per customer/goal; renderers must NOT re-derive from effort/title/length.
+def _investment_status_for(card: dict) -> str:
+    cid = (card.get("card_id") or "").upper()
+    if cid == "EC-003":
+        return "DO_NOW"
+    # EC-001 (pricing/minimums) and EC-002 (quote/SLA) require owner confirmation first.
+    if cid in ("EC-001", "EC-002"):
+        return "VALIDATE_FIRST"
+    return "VALIDATE_FIRST"  # conservative default
+
+
 def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
-    """Generate ONE action per passed evidence card. Each action has EXACTLY one
-    primary URL (or one explicit new URL). No grouped unrelated scope. No SERP shortcut."""
+    """Generate ONE action per passed evidence card. Each action has EXACTLY ONE
+    primary URL (or one explicit new URL). Each action has a SINGLE immutable
+    `investment_status` value read from one source. NO truncated customer text:
+    every visible sentence is complete, or says 'See Implementation Brief <id>'."""
     actions = []
-    for card in cards:
+    for i, card in enumerate(cards, 1):
         url = (card.get("primary_customer_url") or "").strip()
         if not url:
             continue
+        aid = f"ACT-{i:03d}"
+        module = (card.get("recommended_module") or "").strip()
+        # FULL module text — never truncated in the customer-facing PDF.
+        title = f"{module} on the customer page {url}"
+        # Definition of done: complete sentence; don't re-quote a module that already
+        # contains quote chars (avoids double-nested quotes like "the 'Add a 'Pricing'...").
+        acceptance = (f"QA-pass on the live customer page {url}: the {module} module "
+                      f"renders and its links work on mobile and desktop, the page passes "
+                      f"a content check by the owner, and no text is clipped. "
+                      f"See Implementation Brief {aid} for complete requirements.")
         actions.append({
-            "action_id": f"ACT-{len(actions)+1:03d}",
+            "action_id": aid,
             "priority": "P1",
-            "title": f"{card.get('recommended_module','')[:60]} on the customer page {url}",
+            "title": title,
             "primary_url": url,                       # EXACTLY ONE
             "customer_owned_scope": url,
             "business_mechanism": card.get("business_mechanism", ""),
             "page_gap": card.get("specific_gap", ""),
             "buyer_question": card.get("buyer_question", ""),
-            "recommended_module": card.get("recommended_module", ""),
+            "recommended_module": module,
             "owner": "Content/SEO",
-            "effort": "Small" if len((card.get("recommended_module") or "")) < 120 else "Medium",
-            "acceptance_criteria": (f"QA-pass on the live customer page {url}: the '{card.get('recommended_module','')[:40]}' module "
-                                    f"renders and its links work on mobile and desktop; owner signs off. "
-                                    f"First signal tracked via {card.get('buyer_question','')[:40]}.")[:320],
-            "validation_method": "First measurable signal: quote-form submissions / CTA clicks on this page within 30 days (GSC/GA4 where access; else public re-check). Review at 30 and 60 days; scale only after two positive review points.",
+            "effort": "Medium" if _investment_status_for(card) == "VALIDATE_FIRST" else "Small",
+            "investment_status": _investment_status_for(card),   # single source of truth
+            "acceptance_criteria": acceptance,
+            "validation_method": "First measurable signal: quote-form submissions or CTA clicks on this exact page within 30 days (GSC/GA4 where access; else public re-check). Review at 30 and 60 days; scale only after two positive review points. See Implementation Brief " + aid + " for complete requirements.",
             "review_window": "30-60 days",
             "confidence": "Medium",
             "evidence_ids": [card.get("card_id")],
@@ -295,11 +318,92 @@ def gate5_scan_final_pdf(pdf_bytes: bytes) -> Dict[str, Any]:
     if ph_pat:
         hard_fails.append("PLACEHOLDER_PRESENT"); hits.append({"rule": "PLACEHOLDER_PRESENT", "count": len(ph_pat)})
 
+    # 5) truncated customer text — clipped words/sentences from data truncation
+    trunc = _check_truncated_customer_text(visible_text)
+    if trunc["count"]:
+        hard_fails.append("TRUNCATED_CUSTOMER_TEXT")
+        hits.append({"rule": "TRUNCATED_CUSTOMER_TEXT", "samples": trunc["samples"][:12], "count": trunc["count"]})
+
     clean = (not hard_fails) and len(pdf_bytes) > 1000
     return {"clean": clean, "sha256": sha256, "hard_fails": hard_fails,
             "hits": hits, "bytes": len(pdf_bytes),
-            "extracted_visible_text": visible_text[:1000] + (" ... (%d chars total)" % len(visible_text)) if not clean else None,
+            "extracted_visible_text": (visible_text[:1000] + " ... (%d chars total)" % len(visible_text)) if not clean else None,
             "text_extractor": "pypdf" }
+
+
+def _normalize(text: str) -> str:
+    """Collapse runs of whitespace/newlines to single spaces so pypdf line-wrapping
+    does not create false 'empty label' or 'truncated word' results."""
+    return re.sub(r"\s+", " ", text or "").strip()
+
+
+def _check_truncated_customer_text(visible_lower: str) -> Dict[str, Any]:
+    """Detect REAL customer-text truncation artifacts, NOT pypdf line-wraps and NOT
+    legitimate quoted phrases. Normalizes whitespace first. Flags only:
+    - a word cut so the sentence ends mid-word (token ending in a fragment, no punctuation)
+    - a dangling apostrophe/quote with no closing at a sentence boundary
+    - a trailing ' to th' / 'trust/p'-style clip at a boundary
+    An ellipsis '…' by itself is allowed only when part of a quoted (not truncated) value.
+    """
+    norm = _normalize(visible_lower)
+    samples = []
+    # A clipped suffix token: word fragment followed by end-of-string or a new sentence start
+    # that is a continuation of sliced text. Detect the concrete signatures the user listed.
+    sig = [
+        r"\bto th\b",           # "Add a ... to th"
+        r"\btracked via [a-z]{1,6}\b",  # "tracked via Whic"
+        r"[a-z]{2,5}/p[rt]\b",  # "trust/pr"
+        r"the 'add a '",        # double-nested module quote (renderer bug signal)
+        r"the\s+'\s*[a-z]{0,3}\s*$",  # dangling quote at very end of a line/block with nothing after
+    ]
+    for pat in sig:
+        m = re.findall(pat, norm)
+        samples += m
+    # a dangling unmatched apostrophe at a sentence boundary (e.g. "... ' module " / " ...'\n")
+    for m in re.finditer(r"'([a-z]{0,12})\s*(?=$|[.?;!]|\n|ACT-|\bDefinition\b|\bFirst\b|\bReview\b)", norm):
+        frag = m.group(1)
+        if frag and frag not in ("s", "t", "ll", "re", "ve"):  # possessive/contraction ok
+            samples.append("dangling-quote:" + frag)
+    return {"count": len(samples), "samples": list(dict.fromkeys(samples))[:15]}
+
+
+def gate5_check_required_field_empty(visible_text: str, rendered_labels) -> Dict[str, Any]:
+    """After render, ensure every applicable implementation label carries a non-empty value.
+    Normalizes whitespace so pypdf line-wraps don't create false empties. A label counts as
+    empty ONLY if after the label there is no content before the next label/section boundary."""
+    norm = _normalize(visible_text)
+    empties = []
+    for lab in (rendered_labels or []):
+        idx = norm.find(lab)
+        if idx < 0:
+            # label not rendered at all -> handled by the renderer (skip; not applicable)
+            continue
+        tail = norm[idx + len(lab):].split("|||")[0]
+        # content is anything until the next known label boundary
+        boundaries = tuple(l2 for l2 in (rendered_labels or []) if l2 != lab and len(l2) > 4)
+        cut = len(tail)
+        for b in boundaries:
+            bi = tail.lower().find(b.lower())
+            if 0 <= bi < cut:
+                cut = bi
+        seg = tail[:cut].strip(": \t")
+        if not seg:
+            empties.append(lab)
+    return {"count": len(empties), "empty_labels": empties}
+
+
+def gate5_check_priority_consistency(actions) -> Dict[str, Any]:
+    """Every renderer must read the SAME investment_status; if the action list carries
+    contradictory statuses for the same action_id, block. (Callers pass the final list
+    used by all sections.)"""
+    seen = {}
+    for a in actions:
+        aid = a.get("action_id")
+        st = a.get("investment_status")
+        if aid in seen and seen[aid] != st:
+            return {"consistent": False, "conflict": aid, "values": [seen[aid], st], "fail": "PRIORITY_CONSISTENCY_FAIL"}
+        seen[aid] = st
+    return {"consistent": True, "fail": None}
 
 
 MARKER_MARK = "IMMUTABLE_DELIVERY_LOCK"

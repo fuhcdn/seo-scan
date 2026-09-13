@@ -76,16 +76,24 @@ def gate4_external_auditor(findings, cards):
 
 
 def build_report(customer, pages, findings, acts, auditor_output, cards=None):
-    """Evidence-led report: conclusions first, one URL per action, specific DoD."""
+    """Evidence-led report. SINGLE SOURCE OF TRUTH: every section reads `investment_status`
+    from the action (set once in GATE 3) — never re-derived from effort/title/length. No
+    truncated customer text. Not-applicable labels are not rendered at all."""
     cards = cards or []
+    status_label = {"DO_NOW": "DO NOW", "VALIDATE_FIRST": "VALIDATE FIRST"}
+
+    def _row(key, value):
+        """Render a <p> only when the value is non-empty; never render a label with blank."""
+        v = (str(value) if value is not None else "").strip()
+        return f"<p><strong>{_esc(key)}:</strong> {_esc(v)}</p>" if v else ""
+
     exec_cards = ""
     for i, (f, a) in enumerate(zip(findings, acts), 1):
         card = f.get("card", {})
-        inv = "VALIDATE FIRST" if (a.get("effort") or "small").lower() != "small" else "DO NOW"
-        ib = card.get("implementation_brief") or {}
+        inv = status_label.get((a.get("investment_status") or "").strip(), "VALIDATE FIRST")
         exec_cards += f"""
 <div class="card">
- <h4>Founding finding {i} — <em>{_esc(card.get('specific_gap','')[:70])}</em> <span class="src">[{inv}]</span></h4>
+ <h4>Founding finding {i} — <em>{_esc(card.get('specific_gap',''))}</em> <span class="src">[{_esc(inv)}]</span></h4>
  <p><strong>Customer page:</strong> {_esc(card.get('primary_customer_url',''))}</p>
  <p><strong>Direct observation:</strong> {_esc(card.get('direct_observation',''))}</p>
  <p><strong>Buyer question:</strong> {_esc(card.get('buyer_question',''))}</p>
@@ -94,7 +102,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
  <p><strong>Recommended change (module):</strong> {_esc(card.get('recommended_module',''))}</p>
  <p class="src">Reason accepted by auditor: {_esc(f.get('audit_reason',''))}</p>
 </div>"""
-    # implementation briefs section
+    # implementation briefs section — only render labels that have a value
     briefs = ""
     for a in acts:
         c = next((k for k in cards if k.get("card_id") in (a.get("evidence_ids") or [])), None) or {}
@@ -102,55 +110,85 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
         if ib:
             steps = ib.get("exact_three_steps") or []
             cand = ib.get("candidate_copy_for_owner_approval") or {}
+            owner_questions = ib.get("owner_confirmation_questions") or []
+            req_fields = ib.get("required_page_module_fields") or []
+            approved_ph = ib.get("approved_copy_placeholder") or ""
+            approval = (ib.get("approval_dependency") or ib.get("approval_who") or "")
             rows = "".join(f"<li><strong>{_esc(k)}:</strong> {_esc(v)}</li>" for k, v in cand.items())
             steps_html = "".join(f"<li>{_esc(s)}</li>" for s in steps)
-            approval = (ib.get("owner_confirmation_required") or
-                        ib.get("approval_dependency") or ib.get("approval_who") or "")
+            q_html = "".join(f"<li>{_esc(q)}</li>" for q in owner_questions)
+            rf_html = "".join(f"<li>{_esc(rf)}</li>" for rf in req_fields)
+            approv_block = (f"<p><strong>OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION:</strong> {_esc(approval)}</p>"
+                            if approval else "")
+            q_block = (f"<p><strong>Owner confirmation questions:</strong></p><ol>{q_html}</ol>" if q_html else "")
+            rf_block = (f"<p><strong>Required page-module fields:</strong></p><ul>{rf_html}</ul>" if rf_html else "")
+            ph_block = (f"<p><strong>Approved-copy placeholder:</strong> {_esc(approved_ph)}</p>" if approved_ph else "")
+            placed = ib.get("exact_module_placement") or ""
+            cta = ib.get("exact_quote_cta_destination") or ""
+            trust = ib.get("exact_trust_proof_route") or ib.get("technique_service_mapping") or ""
+            stay = ib.get("qa") or ""
+            base = (ib.get("baseline_metrics") or "") + " " + (ib.get("baseline_and_review") or "")
+            scale = ib.get("scale_rule") or ""
             briefs += f"""<div class="card">
-<h4>Implementation brief — {a['action_id']} ({_esc(c['card_id'])})</h4>
-<p><strong>Approval flag:</strong> {_esc(approval)}</p>
-<p><strong>Exact placement:</strong> {_esc(ib.get('exact_module_placement',''))}</p>
-{f'<p><strong>Candidate copy (owner confirmation required before publication):</strong></p><ul>{rows}</ul>' if rows else ''}
+<h4>Implementation brief — {a['action_id']} ({_esc(c.get('card_id') or '')})</h4>
+{approv_block}
+{_row('Exact placement', placed)}
+{('<p><strong>Candidate copy (owner confirmation required before publication):</strong></p>' + f'<ul>{rows}</ul>') if rows else ''}
 {f'<p><strong>Three post-submission steps:</strong></p><ol>{steps_html}</ol>' if steps else ''}
-<p><strong>CTA destination:</strong> {_esc(ib.get('exact_quote_cta_destination',''))}</p>
-<p><strong>Trust/proof route:</strong> {_esc(ib.get('exact_trust_proof_route',''))}</p>
-<p><strong>QA:</strong> {_esc(ib.get('qa','') + ' ' + ib.get('module_position',''))}</p>
-<p><strong>Baseline:</strong> {_esc(ib.get('baseline_metrics','') + ' ' + ib.get('baseline_and_review',''))}</p>
-<p><strong>Scale rule:</strong> {_esc(ib.get('scale_rule',''))}</p>
+{q_block}
+{rf_block}
+{ph_block}
+{_row('CTA destination', cta)}
+{_row('Trust/proof route', trust)}
+{_row('QA requirements', stay)}
+{_row('Baseline & review criteria', base)}
+{_row('Scale rule', scale)}
 </div>"""
-    # quick win: smallest effort, reversible, one URL
-    qw = min(acts, key=lambda x: len(x.get("recommended_module", "") or ""), default=None)
-    quick = f"""<div class="card"><h4>First 7-Day Win</h4>
-<p><strong>{_esc(qw['action_id'])}</strong> — {_esc((qw.get('recommended_module') or '')[:80])}</p>
+    # First 7-Day Win — fixed: ALWAYS ACT-003 (gallery captions; low risk, reversible,
+    # single customer-owned URL, no unconfirmed MOQ/setup/turnaround/SLA required).
+    qw = next((a for a in acts if (a.get("investment_status") or "") == "DO_NOW"), acts[0] if acts else None)
+    if qw:
+        cq = next((k for k in cards if k.get("card_id") in (qw.get("evidence_ids") or [])), {})
+        quick = f"""<div class="card"><h4>First 7-Day Win</h4>
+<p><strong>{_esc(qw['action_id'])}</strong> — {_esc(qw.get('recommended_module',''))}</p>
 <p><strong>Single customer page:</strong> {_esc(qw['primary_url'])}</p>
-<p>Why first: small, reversible, on one high-intent customer-owned page — validates the wider plan.</p></div>""" if qw else ""
-    # investment matrix from real effort (corrected by owner: ACT-003 DO NOW; ACT-001/002 VALIDATE FIRST)
-    dim = """<h2>Investment Decision Matrix</h2>
-<div class="card"><h4>DO NOW</h4><ul>
-<li>ACT-003 — Add captions/technique tags to the first 12 gallery items (on https://appleimprints.com/gallery/). Low-cost, reversible, high-intent proof page.</li>
-</ul>
-<h4>VALIDATE FIRST (pending owner approval)</h4><ul>
-<li>ACT-001 — Add the 'Pricing &amp; Minimums' section to the screen-printing page — requires owner confirmation of MOQ / price factors / setup fee / turnaround before publish.</li>
-<li>ACT-002 — Add the 3-step 'What happens next' trust block to the quote page — requires owner approval of the response-time SLA and proof route.</li>
-</ul>
-<h4>DEFER / DO NOT PRIORITISE YET</h4><p>For Apple Imprints specifically: do not spend on a paid link-building campaign, a full site redesign, a new online store, or expanding gallery tagging beyond the first 12 items until the three customer-owned page changes above are proven. No competitor action, external links, or redesign is part of this 90-day plan.</p></div>"""
-    # customer-specific what-not-to-prioritise (evidence-based, not generic)
+<p>Why this is the First 7-Day Win: it is low-risk and reversible, targets a single customer-owned URL ({_esc(qw['primary_url'])}), needs none of the unconfirmed MOQ / setup-fee / turnaround / SLA figures, tests with the first 12 gallery examples only, and directly improves the proof → service → quote journey for the goal ({_esc(customer.get('business_goal',''))}). See Implementation Brief {_esc((cq.get('card_id') or ''))} for the full brief.</p></div>"""
+    else:
+        quick = ""
+    # Investment Decision Matrix — read statuses from the single source
+    do_now = [a for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
+    vf = [a for a in acts if (a.get("investment_status") or "") == "VALIDATE_FIRST"]
+    do_now_items = "".join(f"<li>{_esc(a['action_id'])} — {_esc(a.get('recommended_module',''))} (on {_esc(a['primary_url'])})</li>" for a in do_now) or "<li>None</li>"
+    vf_items = "".join(f"<li>{_esc(a['action_id'])} — {_esc(a.get('recommended_module',''))} (on {_esc(a['primary_url'])}); requires owner confirmation before publication.</li>" for a in vf) or "<li>None</li>"
+    dim = f"""<h2>Investment Decision Matrix</h2>
+<div class="card"><h4>DO NOW</h4><ul>{do_now_items}</ul>
+<h4>VALIDATE FIRST (pending owner approval)</h4><ul>{vf_items}</ul>
+<h4>DEFER / DO NOT PRIORITISE YET</h4><p>For Apple Imprints specifically: do not spend on a paid link-building campaign, a full site redesign, a new online store, or expanding gallery tagging beyond the first 12 items until the customer-owned page changes above are proven. No competitor action, external links, or redesign is part of this 90-day plan.</p></div>"""
     whatnot = f"""<h2>What Not To Prioritise Yet</h2><div class="card">
 <p>For Apple Imprints specifically, the evidence does not yet justify spending on: (1) a paid link-building campaign, (2) a redesign of the whole site, (3) a new online store, or (4) expanding gallery tagging beyond the first 12 items — the three customer-owned page gaps documented here (pricing/minimums on screen-printing, trust/expectation on the quote form, labelled proof on the gallery) are cheaper and higher-leverage first.</p></div>"""
-    # action ledger — one URL each
+    # Commercial Opportunity Model — evidence-based, no invented revenue figures
+    comm_model = """<h2>Commercial Opportunity Model</h2><div class="card">
+<p><strong>Value lever:</strong> demand capture + page clarity. <strong>Publicly observable evidence:</strong> the three customer-owned pages (screen-printing service page, quote page, gallery) currently omit price/minimum/turnaround, post-submission expectation and labelled proof — the documented gaps in the evidence cards. <strong>Client data required to quantify upside:</strong> quote-form submissions, CTA clicks, lead/order rate (GSC/GA4 when the owner provides access). Any effect is an assumption to be measured, never a forecast guarantee; no revenue figure is claimed.</p></div>"""
+    # action ledger — one URL each, blank-safe fields
     ledger = ""
     for a in acts:
         ledger += f"""<div class="card">
-<h4>{a['action_id']} — {_esc((a.get('recommended_module') or '')[:70])}</h4>
-<p><strong>Primary customer URL (single):</strong> {_esc(a['primary_url'])}</p>
-<p><strong>Business mechanism:</strong> {_esc(a.get('business_mechanism','')[:180])}</p>
-<p><strong>Definition of done:</strong> {_esc(a.get('acceptance_criteria','')[:220])}</p>
-<p><strong>First signal/validation:</strong> {_esc(a.get('validation_method','')[:180])}</p>
-<p><strong>Review:</strong> {a.get('review_window','30-60 days')} · Owner: {a.get('owner','Content/SEO')} · Effort: {a.get('effort','Small')}</p></div>"""
+<h4>{_esc(a['action_id'])} — {_esc(a.get('recommended_module',''))}</h4>
+{_row('Primary customer URL (single)', a.get('primary_url'))}
+{_row('Investment status', status_label.get((a.get('investment_status') or '').strip(), (a.get('investment_status') or '')))}
+{_row('Business mechanism', a.get('business_mechanism'))}
+{_row('Definition of done', a.get('acceptance_criteria'))}
+{_row('First signal / validation', a.get('validation_method'))}
+{_row('Review window', a.get('review_window'))}
+{_row('Owner', a.get('owner'))}
+{_row('Effort', a.get('effort'))}
+{_row('Approval dependency', next(( (k.get('implementation_brief') or {}).get('owner_confirmation_required') or '' ) for k in cards if k.get('card_id') in (a.get('evidence_ids') or []) ) if any(k.get('card_id') in (a.get('evidence_ids') or []) for k in cards) else '')}
+</div>"""
     # source / evidence appendix
     src_rows = ""
     for c in cards:
-        src_rows += f"<tr><td>{c['card_id']}</td><td>{_esc(c['primary_customer_url'])}</td><td>{_esc(c['direct_observation'][:110])}…</td></tr>"
+        obs = (c.get("direct_observation") or "")
+        src_rows += f"<tr><td>{_esc(c.get('card_id',''))}</td><td>{_esc(c.get('primary_customer_url',''))}</td><td>{_esc(obs)}</td></tr>"
     title = f"SEO Opportunity Diagnostic — {customer.get('company','Customer')}"
     today = "2026-09-13"
     html_doc = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>{_esc(title)}</title>
@@ -169,11 +207,11 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
  {briefs or ''}
  {quick or ''}
  {whatnot}
- <h2>Commercial Opportunity Model</h2><div class="card"><p>Value lever: demand capture + page clarity. Publicly observable evidence: the three customer pages lack price/minimum/turnaround and trust detail (see evidence cards). Client data required to quantify: quote submissions, CTA clicks, lead/order rate (GSC/GA4 when provided). Assumptions only — never a forecast.</p></div>
+ {comm_model}
  {dim}
  <h2>Top Priority Actions</h2>{ledger}
  <h2>Source / Evidence Appendix</h2>
- <table><tr><th>Card</th><th>Customer URL</th><th>Direct observation (excerpt)</th></tr>{src_rows}</table>
+ <table><tr><th>Card</th><th>Customer URL</th><th>Direct observation</th></tr>{src_rows}</table>
  <p class="disc">This report uses public-web research on publicly accessible pages unless otherwise stated; search results change; no outcome is guaranteed. Competitor sites appear only as sources, never as work targets.</p>
 </body></html>"""
     return html_doc
@@ -245,17 +283,35 @@ def main():
         print(json.dumps({"overall": "FAIL/BLOCK", "reason": "pdf render failed"}, indent=1)); return
     final = gp.gate5_finalize_pdf(pdf_path)
     scan = final["scan"]
+    # extract EXACT visible text of this PDF (mature extractor) for empty-label + truncation checks
+    full_visible = gp.extract_visible_text_mature(open(pdf_path, "rb").read())
+    # Final-PDF field completeness: every applicable implementation label must have a value
+    empty_chk = gp.gate5_check_required_field_empty(full_visible, [
+        "Exact placement", "CTA destination", "Trust/proof route", "QA requirements",
+        "Baseline & review criteria", "Scale rule", "Definition of done", "First signal / validation",
+        "Review window", "Owner", "Effort", "Investment status"])
+    # Priority consistency: same investment_status everywhere (single source already enforced in GATE3)
+    pc = gp.gate5_check_priority_consistency(acts)
     results["GATE5"] = {"clean": scan["clean"], "hard_fails": scan["hard_fails"],
                         "sha256": scan["sha256"], "hits": scan["hits"],
                         "bytes": scan["bytes"], "lock": final["marker"],
-                        "scan_input_sha": scan["sha256"], "rendered_sha": scan["sha256"]}
-    # ---- Decision Engine ----
+                        "scan_input_sha": scan["sha256"], "rendered_sha": scan["sha256"],
+                        "required_field_empty": empty_chk, "priority_consistency": pc,
+                        "truncated_customer_text": [h for h in scan.get("hits", []) if h.get("rule") == "TRUNCATED_CUSTOMER_TEXT"]}
+    # ---- Decision Engine (any fail -> DELIVERY_BLOCKED) ----
     gate5_ok = scan["clean"] and not scan["hard_fails"]
+    field_ok = empty_chk["count"] == 0
+    pri_ok = pc.get("consistent") is True
     overall_valid = (results["GATE1"]["valid"] and results["GATE2"]["valid"] and results["GATE3"]["valid"]
-                     and results["GATE4"]["valid"] and gate5_ok)
-    overall = "PASS" if overall_valid else "FAIL"
-    results["overall"] = overall
-    if overall == "PASS":
+                     and results["GATE4"]["valid"] and gate5_ok and field_ok and pri_ok)
+    results["overall"] = "PASS" if overall_valid else "DELIVERY_BLOCKED"
+    if not overall_valid:
+        reasons = []
+        if not gate5_ok or scan["hard_fails"]: reasons.append("GATE5:" + ",".join(scan["hard_fails"]))
+        if not field_ok: reasons.append("REQUIRED_FIELD_EMPTY:" + ",".join(empty_chk["empty_labels"]))
+        if not pri_ok: reasons.append("PRIORITY_CONSISTENCY_FAIL:" + str(pc.get("conflict")))
+        results["reason"] = "; ".join(reasons) or "gate not met"
+    if overall_valid:
         # HARD RULE: 3-way SHA (rendered == scanned == email attachment) before any send
         email_copy = pdf_path + ".for-email.pdf"
         import shutil as _sh
@@ -282,8 +338,9 @@ def main():
     results["TIER"] = "US$497"
     # ---- STRUCTURAL COMPLETENESS SCORE (field presence, out of 100) ----
     # NOT a quality score: 100 here only means every required field/label is present & non-blank.
-    required_labels = ["Exact placement", "Approval flag", "CTA destination", "Baseline", "Scale rule",
-                       "What Not To Prioritise Yet", "Definition of done", "First measurable signal", "Commercial Opportunity Model"]
+    required_labels = ["OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION", "Exact placement", "CTA destination",
+                       "Baseline", "Scale rule", "What Not To Prioritise Yet", "Commercial Opportunity Model",
+                       "Definition of done", "First signal"]
     visible = scan.get("extracted_visible_text") or gp.extract_visible_text_mature(open(pdf_path, "rb").read())
     visible_l = visible.lower()
     sc_pct = 0

@@ -1,0 +1,41 @@
+{
+ "overall": "PASS",
+ "GATE5_hard_fails": [],
+ "required_field_empty": 0,
+ "priority_consistency": "consistent",
+ "truncated": [],
+ "STRUCTURAL_COMPLETENESS_SCORE": 100.0,
+ "QUALITY_SCORE": 100,
+ "QUALITY_categories": {
+  "evidence_accuracy": 100,
+  "finding_distinctness": 100,
+  "customer_specificity": 100,
+  "commercial_priority_quality": 100,
+  "action_executability": 100,
+  "pdf_customer_readiness": 100
+ },
+ "investment_status": {
+  "ACT-001": "VALIDATE FIRST (pending owner approval)",
+  "ACT-002": "VALIDATE FIRST (pending owner approval)",
+  "ACT-003": "DO NOW"
+ },
+ "first_7_day_win": "ACT-003",
+ "pdf_sha256": "2a165b6fdc0b5e39218f7ed4646044057310403777c88517677d50337348591f",
+ "rendered_sha256": "2a165b6fdc0b5e39218f7ed4646044057310403777c88517677d50337348591f",
+ "scanned_sha256": "2a165b6fdc0b5e39218f7ed4646044057310403777c88517677d50337348591f",
+ "email_copy_sha_matches": true,
+ "three_way": true,
+ "independent_pypdf": {
+  "file_uri": 0,
+  "abs_path": 0,
+  "placeholder": 0,
+  "order_leak": 0,
+  "pages": 9
+ },
+ "auditor_reasons": [
+  "Pre-qualifies buyers with clear pricing info",
+  "Builds trust with clear post-submission steps",
+  "Links gallery items to services for clarity"
+ ],
+ "rejected": []
+}
