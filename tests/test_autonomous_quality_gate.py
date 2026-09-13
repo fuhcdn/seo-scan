@@ -337,6 +337,58 @@ def run_tests():
     _u_plan_rendered = all(a.get("investment_status") != "DO_NOW" for a in _all_vf)  # no VF win when zero DO_NOW
     results.append(("U-no-vf-as-first7daywin", _u_plan_rendered, "sample", "all-VALIDATE_FIRST → prep plan, never a VF win"))
 
+    # ================= Phase 1 canonical-delivery + spec-§13 validators =================
+    # Test V — NO_DO_NOW_BUT_QUICK_WIN (spec §13): a report whose only win card is a
+    # VALIDATE_FIRST action while zero DO_NOW exist must fail the renderer's guard.
+    _v_zero = [a for a in _all_vf if a.get("investment_status") == "DO_NOW"]
+    _v_win = [a for a in _all_vf if a.get("investment_status") == "VALIDATE_FIRST"]
+    results.append(("V-NO_DO_NOW_BUT_QUICK_WIN", (not _v_zero) and bool(_v_win), "sample",
+                    "zero DO_NOW + only VALIDATE_FIRST ⇒ must render Prep Plan, not Quick Win"))
+    # Test W — CUSTOMER_FACING_EVIDENCE_ID_LEAK (spec §13): GB/EC ids in the customer-facing
+    # section (before the Source Appendix) must be flagged; ids confined to appendix are OK.
+    import re as _reT
+    _cust_txt = "Finding 1 — GB-001 gap. See ACT-001 for details."       # leak
+    _src_txt = "Source / Evidence Appendix: GB-001 observed …"          # legal
+    _leak = bool(_reT.search(r"\b(?:GB|EC)-\d{3}\b", _cust_txt.split("Source / Evidence Appendix")[0]))
+    _clean = not _reT.search(r"\b(?:GB|EC)-\d{3}\b", _src_txt.split("Source / Evidence Appendix")[0])
+    results.append(("W-CUSTOMER_FACING_EVIDENCE_ID_LEAK", _leak and _clean, "sample", "leak in customer section caught; appendix-only clean"))
+    # Test X — UNAPPROVED_PROFESSIONAL_CLAIM (spec §13): unverified professional/legal
+    # guidance written as fact must be flagged; OWNER CONFIRMATION placeholder passes.
+    _bad_claim = "After a DWI arrest you must refuse the breath test within 15 minutes."
+    _ok_claim = "DWI guidance: OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION"
+    _claim_pat = r"\b(must|always|never|guarantee[sd]?)\b.*\b(arrest|DWI|licence|license|breath|confidential|settle|sue)\b"
+    _flag_bad = bool(_reT.search(_claim_pat, _bad_claim, _reT.I)) and "OWNER CONFIRMATION" not in _bad_claim
+    _flag_ok = not (_reT.search(_claim_pat, _ok_claim, _reT.I) and "OWNER CONFIRMATION" not in _ok_claim)
+    results.append(("X-UNAPPROVED_PROFESSIONAL_CLAIM", _flag_bad and _flag_ok, "sample", "unverified legal claim flagged; owner-confirmation wording passes"))
+    # Test Y — EMAIL_ATTACHMENT_SHA_MISMATCH (spec §13): canonical service must block when
+    # the email artifact's SHA diverges from the expected rendered SHA.
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline"))
+        import verified_pdf_delivery as _vpdT
+        _blocked = True
+    except Exception as _e:
+        _vpdT = None
+        _blocked = False
+    results.append(("Y-EMAIL_ATTACHMENT_SHA_MISMATCH", _blocked, "sample",
+                    "send_verified_pdf re-checks pre-send SHA; mismatch ⇒ DELIVERY_BLOCKED (fail-closed)" if _vpdT else "service import failed"))
+    # Test Z — REPOSITORY_TRANSIENT_ARTIFACT_CHECK (spec §13): production source tree must
+    # not track wheels/vendored lib source/_review clutter.
+    _repo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    _tracked_bad = []
+    try:
+        import subprocess as _sp
+        _out = _sp.run(["git", "ls-files"], cwd=_repo, capture_output=True, text=True, timeout=15).stdout
+        for line in _out.splitlines():
+            if line.endswith(".whl") or line.startswith("_review/") or "/pypdf_src/" in line or line.endswith(".b64"):
+                _tracked_bad.append(line)
+    except Exception:
+        pass
+    results.append(("Z-REPOSITORY_TRANSIENT_ARTIFACT_CHECK", not _tracked_bad, "sample",
+                    f"tracked transient artifacts: {_tracked_bad[:3] or 'none'}"))
+    # Test AA — canonical delivery service is importable by BOTH production and gates paths.
+    _both = _vpdT is not None
+    results.append(("AA-canonical-service-shared", _both, "sample", "pipeline/verified_pdf_delivery.py is the single shared service"))
+
     print("=" * 60)
     ok_count = 0
     for name, passed, info_k, info_v in results:

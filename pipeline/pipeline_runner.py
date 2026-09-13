@@ -695,6 +695,25 @@ def step_deliver(status, pdf_path):
         # Round2：每單獨立交付 marker，避免兩客覆蓋。
         marker = per_order_delivery_marker(status["order_id"])
 
+        # ---- CANONICAL VERIFIED-PDF DELIVERY (one shared service for both pipelines) ----
+        # Hard rule: no code path may attach a mutable pdf_path. Before ANY send,
+        # the exact final artifact must pass pypdf exact-artifact scan + 3-way SHA,
+        # and only the immutable .for-email.pdf is ever attached.
+        import verified_pdf_delivery as _vpd
+        _vpd_rec = _vpd.prepare_verified_artifact(
+            pdf_path, job_id=status.get("order_id", ""),
+            pipeline_version=os.environ.get("REPORT_PIPELINE_VERSION", "legacy"),
+            report_language=status.get("report_language", "en"),
+            expected_domain=safe_domain(status.get("url", "")))
+        status["verified_delivery"] = {k: v for k, v in _vpd_rec.items() if k != "visible_text"}
+        if _vpd_rec["state"] != "VERIFIED_READY_TO_SEND":
+            mark_step(status, "deliver", "failed",
+                      error="CANONICAL_DELIVERY_" + str(_vpd_rec.get("reason", "BLOCKED"))[:300],
+                      delivery_state=_vpd_rec["state"])
+            raise RuntimeError("canonical delivery blocked: " + str(_vpd_rec.get("reason")))
+        # Only the verified immutable artifact may be attached — never the raw render path.
+        pdf_path = _vpd_rec["email_artifact_path"]
+
         backend = (os.environ.get("EMAIL_BACKEND", "") or "").strip().lower()
 
         if backend == "resend":

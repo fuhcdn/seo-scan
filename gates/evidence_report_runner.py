@@ -461,28 +461,46 @@ def main():
         if not pri_ok: reasons.append("PRIORITY_CONSISTENCY_FAIL:" + str(pc.get("conflict")))
         results["reason"] = "; ".join(reasons) or "gate not met"
     if overall_valid:
-        # HARD RULE: 3-way SHA (rendered == scanned == email attachment) before any send
-        email_copy = pdf_path + ".for-email.pdf"
-        import shutil as _sh
-        _sh.copy2(pdf_path, email_copy)
-        if not gp.gate5_three_way_verify(scan["sha256"], email_copy, scan["sha256"]):
-            results["overall"] = "FAIL"; results["reason"] = "3-way SHA mismatch / re-render after scan"
-            results["GATE5"]["three_way"] = False
+        # CANONICAL DELIVERY SERVICE (one shared service for pipeline/ and gates/):
+        # scan exact artifact → immutable .for-email.pdf → 3-way SHA → send verified copy only.
+        _expected_domain = _cust_domain
+        _wrong_terms = []  # per-customer cross-contamination guard; populated by customer context
+        try:
+            sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pipeline"))
+            import verified_pdf_delivery as _vpd
+        except Exception as _e:
+            _vpd = None
+            results["delivery_service_error"] = str(_e)[:120]
+        if _vpd is not None:
+            _rec = _vpd.prepare_verified_artifact(
+                pdf_path, job_id=os.environ.get("REPORT_JOB_ID", "golden-" + _stamp),
+                pipeline_version="evidence_v1", report_language="en",
+                expected_domain=_expected_domain, wrong_customer_terms=_wrong_terms)
+            results["GATE5"]["three_way"] = (_rec["state"] == "VERIFIED_READY_TO_SEND")
+            results["GATE5"]["delivery_service"] = {
+                "state": _rec["state"], "reason": _rec.get("reason"),
+                "rendered_sha256": _rec.get("rendered_sha256"),
+                "scanned_sha256": _rec.get("scanned_sha256"),
+                "email_sha256": _rec.get("email_sha256"),
+                "email_artifact_path": _rec.get("email_artifact_path"),
+                "scanner_hard_fails": _rec.get("scanner", {}).get("hard_fails")}
+            if _rec["state"] != "VERIFIED_READY_TO_SEND":
+                results["overall"] = "DELIVERY_BLOCKED"
+                results["reason"] = "canonical delivery: " + str(_rec.get("reason"))
+            elif args.send and args.customer_email:
+                # send via the SAME shared service (mock/safe-test only unless send_fn wired)
+                _send = _vpd.default_smtp_send if os.environ.get("ALLOW_REAL_SEND") == "1" else None
+                _srec = _vpd.send_verified_pdf(
+                    job_id=os.environ.get("REPORT_JOB_ID", "golden-" + _stamp),
+                    final_pdf_path=pdf_path, expected_sha256=_rec["rendered_sha256"],
+                    recipient_email=args.customer_email, report_language="en",
+                    pipeline_version="evidence_v1", expected_domain=_expected_domain,
+                    send_fn=_send)
+                results["emailed"] = _srec.get("state") + ((": " + _srec.get("reason", "")) if _srec.get("reason") else "")
+                results["emailed_sha"] = _srec.get("emailed_sha256")
         else:
-            results["GATE5"]["three_way"] = True
-        if args.send and args.customer_email and results["overall"] == "PASS":
-            results["emailed_sha"] = hashlib.sha256(open(email_copy, "rb").read()).hexdigest()
-            try:
-                from seo_crawler import _send_email_attachment
-                # HARD: re-check SHA immediately before send on the EXACT artifact being sent.
-                if gp.gate5_verify_unchanged(email_copy, scan["sha256"]):
-                    _send_email_attachment(email_copy, args.customer_email)  # send the verified copy, NOT pdf_path
-                    results["emailed"] = ("sent verified .for-email.pdf; emailed_sha=" +
-                                          results["emailed_sha"][:16] + "; matches scanned/rendered")
-                else:
-                    results["overall"] = "FAIL"; results["reason"] = "email artifact SHA mismatch — blocked before send"
-            except Exception as e:
-                results["emailed"] = "not sent (test): " + str(e)[:80]
+            results["overall"] = "DELIVERY_BLOCKED"
+            results["reason"] = "canonical delivery service unavailable"
     results["LANGUAGE"] = "en"
     results["TIER"] = "US$497"
     # ---- STRUCTURAL COMPLETENESS SCORE (field presence, out of 100) ----
