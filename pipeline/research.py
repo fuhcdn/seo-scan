@@ -137,9 +137,9 @@ def run_research(order, max_pages=12):
     home_ok, home_sig, home_err = _read_page(url)
     nav_links = []
     if home_ok:
-        for a in home_sig.get("links", [])[:60]:
-            if a.get("anchor") and a.get("href"):
-                nav_links.append(a)
+        # extract_signals 無 "links" field，內部 link 喺 sample_internal_links
+        for href in (home_sig.get("sample_internal_links") or home_sig.get("links") or [])[:60]:
+            nav_links.append({"href": href, "anchor": ""})
         ledger.add(
             f"Homepage accessible and read (title: {home_sig.get('title') or 'n/a'})",
             "FACT", url, "homepage",
@@ -148,13 +148,17 @@ def run_research(order, max_pages=12):
     # discover key pages from nav
     discovered = [url]
     internal = []
-    for a in nav_links:
-        href = a.get("href") or ""
-        if href.startswith(("http://", "https://")) and urllib.parse.urlsplit(href).netloc == \
-                urllib.parse.urlsplit(url).netloc:
+    # 內頁 link (crawler extract_signals 嘅 sample_internal_links)
+    for href in (home_sig.get("sample_internal_links") or [])[:40]:
+        if href.startswith(("http://", "https://")):
             internal.append(href)
         elif href.startswith("/"):
             internal.append(urllib.parse.urljoin(url, href))
+    # hreflang 語言 alternates 都係真 internal pages（多語言站）
+    for hl in (home_sig.get("hreflang") or [])[:10]:
+        hhref = hl.get("href") or ""
+        if hhref and hhref.startswith(("http://", "https://")):
+            internal.append(hhref)
     # dedupe + 限定 network locality
     seen = set()
     pages_reviewed = []
@@ -255,9 +259,12 @@ def run_research(order, max_pages=12):
         for dom in s.get("source_domains") or []:
             d = (dom or "").strip().lower()
             d = re.sub(r"^https?://(www\.)?", "", d).rstrip("/")
-            if d and d not in comps:
+            # 排除無效/佔位值（DDG 解析失敗時 source 係 '(no result parsed)'）
+            if not d or d.startswith("(") or d == "(no result parsed)":
+                continue
+            if d not in comps:
                 comps.append(d)
-    research["competitors"] = comps[:6]
+    research["competitors"] = [c for c in comps if c and not c.startswith("(")][:6]
     return research
 
 
