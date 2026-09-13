@@ -104,11 +104,12 @@ def gate2_validate_evidence_card(card: dict) -> Dict[str, Any]:
 # Fixed per customer/goal; renderers must NOT re-derive from effort/title/length.
 def _investment_status_for(card: dict) -> str:
     cid = (card.get("card_id") or "").upper()
-    # DO_NOW: low-risk, reversible, single customer-owned URL, no unconfirmed operational figures.
-    if cid in ("EC-003", "EC-004"):
+    # DO_NOW: low-risk, reversible, single customer-owned URL, no owner-approved figures/rule needed.
+    if cid == "EC-003":
         return "DO_NOW"
-    # VALIDATE_FIRST: requires owner confirmation of MOQ/setup/price/turnaround/SLA/example copy.
-    if cid in ("EC-001", "EC-002", "EC-005"):
+    # VALIDATE_FIRST: publication/routing/pricing requires owner confirmation first.
+    # EC-004's method-to-project routing needs Sales/Operations approval -> not DO NOW.
+    if cid in ("EC-001", "EC-002", "EC-004", "EC-005"):
         return "VALIDATE_FIRST"
     return "VALIDATE_FIRST"  # conservative default
 
@@ -141,6 +142,8 @@ def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
         aid = f"ACT-{i:03d}"
         module = (card.get("recommended_module") or "").strip()
         own = _ownership_for(card)
+        first_sig = (card.get("first_signal") or "").strip()
+        scale_rule = ((card.get("implementation_brief") or {}).get("scale_rule") or "").strip()
         # FULL module text — never truncated in the customer-facing PDF.
         title = f"{module} on the customer page {url}"
         # Definition of done: complete sentence; don't re-quote a module that already
@@ -150,6 +153,11 @@ def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
                       f"a content check by the approver ({own['approver']}) and QA by "
                       f"{own['publisher_qa']}, and no text is clipped. "
                       f"See Implementation Brief {aid} for complete requirements.")
+        # Action-specific first signal + quantified scale rule (single source from card).
+        validation = ("First measurable signal: " + first_sig +
+                      ", measured against a 14-day baseline. " +
+                      "Review at 30 and 60 days; scale per the card's quantified rule. " +
+                      "See Implementation Brief " + aid + " for complete requirements.")
         actions.append({
             "action_id": aid,
             "priority": "P1",
@@ -166,7 +174,9 @@ def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
             "effort": "Medium" if _investment_status_for(card) == "VALIDATE_FIRST" else "Small",
             "investment_status": _investment_status_for(card),   # single source of truth
             "acceptance_criteria": acceptance,
-            "validation_method": "First measurable signal: quote-form submissions or CTA clicks on this exact page within 30 days (GSC/GA4 where access; else public re-check). Review at 30 and 60 days; scale only after two positive review points. See Implementation Brief " + aid + " for complete requirements.",
+            "validation_method": validation,
+            "first_signal": first_sig,
+            "scale_rule": scale_rule,
             "review_window": "30-60 days",
             "confidence": "Medium",
             "evidence_ids": [card.get("card_id")],

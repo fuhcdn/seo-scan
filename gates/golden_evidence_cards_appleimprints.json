@@ -60,9 +60,10 @@
     "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (existing quote form) with text 'Get an exact quote'.",
     "qa": "Verify on mobile (form stacks) and desktop (pricing table does not overflow) after publish.",
     "baseline_metrics": "Record quote-form submissions and session count on this exact page for 14 business days before the change.",
-    "scale_rule": "Only after two positive 30-day review points (quote submissions up on this page) extend the same 'Pricing & Minimums' module to embroidery and DTG pages. Not site-wide before this page proves it."
+    "scale_rule": "A pattern can expand from screen-printing-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA."
    },
-   "evidence": "Direct page read on 2026-09-13 (headings + body verified; no price/minimum/turnaround tokens present)."
+   "evidence": "Direct page read on 2026-09-13 (headings + body verified; no price/minimum/turnaround tokens present).",
+   "first_signal": "exact quote CTA click rate and quote-form start on the screen-printing page"
   },
   {
    "card_id": "EC-002",
@@ -87,7 +88,7 @@
     "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (the form itself).",
     "qa": "Mobile: form fields remain above the fold; Desktop: 3-step block renders inline without overflow; proof link opens /gallery/.",
     "baseline_metrics": "Record form-start and form-submit rate for 14 business days before the change.",
-    "scale_rule": "Only after two positive 30-day review points (submit rate up) extend the same trust/expectation block to the contact page and about page. Not site-wide before the quote page proves it.",
+    "scale_rule": "A pattern can expand from quote page-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
     "owner_confirmation_questions": [
      "What response-time SLA can be promised publicly for quotes?",
      "Which post-submission expectations can the owner publicly promise?",
@@ -101,7 +102,8 @@
     ],
     "approved_copy_placeholder": "[Insert Sales/Operations-approved wording before publication.]"
    },
-   "evidence": "Direct page read on 2026-09-13 (form fields + 'Within 24 hours or less!' string verified)."
+   "evidence": "Direct page read on 2026-09-13 (form fields + 'Within 24 hours or less!' string verified).",
+   "first_signal": "quote form-start to quote form-submit completion rate"
   },
   {
    "card_id": "EC-003",
@@ -122,7 +124,7 @@
     "approval_dependency": "Content owner writes captions; production lead (service owner) confirms each item's actual technique before the tag is published.",
     "qa": "Mobile + desktop: captions wrap, links resolve, images do not reflow; every tagged item links to the correct service page and quote route.",
     "baseline_metrics": "Record gallery-to-quote link clicks and session count on the gallery page for 14 business days before the change.",
-    "scale_rule": "Only after two positive 30-day review points (quote-link clicks up) extend tagging to the next 12 items. Do not tag the full gallery at once.",
+    "scale_rule": "A pattern can expand from gallery-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
     "owner_confirmation_questions": [
      "Can the first 12 gallery items be publicly captioned and tagged?",
      "Which service page should each item link to (screen/embroidery/DTG/DTF/debossing)?",
@@ -135,7 +137,8 @@
     ],
     "approved_copy_placeholder": "[Insert approved caption/tag copy before publication.]"
    },
-   "evidence": "Direct page read on 2026-09-13 (heading + body verified; no captions/links/tags present)."
+   "evidence": "Direct page read on 2026-09-13 (heading + body verified; no captions/links/tags present).",
+   "first_signal": "gallery caption/service-page click and gallery-to-quote click"
   },
   {
    "card_id": "EC-004",
@@ -149,7 +152,7 @@
    "recommended_module": "Add a Which method is right for your project selection aid on the homepage, with quantity and project questions that route each answer to the relevant service page and quote form.",
    "evidence": "Direct page read on 2026-09-13 (headings verified: Screen Printing, Embroidery, Debossing, DTG, DTF; About; no method-selection guidance present).",
    "implementation_brief": {
-    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: confirm the method-to-project routing is correct before publish.",
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: the method-to-project routing after the homepage method-selection aid must be approved by Sales/Operations before any route is published. A DO NOW draft module/layout may be prepared, but its publication and routing rules are VALIDATE FIRST.",
     "owner_confirmation_questions": [
      "Which decoration method maps to which project type and quantity?",
      "Can each method answer route to the matching service page and quote form?"
@@ -166,8 +169,9 @@
     "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (quote form) routed from each method answer.",
     "qa": "Verify on mobile (aid stacks) and desktop (no overflow) after publish; every route link resolves.",
     "baseline_metrics": "Record homepage to service-page and homepage to quote clicks for 14 business days before the change.",
-    "scale_rule": "Only after two positive 30-day review points extend the same selection aid style to the services hub."
-   }
+    "scale_rule": "A pattern can expand from homepage-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA."
+   },
+   "first_signal": "method-selection completion and homepage method-to-service-page click"
   },
   {
    "card_id": "EC-005",
@@ -190,10 +194,7 @@
     "required_page_module_fields": [
      "Example proof image",
      "Gallery proof link",
-     "Minimum-order context",
-     "Price-factor explanation",
-     "Turnaround",
-     "Exact quote CTA"
+     "Embroidery-specific quote route"
     ],
     "approved_copy_placeholder": "[Insert Sales/Operations-approved embroidery wording before publication.]",
     "exact_module_placement": "Insert below the Timeless, Professional Appearance intro and above the footer CTA on the embroidery page.",
@@ -201,8 +202,10 @@
     "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (quote form) with text Get an exact embroidery quote.",
     "qa": "Mobile and desktop: example image renders, gallery link resolves, no text clipped.",
     "baseline_metrics": "Record embroidery-page to quote clicks and session count for 14 business days before the change.",
-    "scale_rule": "Only after two positive 30-day review points extend the same proof and route pattern to DTG and DTF pages."
-   }
+    "scale_rule": "A pattern can expand from embroidery-specific evidence only: (1) the relevant click/conversion rate improves versus the recorded 14-day baseline; (2) lead quality does not fall where owner/CRM data is available; (3) there is no operational or customer-confusion issue; (4) the owner approves the expansion decision. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
+    "scope_note": "ACT-005 scope: embroidery proof image, gallery cross-link, and the embroidery-specific quote route ONLY. Pricing / minimum / turnaround information is deferred until the ACT-001 owner-approved pricing-information pattern has been validated and can be adapted for embroidery; ACT-005 must NOT duplicate the ACT-001 pricing action."
+   },
+   "first_signal": "embroidery proof/gallery click and embroidery-page-to-quote click"
   }
  ]
 }

@@ -1,0 +1,53 @@
+{
+ "overall": "PASS",
+ "action_count": 5,
+ "investment_status": {
+  "ACT-001": "VALIDATE FIRST (pending owner approval)",
+  "ACT-002": "VALIDATE FIRST (pending owner approval)",
+  "ACT-003": "DO NOW",
+  "ACT-004": "VALIDATE FIRST (pending owner approval)",
+  "ACT-005": "VALIDATE FIRST (pending owner approval)"
+ },
+ "STRUCTURAL_COMPLETENESS_SCORE": 100.0,
+ "QUALITY_SCORE": 100,
+ "QUALITY_notes": {
+  "action_count": 5,
+  "priority_ambiguity": 0,
+  "generic_first_signal_count": 0,
+  "undefined_scale_rule_count": 0,
+  "has_customer_journey_map": true,
+  "has_90_day_roadmap": true,
+  "role_level_ownership": true,
+  "external_audit_mode": "external",
+  "all_categories_at_least_90pct": true
+ },
+ "QUALITY_deductions": {
+  "evidence_accuracy": [],
+  "finding_distinctness": [],
+  "customer_specificity": [],
+  "commercial_priority_quality": [],
+  "action_executability": [],
+  "pdf_customer_readiness": []
+ },
+ "first_signals": {
+  "ACT-001": "exact quote CTA click rate + quote-form start (screen-printing)",
+  "ACT-002": "quote form-start to form-submit completion rate",
+  "ACT-003": "gallery caption/service-page click + gallery-to-quote click",
+  "ACT-004": "method-selection completion + homepage method-to-service-page click",
+  "ACT-005": "embroidery proof/gallery click + embroidery-page-to-quote click"
+ },
+ "scale_rules": "comparison vs 14-day baseline; expand only if rate improves + lead quality not down + no confusion + owner approves; no-data => no scale decision beyond public QA",
+ "EC-005_scope_note": "proof image + gallery link + embroidery quote route ONLY; pricing deferred until ACT-001 pricing pattern validated",
+ "pdf_sha256": "7de084f16e612460b72f52012b4ab478bcfd1e547f1a3deed5919e41c604ac4e",
+ "rendered_sha256": "7de084f16e612460b72f52012b4ab478bcfd1e547f1a3deed5919e41c604ac4e",
+ "scanned_sha256": "7de084f16e612460b72f52012b4ab478bcfd1e547f1a3deed5919e41c604ac4e",
+ "email_copy_sha_matches": true,
+ "three_way": true,
+ "independent_pypdf": {
+  "file_uri": 0,
+  "abs_path": 0,
+  "pages": 15,
+  "Finding_N_count": 5,
+  "Founding_finding_present": false
+ }
+}

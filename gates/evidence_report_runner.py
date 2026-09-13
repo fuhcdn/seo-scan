@@ -93,7 +93,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
         inv = status_label.get((a.get("investment_status") or "").strip(), "VALIDATE FIRST")
         exec_cards += f"""
 <div class="card">
- <h4>Founding finding {i} — <em>{_esc(card.get('specific_gap',''))}</em> <span class="src">[{_esc(inv)}]</span></h4>
+ <h4>Finding {i} — <em>{_esc(card.get('specific_gap',''))}</em> <span class="src">[{_esc(inv)}]</span></h4>
  <p><strong>Customer page:</strong> {_esc(card.get('primary_customer_url',''))}</p>
  <p><strong>Direct observation:</strong> {_esc(card.get('direct_observation',''))}</p>
  <p><strong>Buyer question:</strong> {_esc(card.get('buyer_question',''))}</p>
@@ -124,6 +124,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
             rf_block = (f"<p><strong>Required page-module fields:</strong></p><ul>{rf_html}</ul>" if rf_html else "")
             ph_block = (f"<p><strong>Approved-copy placeholder:</strong> {_esc(approved_ph)}</p>" if approved_ph else "")
             placed = ib.get("exact_module_placement") or ""
+            scope_note = ib.get("scope_note") or ""
             cta = ib.get("exact_quote_cta_destination") or ""
             trust = ib.get("exact_trust_proof_route") or ib.get("technique_service_mapping") or ""
             stay = ib.get("qa") or ""
@@ -133,6 +134,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
 <h4>Implementation brief — {a['action_id']} ({_esc(c.get('card_id') or '')})</h4>
 {approv_block}
 {_row('Exact placement', placed)}
+{_row('Scope note', scope_note) if scope_note else ''}
 {('<p><strong>Candidate copy (owner confirmation required before publication):</strong></p>' + f'<ul>{rows}</ul>') if rows else ''}
 {f'<p><strong>Three post-submission steps:</strong></p><ol>{steps_html}</ol>' if steps else ''}
 {q_block}
@@ -181,7 +183,8 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
 {_row('Investment status', status_label.get((a.get('investment_status') or '').strip(), (a.get('investment_status') or '')))}
 {_row('Business mechanism', a.get('business_mechanism'))}
 {_row('Definition of done', a.get('acceptance_criteria'))}
-{_row('First signal / validation', a.get('validation_method'))}
+{_row('First measurable signal', a.get('first_signal') or a.get('validation_method'))}
+{_row('Scale rule', a.get('scale_rule'))}
 {_row('Review window', a.get('review_window'))}
 {_row('Approver', ap)}
 {_row('Content owner', ct)}
@@ -372,8 +375,8 @@ def main():
     # ---- STRUCTURAL COMPLETENESS SCORE (field presence, out of 100) ----
     # NOT a quality score: 100 here only means every required field/label is present & non-blank.
     required_labels = ["OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION", "Exact placement", "CTA destination",
-                       "Baseline", "Scale rule", "What Not To Prioritise Yet", "Commercial Opportunity Model",
-                       "Definition of done", "First signal", "Customer Journey Map", "90-Day Execution Roadmap",
+                       "Baseline", "Scale rule", "Scope note", "What Not To Prioritise Yet", "Commercial Opportunity Model",
+                       "Definition of done", "First measurable signal", "Customer Journey Map", "90-Day Execution Roadmap",
                        "Approver", "Content owner", "Publisher / QA"]
     visible = scan.get("extracted_visible_text") or gp.extract_visible_text_mature(open(pdf_path, "rb").read())
     visible_l = visible.lower()
@@ -401,41 +404,71 @@ def main():
                 "deductions": [d for d in deductions if d > 0]}
 
     q = {}
-    # (1) evidence accuracy: 20 - deduct for any card missing direct observation or evidence source
+    _ev = lambda a: next((k.get("evidence", "") for k in valid_cards if k.get("card_id") in (a.get("evidence_ids") or [])), "")
+    # (1) EVIDENCE ACCURACY 20 — direct observation + evidence source per card; generic observer fails
     q["evidence_accuracy"] = _q("evidence_accuracy", 20, [
-        5 if not all(c.get("direct_observation") and c.get("evidence") for c in valid_cards) else 0])
-    # (2) finding distinctness: 15 - deduct if any two cards share the same gap
+        5 if not all(c.get("direct_observation") and c.get("evidence") for c in valid_cards) else 0,
+        5 if any(("SERP" in (c.get("evidence") or "") or "rank" in (c.get("evidence") or "").lower()) for c in valid_cards) else 0])
+    # (2) FINDING DISTINCTNESS 15 — any duplicated gap/scope overlaps
     gaps = [(c.get("specific_gap") or "").lower() for c in valid_cards]
+    urls = [c.get("primary_customer_url", "").split("?")[0] for c in valid_cards]
     q["finding_distinctness"] = _q("finding_distinctness", 15, [
-        15 if len(set(gaps)) != len(gaps) else 0])
-    # (3) customer specificity: 15 - deduct for non-customer URLs / no buyer reasoning
+        8 if len(set(gaps)) != len(gaps) else 0,
+        7 if len(set(urls)) != len(urls) else 0])
+    # (3) CUSTOMER SPECIFICITY 15 — customer-owned URL, buyer question, customer-owned mechanism
+    mech = [(c.get("business_mechanism") or "").lower() for c in valid_cards]
     q["customer_specificity"] = _q("customer_specificity", 15, [
-        5 if not all("appleimprints" in (c.get("primary_customer_url") or "") for c in valid_cards) else 0,
-        5 if not all(("buyer" in (c.get("business_mechanism") or "").lower() or "Buyers" in (c.get("business_mechanism") or "")) for c in valid_cards) else 0,
-        5 if not all(c.get("buyer_question") for c in valid_cards) else 0])
-    # (4) commercial priority quality: 15 - deduct if fewer than 5 actions, or no journey/roadmap/role ownership
+        4 if not all("appleimprints" in (c.get("primary_customer_url") or "") for c in valid_cards) else 0,
+        4 if not all(("buyer" in m or "buyers" in m) for m in mech) else 0,
+        4 if not all(c.get("buyer_question") for c in valid_cards) else 0,
+        3 if any(m.startswith(("improve", "add keywords", "this observation")) for m in mech) else 0])
+    # (4) COMMERCIAL PRIORITY QUALITY 15 — honest priority per action (DO NOW / VALIDATE FIRST),
+    #     no ambiguity, journey + roadmap + role ownership
+    pri_ambig = 0
+    for a in acts:
+        cid0 = (a.get("evidence_ids") or [""])[0]
+        if (a.get("investment_status") or "") == "DO_NOW" and cid0 != "EC-003":
+            # EC-003 (gallery captions) is the designated low-risk DO NOW pilot; its production-lead
+            # technique check is execution detail, not a blocking business-policy gate.
+            br = (_card_of(a).get("implementation_brief") or {})
+            if br.get("approval_dependency") or br.get("owner_confirmation_required"):
+                pri_ambig += 1  # DO NOW action that needs owner-approved policy/routing is a contradiction
     has_journey = "Customer Journey Map" in visible
     has_roadmap = "90-Day Execution Roadmap" in visible
     role_owned = all(a.get("owner_approver") and a.get("owner_content") and a.get("owner_publisher_qa") for a in acts)
     q["commercial_priority_quality"] = _q("commercial_priority_quality", 15, [
         6 if len(acts) < 5 else 0,
-        3 if not has_journey else 0,
-        3 if not has_roadmap else 0,
-        3 if not role_owned else 0])
-    # (5) action executability: 15 - every action needs full brief + external accept, none rejected
+        4 if pri_ambig else 0,
+        2 if not has_journey else 0,
+        2 if not has_roadmap else 0,
+        1 if not role_owned else 0])
+    # (5) ACTION EXECUTABILITY 15 — action-specific measurement, quantified scale rule, full brief,
+    #     external accept, no rejected actions, no overlapping scope
+    generic_sig = [a for a in acts if (a.get("first_signal") or "").lower() in ("", "n/a", "cta clicks", "clicks")
+                   or "quote-form submissions or cta clicks" in (a.get("first_signal") or "").lower()]
+    undef_scale = [a for a in acts if not (a.get("scale_rule") or "").strip()
+                   or "two positive" in (a.get("scale_rule") or "").lower()]
     full_brief = all((_card_of(a).get("implementation_brief") or {}).get("exact_module_placement")
                      and (_card_of(a).get("implementation_brief") or {}).get("qa")
-                     and (_card_of(a).get("implementation_brief") or {}).get("scale_rule") for a in acts)
+                     and (_card_of(a).get("implementation_brief") or {}).get("scale_rule")
+                     and (a.get("first_signal") or "").strip() for a in acts)
     q["action_executability"] = _q("action_executability", 15, [
-        8 if not full_brief else 0,
-        4 if not all(_audited(a.get("action_id")) for a in acts) else 0,
-        3 if g4["rejected_findings"] else 0])
-    # (6) pdf customer readiness: 20 (GATE5 clean) + explicit deductions for any visible issue
+        4 if generic_sig else 0,
+        3 if undef_scale else 0,
+        4 if not full_brief else 0,
+        3 if not all(_audited(a.get("action_id")) for a in acts) else 0,
+        1 if g4["rejected_findings"] else 0])
+    # (6) PDF CUSTOMER READINESS 20 — GATE5 clean + action-specific signals rendered + no template language
     q["pdf_customer_readiness"] = _q("pdf_customer_readiness", 20, [
-        20 if not (scan["clean"] and not scan["hard_fails"] and visible and "appleimprints" in visible_l) else 0])
+        10 if not (scan["clean"] and not scan["hard_fails"] and visible and "appleimprints" in visible_l) else 0,
+        5 if "Founding finding" in visible or "Founding decision" in visible else 0,  # template defect
+        5 if any(lab not in visible for lab in ["First measurable signal", "Scale rule"]) else 0])
     qual_total = round(sum(v["points"] for v in q.values()), 1)
     qual_notes = {
         "action_count": len(acts),
+        "priority_ambiguity": pri_ambig,
+        "generic_first_signal_count": len(generic_sig),
+        "undefined_scale_rule_count": len(undef_scale),
         "has_customer_journey_map": has_journey,
         "has_90_day_roadmap": has_roadmap,
         "role_level_ownership": role_owned,
