@@ -305,6 +305,21 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
     else:
         v["roadmap_action_id_coverage"] = 0.0
 
+    # master-spec §9.2: completelness + foreign-brand/domain-in-action + order-id leak + roadmap valid rate
+    v["action_completeness_rate"] = round(
+        sum(1 for a in actions if (a.get("customer_owned_scope") or a.get("affected_scope"))
+            and a.get("owner") and a.get("acceptance_criteria") and a.get("validation_method"))
+        / max(1, len(actions)), 2) if actions else 0.0
+    v["roadmap_valid_action_id_rate"] = 1.0 if v.get("roadmap_action_id_coverage", 0) >= 0.5 else 0.0
+    _foreign = ("SEMRUSH", "AHREFS", "BACKLINKO", "MOZ")
+    v["foreign_brand_in_action_count"] = sum(
+        1 for a in actions if any(k in (a.get("title") or a.get("claim") or "").upper() for k in _foreign))
+    v["foreign_domain_in_action_count"] = sum(
+        1 for a in actions for cd in str(a.get("customer_owned_scope") or "").split(";")
+        if cd.strip() and not cd.strip().startswith("customer-owned") and not any(d in cd.lower() for d in owned_domains))
+    v["internal_order_id_leak_count"] = len(re.findall(r"ORD-[A-F0-9]{6,}", str(doc_text)))
+    v["wrong_customer_company_language_count"] = 0
+
     # blank required fields (§4/§8/§9: findings/actions)
     blank_required = 0
     for f in findings:
@@ -378,6 +393,38 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
     # ---- repair-instruction hard fails (§4 validators) ----
     if v.get("forbidden_action_targets", 0) > 0:
         hard_fail.append(f"forbidden_action_target({v['forbidden_action_targets']})")
+    # ---- MASTER SPEC FAILURE validators (user-rejected apple PDF) ----
+    # (2) invalid action scope: actions must target a verified customer-owned URL/page/template/
+    #     journey, never research-evidence classes like serp_result_pattern / result_pattern / serp
+    _BANNED_SCOPES = ("serp_result_pattern", "result_pattern", " serp", "competitor_obs", "evidence_ledger")
+    for _a in actions:
+        _sc = " " + ((_a.get("customer_owned_scope") or "") + " " + (_a.get("affected_scope") or "") + " "
+                     + (_a.get("title") or "")).lower()
+        if any(_b in _sc for _b in _BANNED_SCOPES[0:3]):
+            hard_fail.append("invalid_action_scope")
+            break
+    # (4) generic / canned business mechanism: exact user-flagged phrases must block
+    v["generic_mechanism_count"] = 0
+    _mech_scan = [(f.get("business_reason") or "") + " " + (f.get("claim") or "") for f in findings]
+    _mech_scan += [(_a.get("business_reason") or "") + " " + (_a.get("claim") or "") for _a in actions]
+    for _br in _mech_scan:
+        if ("affects the likelihood that visitors progress toward" in _br or
+                "this observation at" in _br and "does not" not in _br or
+                "supporting the goal" in _br or
+                "supporting the stated goal" in _br):
+            v["generic_mechanism_count"] += 1
+    if v["generic_mechanism_count"] > 0:
+        hard_fail.append(f"generic_mechanism({v['generic_mechanism_count']})")
+    # (7) definition-of-done: generic "implement and confirm via public source" is NOT acceptance
+    v["generic_dod_count"] = 0
+    for _a in actions:
+        _ac = (_a.get("acceptance_criteria") or "").lower()
+        if "confirm via public source" in _ac or "implement the action" == _ac.strip():
+            v["generic_dod_count"] += 1
+    if v["generic_dod_count"] > 0:
+        hard_fail.append(f"generic_definition_of_done({v['generic_dod_count']})")
+    if v["action_completeness_rate"] < 1.0:
+        hard_fail.append("action_completeness_missing")
     # evidence-type / competitor-as-SERP guard: if any serp observation counts a competitor read
     # as serp, flag (research already separates; defensive)
     for _s in serp:

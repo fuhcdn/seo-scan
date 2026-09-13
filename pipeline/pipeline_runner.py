@@ -490,23 +490,26 @@ def step_report(status, audit_path=None):
             fh.write(html)
         # PDF metadata (clean, no internal identifiers) — title/filename set by html_to_pdf from title
         pdf_ok = _re.html_to_pdf(html_path, pdf_path)
-        # post-render PDF safety re-encode into the report (deterministic re-check on rendered PDF bytes)
-        pf = ""
-        try:
-            if pdf_ok:
-                with open(pdf_path, "rb") as _f:
-                    pf = _f.read().decode("utf-8", "replace")
-        except Exception:
-            pf = ""
+        # post-render PDF safety — REAL content scanner (decompresses FlateDecode streams,
+        # scan visible text + metadata + hyperlink URIs). Old raw-byte scan missed the
+        # exact file:///app/pipeline/out/...html string because PDF content is compressed.
         leak_post = 0
         leak_hits = []
-        _leak_pats = ["/app/pipeline", "/app/output", "file://", "localhost", "127.0.0.1",
-                      "ORD-", "/opt/", "/home/", "/tmp/", "sk_live_", "rk_live_", "whsec_"]
-        for _p in _leak_pats:
-            _c = pf.count(_p)
-            if _c:
-                leak_hits.append(f"{_p}x{_c}")
-                leak_post += _c
+        pdf_leak_hard = False
+        _pdf_text = ""
+        try:
+            if pdf_ok:
+                import pdf_scanner as _pdfs
+                _ps = _pdfs.scan_pdf_for_leaks(open(pdf_path, "rb").read())
+                for _h in _ps.get("hits") or []:
+                    leak_hits.append(f"{_h['pattern']}x{_h['count']}")
+                    leak_post += _h["count"]
+                if _ps.get("blocked") or _ps.get("hard_fail"):
+                    pdf_leak_hard = True
+                _pdf_text = _ps.get("text_str", "")
+        except Exception:
+            pdf_leak_hard = True  # cannot scan -> treat as unsafe, do not deliver
+            _pdf_text = ""
         # final-artifact contamination re-check on the rendered PDF text — only DIRECTIVE-style
         # occurrences (competitor used as an action/directive target). Competitor names in the
         # evidence/source appendix are permitted (§1). Pattern: implementation verb or ownership
@@ -514,12 +517,12 @@ def step_report(status, audit_path=None):
         _art_contam = 0
         _art_terms = []
         try:
-            pf_l = pf.lower()
+            pf_l = _pdf_text.lower()
             _dir_pat = re.compile(
                 r"(align|improve|rewrite|update|fix|restructure|create|add|reposition)\s+(semrush|ahrefs|moz):?[- ]?(owned)?|"
                 r"(semrush|ahrefs|moz)[- ]owned|"
                 r"action\s+target:?\s+(semrush|ahrefs|moz)\.com", re.I)
-            _m = _dir_pat.findall(pf)
+            _m = _dir_pat.findall(pf_l)
             if _m:
                 for grp in _m:
                     t = [g for g in grp if g]
@@ -531,7 +534,7 @@ def step_report(status, audit_path=None):
         status["pdf_post_render_leak"] = leak_post
         status["pdf_post_render_leak_hits"] = leak_hits
         status["pdf_final_artifact_contamination"] = list(set(_art_terms))
-        if leak_post > 0 or _art_contam > 0:
+        if pdf_leak_hard or leak_post > 0 or _art_contam > 0:
             status["delivery_state"] = "DELIVERY_BLOCKED"
             status["pdf_privacy_leak_count"] = leak_post
             mark_step(status, "report", "failed",

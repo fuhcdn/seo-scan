@@ -87,8 +87,10 @@ def mk_findings(n=3, blank_action=False, generic_reason=False, blank_owner=False
 def mk_actions(n=5, blank_fields=False):
     return [{"title": f"Publish decision-support page for query set {i}",
              "owner": "" if blank_fields else "Content",
-             "acceptance_criteria": "" if blank_fields else "page live + linked",
-             "validation_method": "" if blank_fields else "GSC"} for i in range(n)]
+             "affected_scope": "" if blank_fields else "https://client.example.com/business/service/%d" % i,
+             "customer_owned_scope": "" if blank_fields else "https://client.example.com/business/service/%d" % i,
+             "acceptance_criteria": "" if blank_fields else "page live + linked + QA passed",
+             "validation_method": "" if blank_fields else "GSC; first-signal CTA clicks; review 30d"} for i in range(n)]
 
 
 def delivery_blocked(det, blind=None):
@@ -203,6 +205,51 @@ def run_tests():
     det_k = AG.deterministic_validate(res_k, mk_findings(3), acts_k, "ENTRY_REPORT", mk_order(), doc_text="clean")
     k_generic = det_k.get("generic_action_count", 0) > 0
     results.append(("K-generic-action-flagged", k_generic, "generic_action_count", det_k.get("generic_action_count")))
+
+    # ---- Test L: invalid action scope (serp_result_pattern) blocks (user reject #2) ----
+    res_l = mk_research(npages=8, nserp_valid=5, ncomp=3)
+    actions_l = mk_actions(5)
+    actions_l[0]["customer_owned_scope"] = "serp_result_pattern"  # evidence class, not customer page
+    actions_l[0]["title"] = "Add a comparison/decision matrix to serp_result_pattern"
+    det_l = AG.deterministic_validate(res_l, mk_findings(3), actions_l, "ENTRY_REPORT", mk_order(), doc_text="clean")
+    l_pass = "invalid_action_scope" in (det_l.get("hard_fail_list") or [])
+    results.append(("L-invalid-action-scope-blocked", l_pass, "hard_fail", det_l.get("hard_fail_list")))
+
+    # ---- Test M: generic business mechanism blocks (user reject #4) ----
+    res_m = mk_research(npages=8, nserp_valid=5, ncomp=3)
+    findings_m = mk_findings(3)
+    findings_m[0]["business_reason"] = ("This observation affects the likelihood that visitors "
+                                        "progress toward the stated business goal (more sales-revenue).")
+    det_m = AG.deterministic_validate(res_m, findings_m, mk_actions(5), "ENTRY_REPORT", mk_order(), doc_text="clean")
+    m_pass = "generic_mechanism" in " ".join(det_m.get("hard_fail_list") or [])
+    results.append(("M-generic-mechanism-blocked", m_pass, "hard_fail", det_m.get("hard_fail_list")))
+
+    # ---- Test N: generic definition-of-done blocks (user reject #7) ----
+    res_n = mk_research(npages=8, nserp_valid=5, ncomp=3)
+    actions_n = mk_actions(5)
+    actions_n[0]["acceptance_criteria"] = "Implement the action and confirm via public source"
+    det_n = AG.deterministic_validate(res_n, mk_findings(3), actions_n, "ENTRY_REPORT", mk_order(), doc_text="clean")
+    n_pass = any("generic_definition_of_done" in h or "action_completeness" in h for h in (det_n.get("hard_fail_list") or []))
+    results.append(("N-generic-done-blocked", n_pass, "hard_fail", det_n.get("hard_fail_list")))
+
+    # ---- Test O: business-model mismatch rejected at generator (user reject #5) ----
+    import quality_gate as QG2
+    fit_ok, fit_note = QG2.business_model_fit("Add a quote request form", "customer wants to compare cost",
+                                              "shop", "buy", "UK")
+    o_pass = (fit_ok is False)
+    results.append(("O-business-model-mismatch-generator", o_pass, "fit_note", fit_note))
+
+    # ---- Test P: PDF privacy scanner blocks file:///app/pipeline/out/...html (user reject #1) ----
+    from pdf_scanner import scan_pdf_for_leaks
+    import zlib
+    leak_str = b"file:///app/pipeline/out/SEO-Opportunity-Diagnostic-apple-2026-09-13.html"
+    body = b"BT (" + leak_str + b") Tj ET"
+    stream = zlib.compress(body)
+    header = b"%PDF-1.4\n1 0 obj<</Length " + str(len(stream)).encode() + b"/Filter /FlateDecode>>stream\n"
+    trailer = b"\nendstream\nendobj\ntrailer<</Root 1 0 R>>\n%%EOF"
+    ps = scan_pdf_for_leaks(header + stream + trailer)
+    p_pass = ps["blocked"] is True and ps["hard_fail"] == "INTERNAL_PATH_LEAK"
+    results.append(("P-pdf-scanner-file-url-blocked", p_pass, "hits", ps["hits"]))
 
     print("=" * 60)
     ok_count = 0

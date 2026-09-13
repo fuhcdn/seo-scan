@@ -32,6 +32,10 @@ UI = {
         "plan90": "90-Day Action Plan",
         "validation": "Public-Data Validation Checklist",
         "sources": "Source Appendix",
+        "quick_win": "First 7-Day Win",
+        "investment_title": "Investment Decision Matrix",
+        "whatnot_title": "What Not To Prioritise Yet",
+        "comm_model_title": "Commercial Opportunity Model",
         "disclaimer": "This is strategic research based on the stated public-evidence scope; search results change; no outcome is guaranteed.",
         "granted": "Prepared for",
         "powered": "seoscanaudit.com",
@@ -475,6 +479,27 @@ def priority_sort_key(f):
     return pm.get(str(f.get("priority", "P3")).split(" ")[0], 3)
 
 
+def _evidence_label(e):
+    """Evidence source label, but a public RESULT-PATTERN observation is an interpretation —
+    never a standalone FACT merely because a result URL is listed (master-spec §09)."""
+    lab = (e.get("label") or "").strip()
+    scope = (e.get("scope") or "").lower()
+    is_pattern = ("result" in scope or "serp" in scope or
+                  "Search result pattern" in (e.get("claim") or "") or "parsed visible" in (e.get("claim") or "").lower())
+    if is_pattern and lab.upper() == "FACT":
+        return "INFERENCE"
+    return lab or "INFERENCE"
+
+
+def _safe_href(url):
+    """Only allow http(s) hyperlinks in the report; anything else is rendered as plain text
+    (never a file:// or internal path that would leak in the PDF)."""
+    u = (url or "").strip()
+    if u.lower().startswith(("http://", "https://")):
+        return f"<a href='{esc(u)}'>{esc(u)}</a>"
+    return esc(u)
+
+
 def finding_card(f, lang):
     """單條 finding → HTML card（D2 structure）。"""
     label = f.get("claim_label") or "INFERENCE"
@@ -571,7 +596,7 @@ def build_report(order, research, findings, actions=None, tier="ENTRY_REPORT", l
     cards = "\n".join(finding_card(f, u) for f in findings)
     src_rows = "".join(
         f"<tr><td>{esc(e.get('evidence_id',''))}</td><td>{esc(e.get('claim',''))}</td>"
-        f"<td>{esc(e.get('label',''))}</td><td><a href='{esc(e.get('source_url',''))}'>{esc(e.get('source_url',''))}</a></td>"
+        f"<td>{esc(_evidence_label(e))}</td><td>{_safe_href(e.get('source_url',''))}</td>"
         f"<td>{esc(e.get('access_date',''))}</td></tr>" for e in ev)
     lim = "".join(f"<li>{esc(x)}</li>" for x in research.get("limitations") or [])
     pages_ok = [p for p in research.get("architecture", {}).get("pages_reviewed", []) if p.get("ok")]
@@ -633,7 +658,44 @@ def build_report(order, research, findings, actions=None, tier="ENTRY_REPORT", l
              <strong>{_D('evidence_ids_l') or _D('evidence')}:</strong> {esc(', '.join(f.get('evidence_ids') or []))}</p>
         </div>"""
 
-    # ---- PREMIUM-only sections (Part F) ----
+    # ---- COMMERCIAL VALUE & INVESTMENT DISCIPLINE (master-spec Part 5/8) ----
+    _whatnot_note = ("Competitor-page work, broad keyword/content production, external-link building and redesigns are not yet prioritised: "
+                     "no customer-owned page-gap evidence yet shows they would move the highest-value decision. "
+                     "Focus first on the concrete customer-owned page gaps this report documents." if not real_actions
+                     else ("Beyond the actions above, avoid broad content or link/redesign spend until the documented "
+                           "customer-owned page gaps move the visible decision; validate with the first customer-measured signal.")
+                     + " Competitor or external pages are treated as evidence only, never as work targets.")
+    _com_obs = "; ".join((o.get("query") + " -> " + (o.get("result_pattern") or "observed pattern")) for o in (research.get("serp") or [])[:4]) or "customer-owned page observations (see evidence)"
+    _win = next((a for a in real_actions if (a.get("effort") or "").lower().startswith("small")), None) or (real_actions[0] if real_actions else None)
+    _quick = ""
+    if _win:
+        _quick = f"""<h2>{esc(_u(u,'quick_win'))}</h2>
+<div class="card">
+  <p><strong>{esc(_win.get('action_id') or 'ACT')}</strong> — {esc(_win.get('title') or _win.get('claim') or '')}</p>
+  <p><strong>{esc(_D('owner'))}:</strong> {esc(_win.get('owner') or 'SEO / Marketing')} · <strong>Completion:</strong> {esc(_win.get('acceptance_criteria') or 'implement and confirm on the customer-owned page')}</p>
+  <p><em>Why first: low-cost, reversible, on a high-intent customer-owned page — validates the wider action plan before bigger spend.</em></p>
+</div>"""
+    _do_now = [a for a in real_actions if (a.get("effort") or "").lower() in ("small",)]
+    _validate = [a for a in real_actions if (a.get("effort") or "").lower() in ("medium", "large", "high")]
+    _defer_note = ("Broad content production, external links, redesign or new tool builds are deferred until the highest-value customer-owned pages are proven." if real_actions else "")
+    _inv = f"""<h2>{esc(_u(u,'investment_title'))}</h2>
+<div class="card">
+  <h4>DO NOW</h4>{'<ul>' + ''.join(f"<li>{esc(a.get('action_id') or '')} — {esc(a.get('title') or '')}</li>" for a in _do_now) + '</ul>' if _do_now else '<p>No zero-cost quick actions; all require small, reversible customer-owned changes.</p>'}
+  <h4>VALIDATE FIRST</h4>{('<ul>' + ''.join(f"<li>{esc(a.get('action_id') or '')} — {esc(a.get('title') or '')} (validate demand/lower-risk first)</li>" for a in _validate) + '</ul>') if _validate else '<p>No larger projects in this pass; where one is needed, run a small page/content test before committing.</p>'}
+  <h4>DEFER / DO NOT PRIORITISE YET</h4><p>{esc(_defer_note)}</p>
+</div>"""
+    _what_not = f"""<h2>{esc(_u(u,'whatnot_title'))}</h2>
+<div class="card"><p>{esc(_whatnot_note)}</p></div>"""
+    _com_model = f"""<h2>{esc(_u(u,'comm_model_title'))}</h2>
+<div class="card">
+  <p><strong>Value lever:</strong> demand capture (relevant buyer question / page / result pattern) and page clarity (offer / CTA / intent route).</p>
+  <p><strong>Publicly observable evidence now:</strong> {esc(_com_obs)}</p>
+  <p><strong>Client data required to quantify upside:</strong> sessions, impressions, CTR, CTA clicks, lead/order rate (GSC / GA4 access when provided).</p>
+  <p><em>Assumptions only — never a forecast guarantee. Show the formula and data requirement rather than a number when data is absent.</em></p>
+</div>"""
+    _growth_block = _quick + _inv + _what_not + _com_model
+
+# ---- PREMIUM-only sections (Part F) ----
     premium_sections = ""
     if is_premium:
         meth_rows = "".join(
@@ -724,6 +786,8 @@ def build_report(order, research, findings, actions=None, tier="ENTRY_REPORT", l
     <p>{esc(psamp)}</p>
 
     {premium_sections}
+
+    {_growth_block}
 
     <h2>{esc(_u(u,'top5'))}</h2>
     {_render_action_ledger(actions, findings, u)}

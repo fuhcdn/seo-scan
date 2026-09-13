@@ -332,11 +332,16 @@ def _recommended_action_for_claim_competitor(claim, evidence, primary_goal, offe
             f"({primary_goal}) — e.g. add comparison/proof/intent guidance on the customer page. "
             f"NEVER modify a competitor site.")
 
-def _recommended_action_for_claim(claim, evidence, primary_goal, offers="", market=""):
+def _recommended_action_for_claim(claim, evidence, primary_goal, offers="", market="", customer_scope_override=""):
     """Frame the observation into a concrete, non-selling action the owner can execute.
-    Never blank; never a system-log/generic directive."""
+    Never blank; never a system-log/generic directive. The action TARGET (scope) must be a
+    verified CUSTOMER-OWNED page/URL/template/journey — never the research evidence class
+    (serp_result_pattern / result_pattern / serp)."""
     claim_l = (claim or "").lower()
-    scope = evidence.get("scope") or "the affected pages"
+    scope = customer_scope_override or evidence.get("scope") or "the affected pages"
+    # NEVER emit a research-evidence class as the action target
+    if scope.lower() in ("serp_result_pattern", "result_pattern", "serp") or "result_pattern" in scope.lower():
+        scope = customer_scope_override or "the relevant customer-owned page"
     direct = evidence.get("direct_observation") or ""
     # pattern-match toward concrete remediation direction
     if any(w in claim_l for w in ("pricing", "quote", "cost", "price")):
@@ -375,11 +380,11 @@ def _recommended_action_for_claim(claim, evidence, primary_goal, offers="", mark
     return act[:220]
 
 
-def _business_reason_for_claim(claim, evidence, primary_goal, offers="", market="", customer_domain=""):
+def _business_reason_for_claim(claim, evidence, primary_goal, offers="", market="", customer_domain="", customer_scope_override=""):
     """Explain in business terms why this matters to THIS customer's goal. Never the
     generic 'Relates to the stated goal (X)'."""
     claim_l = (claim or "").lower()
-    scope = evidence.get("scope") or "the affected pages"
+    scope = customer_scope_override or evidence.get("scope") or "the affected pages"
     if any(w in claim_l for w in ("pricing", "quote", "cost", "price")):
         return (f"Buyers at {scope} cannot compare value before contacting, which can suppress "
                 f"qualified enquiries toward the goal ({primary_goal}).")
@@ -401,8 +406,15 @@ def _business_reason_for_claim(claim, evidence, primary_goal, offers="", market=
     if any(w in claim_l for w in ("cta", "conversion", "contact", "action")):
         return (f"A weak conversion path on {scope} directly limits the number of visitors who "
                 f"reach the desired action tied to the goal ({primary_goal}).")
-    return (f"This observation at {scope} affects the likelihood that visitors progress toward "
-            f"the stated business goal ({primary_goal}).")
+    # Customer-specific mechanism fallback: name the buyer step + missing element + the offer.
+    _buystep, _miss = "compare / decide", "decision-relevant"
+    if any(w in claim_l for w in ("comparison", "compare", "vs")):
+        _buystep, _miss = "evaluate options", "an unambiguous comparison/decision matrix"
+    elif any(w in claim_l for w in ("trust", "proof", "case", "testimonial")):
+        _buystep, _miss = "trust", "visible third-party proof"
+    return (f"On {scope}, the buyer's {_buystep} step is not yet supported: the page does not "
+            f"provide the specific {_miss} element that qualified buyers of "
+            f"{offers or 'the offer'} ({primary_goal}) need before deciding.")
 
 
 def classify_findings(research, status, tier):
@@ -501,9 +513,9 @@ def classify_findings(research, status, tier):
             "effort": "Small" if tier != "PREMIUM_REPORT" else "Medium",
             "confidence": e.get("confidence", "Medium"),
             "confidence_rationale": (e.get("direct_observation") or "")[:200],
-            "dependencies": [],
-            "acceptance_criteria": "Implement the action on the affected customer-owned pages and confirm via the corresponding public source.",
-            "validation_method": "Search Console / GA4 where access is provided; otherwise re-check public source.",
+            "dependencies": ["applies to customer-owned page(s): " + (_scope or "")[:120]],
+            "acceptance_criteria": (_act[:110] + ". Done mean the change is live on the customer-owned page (" + (_scope or "the page")[:90] + ") and passes QA (link works, text/graphics render, intent matches). Owner: SEO/Marketing.")[:320],
+            "validation_method": "First measurable signal: CTA clicks / impressions moved on the page within the review window (GSC/GA4 where access is provided; else re-check the public page). Review at 30 days; scale only after two positive review points.",
             "limitations": "Public research only; private data not verified.",
         })
 
@@ -556,12 +568,13 @@ def classify_findings(research, status, tier):
         query = s.get("query") or ""
         pattern = s.get("result_pattern") or ""
         _obs = s.get("direct_observation") or ""
+        _serp_scope = _customer_scope("site", s.get("source_url") or "")
         _a = _recommended_action_for_claim(
             f"Search result pattern for \"{query}\" shows {pattern or 'a mixed'} format ({_obs[:40]})",
-            s, primary_goal, offers, market)
+            s, primary_goal, offers, market, customer_scope_override=_serp_scope)
         _r = _business_reason_for_claim(
             f"Search result pattern for \"{query}\" shows {pattern or 'a mixed'} format; visitors expect this format",
-            s, primary_goal, offers, market, customer_domain)
+            s, primary_goal, offers, market, customer_domain, customer_scope_override=_serp_scope)
         _sid += 1
         _s_eid = s.get("evidence_id") or f"SRP-{_sid:03d}"
         # §1 Failure 2: a finding must describe a customer-owned DECISION, not a bare search observation.
@@ -575,11 +588,15 @@ def classify_findings(research, status, tier):
             _obs, _serp_scope)
         _fit_ok, _fit_note = business_model_fit(_decision_title, _r, offers,
                                                 status.get("primary_customer_action") or "", market)
+        # § §8: a public result-pattern observation is an INTERPRETATION, never a standalone FACT.
+        # Only a direct customer-page observation may be FACT. Store query+timestamp+parsed
+        # result evidence+interpretation+limitation separately (already in the serp ledger item).
+        _s_label = "INFERENCE" if (s.get("label") or "").upper() in ("FACT", "INFERENCE", "") else (s.get("label") or "INFERENCE")
         findings.append({
             "priority": "P2", "category": "Commercial Intent",
             "title": _decision_title[:90],
             "claim": f"Visible public results for \"{query}\" are mostly {pattern or 'a mixed'} format (observed {s.get('access_date') or ''}); {_cust_name} has a customer-owned page ({_scope_short}) that should bridge this intent to the stated goal ({primary_goal}).",
-            "claim_label": s.get("label", "INFERENCE"),
+            "claim_label": _s_label,
             "evidence_ids": [_s_eid],
             "affected_scope": _serp_scope,
             "business_reason": _r, "recommended_action": _a,
