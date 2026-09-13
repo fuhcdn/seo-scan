@@ -487,11 +487,14 @@ def classify_findings(research, status, tier):
             "limitations": "General public result-pattern observation is not exact rank data.",
         })
 
-    # cap by tier (entry = exactly 3 findings, premium = 5-8)
+    # Cap by tier. Prioritise genuine customer-owned decisions: keep SERP-driven findings first,
+    # then customer-page evidence, then at most ONE synthesised competitor finding (never duplicates).
     is_premium = tier == "PREMIUM_REPORT"
     target_finding = 8 if is_premium else 3
     target_action = 15 if is_premium else 5
-    findings = findings[:target_finding]
+    _noncomp = [f for f in findings if not f.get("category", "").endswith("Competitor")]
+    _comp = [f for f in findings if f.get("category", "").endswith("Competitor")][:1]
+    findings = (_noncomp + _comp)[:target_finding]
 
     # Build actions — each targets a CUSTOMER-OWNED scope
     verified_actions = []
