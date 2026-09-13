@@ -21,6 +21,9 @@
 
 | Commit | 改動 | 理由 | 測試 | Rollback |
 |---|---|---|---|---|
+| 4be9d8e | 客戶 email subject 內部 order_id → customer-safe ref;Reply-To header 支持 | customer-safe | 31/31 | revert |
+| 7acc233 | /sitemap.xml+/robots.txt routes;docstring 更正;品牌 inventory+proposal | AP-5 自主 | staging 200×3 | revert |
+| a0a1e1b | **品牌統一 DEPLOYED**「SEO Scan Audit」(57→0) + clarification A→C state machine + watchdog 整合 + AC brand validator | owner 批 Option A + A→C | 32/32+15/15+12/12;Golden A/B PASS;production 10 routes 200 | revert→ddca49b |
 | 96833a9 | 5-gate evidence-led rebuild | 用戶 REJECT template-led SERP shortcut | 24/24 | git revert |
 | 30e3a3d | GATE5 scheme-based rules | footer `file://` leak | regression | git revert |
 | 14df6a1 | `--no-pdf-header-footer` + pypdf + 3-way SHA | Chromium footer root fix | 24/24 | git revert |
