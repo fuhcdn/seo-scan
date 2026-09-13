@@ -44,6 +44,85 @@ GENERIC_ACTION_PATTERNS = [
 ]
 
 
+def build_customer_context_lock(order, research=None):
+    """§1 repair: per-job customer-context lock. Every customer-facing sentence/action must
+    reference the customer's own domain/company/products; foreign brands are allowed only as
+    competitor evidence. Returns a dict used for contamination checks."""
+    from urllib.parse import urlparse as _up
+    domain = ""
+    cu = (order.get("website_url") or order.get("url") or "").strip()
+    if cu.startswith(("http://", "https://")):
+        domain = (_up(cu).netloc or "").lower().lstrip("www.")
+    company = (order.get("company_name") or "").strip()
+    lock = {
+        "job_id": order.get("order_id") or "",
+        "customer_company": company,
+        "customer_primary_domain": domain,
+        "customer_owned_domains": [domain] if domain else [],
+        "customer_products_services": (order.get("main_products_or_services") or "").strip(),
+        "customer_market": (order.get("target_market_or_service_area") or order.get("primary_market_or_service_area") or "").strip(),
+        "customer_business_goal": (order.get("primary_business_goal") or "").strip(),
+        "customer_primary_action": (order.get("primary_customer_action") or "").strip(),
+        "customer_competitor_domains": [str(x).lower().lstrip("www.") for x in (order.get("known_competitors") or [])],
+        "report_language": (order.get("report_language") or "en"),
+        "selected_tier": (order.get("report_tier") or order.get("selected_product_category") or "US$497").upper(),
+    }
+    # normalize competitor domains (may be bare or http)
+    cclean = []
+    for cd in lock["customer_competitor_domains"]:
+        if cd.startswith(("http://", "https://")):
+            cd = cd.split("//")[1].split("/")[0].split(":")[0]
+        cd = cd.lstrip("www.")
+        if cd and cd not in cclean:
+            cclean.append(cd)
+    lock["customer_competitor_domains"] = cclean
+    return lock
+
+
+def cross_customer_contamination_check(lock, findings, actions, roadmap_text=None):
+    """§1 Failure 1: find any foreign brand/domain appearing in customer-facing ACTION /
+    finding recommendation / acceptance / validation text (not in evidence/source). Blocks.
+    Returns (contaminated_count, foreign_terms_found)."""
+    owned = set(lock["customer_owned_domains"])
+    foreign_domains = [d for d in lock["customer_competitor_domains"] if d not in owned]
+    # also catch common SEO-tool brands even if not declared
+    KNOWN_FOREIGN_BRANDS = {
+        "ahrefs", "semrush", "moz", "backlinko", "searchengineland", "spyfu", "surfer seo",
+        "screaming frog", "clearscope", "yoast", "hreflang-checker", "neil patel", "hubspot"}
+    foreign_terms = set()
+    targets = []
+    for a in actions:
+        # customer-facing recommendation fields
+        chunks = [
+            a.get("title") or "", a.get("business_reason") or "",
+            a.get("recommended_action") or "", a.get("acceptance_criteria") or "",
+            a.get("validation_method") or "", a.get("affected_scope") or "",
+            a.get("customer_owned_scope") or "",
+        ]
+        for ch in chunks:
+            cl = ch.lower()
+            for fd in foreign_domains:
+                if fd and fd in cl and fd not in owned:
+                    foreign_terms.add(fd)
+            for brand in KNOWN_FOREIGN_BRANDS:
+                if brand in cl and brand not in owned and brand not in (company := lock["customer_company"].lower()):
+                    foreign_terms.add(brand)
+    # Also flag foreign brand in DECISION-FACING finding fields (title is a decision, and its
+    # recommended_action/scope are actions). BUT the finding's claim/evidence may name a
+    # competitor as a source (§1 permits competitor in evidence/reference fields).
+    for f in findings:
+        for ch in [(f.get("title") or ""), (f.get("recommended_action") or ""),
+                   (f.get("affected_scope") or "")]:
+            cl = ch.lower()
+            for fd in foreign_domains:
+                if fd and fd in cl and fd not in owned:
+                    foreign_terms.add(fd)
+            for brand in KNOWN_FOREIGN_BRANDS:
+                if brand in cl and brand not in owned and brand not in (lock["customer_company"] or "").lower():
+                    foreign_terms.add(brand)
+    return len(foreign_terms), sorted(foreign_terms)
+
+
 def _count_matches(text, patterns):
     n = 0
     for p in patterns:

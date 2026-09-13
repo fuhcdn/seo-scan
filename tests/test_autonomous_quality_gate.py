@@ -156,6 +156,36 @@ def run_tests():
     g_pass = det_g.get("valid_serp_observation_count", 0) == 0
     results.append(("G-competitor-not-serp", g_pass, "valid_serp", det_g.get("valid_serp_observation_count")))
 
+    # ---- Test H: cross-customer contamination — foreign brand in a customer action must block ----
+    res_h = mk_research(npages=8, nserp_valid=5, ncomp=3)
+    # customer is client.example.com; inject a Semrush directive into an action (the real Bug 1)
+    lock_h = AG.build_customer_context_lock({**mk_order(), "known_competitors": ["semrush.com", "ahrefs.com"]}, res_h)
+    findings_h = mk_findings(3)
+    actions_h = mk_actions(5)
+    actions_h[1]["title"] = "Improve Semrush's SEO checklist page"   # contamination
+    actions_h[1]["recommended_action"] = "Align a Semrush-owned page"
+    contam, terms = AG.cross_customer_contamination_check(lock_h, findings_h, actions_h)
+    h_pass = contam > 0
+    results.append(("H-cross-customer-contamination-blocked", h_pass, "foreign_terms", terms))
+
+    # ---- Test I: post-render final-artifact leakage — directive-style foreign contamination in PDF text ----
+    # simulate rendered PDF text containing an internal path AND a directive to a competitor
+    fake_pdf = "file:///app/pipeline/out/test.html align Semrush's page improve ahrefs rank"
+    leak_terms = []
+    dir_pat = __import__("re").compile(
+        r"(align|improve|rewrite|update|fix|restructure|create|add|reposition)\s+(semrush|ahrefs|moz):?[- ]?(owned)?|"
+        r"(semrush|ahrefs|moz)[- ]owned|"
+        r"action\s+target:?\s+(semrush|ahrefs|moz)\.com", __import__("re").I)
+    m = dir_pat.findall(fake_pdf)
+    if m:
+        for g in m:
+            t = [x for x in g if x]
+            if t:
+                leak_terms.append(t[0])
+    leak_path = fake_pdf.count("/app/pipeline") + fake_pdf.count("file://")
+    i_pass = leak_path > 0 and len(leak_terms) > 0
+    results.append(("I-post-render-leakage-blocked", i_pass, "path_terms", (leak_path, leak_terms)))
+
     print("=" * 60)
     ok_count = 0
     for name, passed, info_k, info_v in results:

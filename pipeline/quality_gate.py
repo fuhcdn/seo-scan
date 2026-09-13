@@ -437,9 +437,11 @@ def classify_findings(research, status, tier):
             if ("Competitor-page observation" in (_e.get("claim") or "")) and (_e.get("source_url") or "") == fu:
                 _cid = _e.get("evidence_id", "")
                 break
+        _cust_nm = customer_domain.split(".")[0].capitalize() if customer_domain else "Customer"
+        _comp_title = f"{_cust_nm} should strengthen its own page that answers the same intent competitors serve ({host})"
         findings.append({
             "priority": "P2", "category": "Commercial Intent / Competitor",
-            "title": f"Competitor pattern: {host}", "claim": gap_claim[:220],
+            "title": _comp_title[:90], "claim": gap_claim[:220],
             "claim_label": "INFERENCE", "evidence_ids": [_cid] if _cid else [],
             "affected_scope": _customer_scope("site", ""),
             "business_reason": _r, "recommended_action": _a,
@@ -464,10 +466,15 @@ def classify_findings(research, status, tier):
             s, primary_goal, offers, market, customer_domain)
         _sid += 1
         _s_eid = s.get("evidence_id") or f"SRP-{_sid:03d}"
+        # §1 Failure 2: a finding must describe a customer-owned DECISION, not a bare search observation.
+        _cust_name = customer_domain.split(".")[0] if customer_domain else "the customer"
+        _cust_name = _cust_name.capitalize()
+        _scope_short = "; ".join(customer_pages[:2]) if customer_pages else "the relevant customer-owned page"
+        _decision_title = f"Build a {_cust_name}-owned page that answers \"{query}\" and moves researchers to the next step"
         findings.append({
             "priority": "P2", "category": "Commercial Intent",
-            "title": f"Search result pattern for \"{query}\"",
-            "claim": f"For \"{query}\", visible public results are mostly {pattern or 'mixed'} (observed {s.get('access_date') or ''}).",
+            "title": _decision_title[:90],
+            "claim": f"Visible public results for \"{query}\" are mostly {pattern or 'a mixed'} format (observed {s.get('access_date') or ''}); {_cust_name} has a customer-owned page ({_scope_short}) that should bridge this intent to the stated goal ({primary_goal}).",
             "claim_label": s.get("label", "INFERENCE"),
             "evidence_ids": [_s_eid],
             "affected_scope": _customer_scope("site", s.get("source_url") or ""),

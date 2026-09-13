@@ -354,6 +354,18 @@ def step_report(status, audit_path=None):
         status["deterministic_validator"] = det
         status["draft_score"] = None  # generator no longer sets final score
 
+        # 3b) CUSTOMER_CONTEXT_LOCK + cross-customer contamination check (§1 Failure 1)
+        _lock = _ag.build_customer_context_lock(order, research)
+        status["customer_context_lock"] = _lock
+        _contam_count, _contam_terms = _ag.cross_customer_contamination_check(_lock, findings, actions)
+        status["cross_customer_contamination"] = _contam_terms
+        if _contam_count > 0:
+            mark_step(status, "report", "failed",
+                      note="CROSS_CUSTOMER_CONTAMINATION: foreign brand/domain in customer-facing action/decision text: " + "; ".join(_contam_terms),
+                      delivery_state="DELIVERY_BLOCKED")
+            save_status(status)
+            return _insufficient_evidence_pdf(status, research, ["cross-customer contamination: " + "; ".join(_contam_terms)])
+
         # 4) build the actual draft HTML BEFORE the blind audit so the auditor reviews the
         #    real rendered report draft (Final standard §14: auditor receives report draft/PDF)
         html = _re.build_report(order, research, findings, actions, tier, lang)
@@ -449,13 +461,44 @@ def step_report(status, audit_path=None):
                     pf = _f.read().decode("utf-8", "replace")
         except Exception:
             pf = ""
-        leak_post = pf.count("/app/pipeline") + pf.count("file://") + pf.count("localhost") + pf.count("127.0.0.1") + pf.count("ORD-")
+        leak_post = 0
+        leak_hits = []
+        _leak_pats = ["/app/pipeline", "/app/output", "file://", "localhost", "127.0.0.1",
+                      "ORD-", "/opt/", "/home/", "/tmp/", "sk_live_", "rk_live_", "whsec_"]
+        for _p in _leak_pats:
+            _c = pf.count(_p)
+            if _c:
+                leak_hits.append(f"{_p}x{_c}")
+                leak_post += _c
+        # final-artifact contamination re-check on the rendered PDF text — only DIRECTIVE-style
+        # occurrences (competitor used as an action/directive target). Competitor names in the
+        # evidence/source appendix are permitted (§1). Pattern: implementation verb or ownership
+        # phrase immediately before/after a foreign brand.
+        _art_contam = 0
+        _art_terms = []
+        try:
+            pf_l = pf.lower()
+            _dir_pat = re.compile(
+                r"(align|improve|rewrite|update|fix|restructure|create|add|reposition)\s+(semrush|ahrefs|moz):?[- ]?(owned)?|"
+                r"(semrush|ahrefs|moz)[- ]owned|"
+                r"action\s+target:?\s+(semrush|ahrefs|moz)\.com", re.I)
+            _m = _dir_pat.findall(pf)
+            if _m:
+                for grp in _m:
+                    t = [g for g in grp if g]
+                    if t:
+                        _art_terms.append(t[0])
+                _art_contam = len(_art_terms)
+        except Exception:
+            pass
         status["pdf_post_render_leak"] = leak_post
-        if leak_post > 0:
+        status["pdf_post_render_leak_hits"] = leak_hits
+        status["pdf_final_artifact_contamination"] = list(set(_art_terms))
+        if leak_post > 0 or _art_contam > 0:
             status["delivery_state"] = "DELIVERY_BLOCKED"
             status["pdf_privacy_leak_count"] = leak_post
             mark_step(status, "report", "failed",
-                      note=f"post-render PDF privacy leak ({leak_post} hits); not delivering",
+                      note=f"final-artifact lint blocked: leaks={leak_hits or []} contamination={list(set(_art_terms)) or []}",
                       delivery_state="DELIVERY_BLOCKED")
             save_status(status)
             return None
