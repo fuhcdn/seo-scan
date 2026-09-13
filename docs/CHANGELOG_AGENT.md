@@ -3,6 +3,22 @@
 格式:日期 | commit | 改動 | 理由 | 測試 | rollback
 
 ## 2026-09-13
+### Phase 0 transparency disclosure（依 owner 指令）
+- **Phase 0 audit = read-only** ✅（冇改 production code）
+- **Documentation bootstrap = separate write activity（129d6f7）**，唔可以稱為「zero write」
+- 建立/修改嘅 docs（全部零 secrets、零客戶資料，只含架構/風險/流程描述）：
+  - 新增 11 檔：`docs/OPERATING_MANUAL.md`, `docs/SYSTEM_MAP.md`, `docs/PRODUCT_SPEC.md`, `docs/QUALITY_STANDARD.md`, `docs/PRODUCTION_RUNBOOK.md`, `docs/ARCHITECTURE_DECISIONS.md`, `docs/RISK_REGISTER.md`, `docs/CHANGELOG_AGENT.md`, `docs/BACKLOG.md`, `docs/GOLDEN_REFERENCE_REGISTRY.md`, `docs/INCIDENTS_AND_REGRESSIONS.md`
+  - 其後修改 1 檔：`docs/RISK_REGISTER.md`（R-A5 定價矛盾 RESOLVED 更新）
+- Secret check：docs 內容為流程/架構描述，無 API token/password/customer detail（secrets 只以「位置名稱」引用，如「VPS /deploy/seo/app/secrets.env」，無值）
+
+### Status language correction（依 owner 指令）
+正確狀態用語：
+- Production evidence_v1 architecture: **INTEGRATED / STAGING-READY**
+- Production evidence_v1 end-to-end delivery: **NOT VERIFIED until AP-6 passes**
+- Production evidence_v1 live customer delivery: **NOT ENABLED**
+- Broad customer acquisition: **NOT READY**
+不得將「code integration exists」「staging/golden test pass」「unit tests pass」表述為真實 customer production delivery PASS。
+
 | Commit | 改動 | 理由 | 測試 | Rollback |
 |---|---|---|---|---|
 | 96833a9 | 5-gate evidence-led rebuild | 用戶 REJECT template-led SERP shortcut | 24/24 | git revert |
