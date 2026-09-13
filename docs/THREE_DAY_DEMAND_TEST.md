@@ -26,10 +26,21 @@
 - [ ] 結算:幾多發送/開啟/回覆/teaser 下載/報價/付款
 - [ ] 出誠實結論:轉化邊度斷、邊個訊號有、3-5 客/月可唔可行
 
-## 成功標準(誠實)
-- ✅ Best case:1 個 paid payment 或 deposit
-- ✅ Acceptable:≥2 個 qualified reply(問價/要求 sample)→ 有 demand 訊號
-- ❌ Zero reply:offer/message/ICP/渠道錯——誠實記錄,唔硬銷
+## CEO-council 修正（2026-09-13，deleg_cce7c76f 完成）
+- **First-paid 機率:低（5-12%）**——零 audience/零 social proof/text-only;品質引擎 100/100 係內部指標，市場唔信
+- **#1 killer assumption:「有冷名單可以打」**——Day 1 第一件事:盤點 owner 現有 LinkedIn connections/past clients/社群名單，**target ≥80-120 真人 contact**;唔夠即刻同 owner 講實驗定義要調整（唔好呃自己有 data）
+- **Two-tier success metric**:
+  - Primary:1 個 paid **或 intent signal**（deposit/paid commitment）
+  - Secondary:reply rate ≥3%（足以判斷 message 有無 market fit）
+- **Funnel math（benchmark）**:樂觀 5%×20%=1% end-to-end → **~140 outreach**;中位 3%×12% → **~400**（3 日人力上限 130-150/日）;悲觀 1%×5% → ~2,000（唔現實）
+- **Message A/B**:V1 強調「catch AI audit 唔會捉嘅 30-40% + decision framework」vs V2 強調「decision framework 先」——3 日實驗順便測哪個 angle 有 reply
+- **Sample PDF 替代 testimonial**:雙金樣本 100/100 報告做公開 sample（/sample-report 已 live）——真實樣本唔需要 fake testimonial
+- **Soft signal**:3 日 decision cycle 壓縮——攞「intent/deposit」當 validation，唔強求 full payment
+
+## 成功標準（誠實）
+- ✅ Best case:1 個 paid payment 或 deposit/intent signal
+- ✅ Acceptable:≥2 個 qualified reply（問價/要求 sample）→ 有 demand 訊號；reply rate ≥3% = message 有 market fit
+- ❌ Zero reply:offer/message/ICP/渠道錯——誠實記錄，唔硬銷
 
 ## 條件
 - 零電話/零 face-camera/零 ads/零買名單/零 fake urgency/testimonial
