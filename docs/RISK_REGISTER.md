@@ -7,6 +7,7 @@
 | R-A3 | A | **High** | 付款後黑暗期 — 無付款確認 email,客俾錢到收報告前 24h 冇聲氣 | server.py 無 confirmation email route | agent(需 approval 寄信內容) | proposal 待批 |
 | R-A4 | A | **High** | fail-safe(insufficient-evidence)報告唔送客 — 客俾錢可能收到嘢都冇 | pipeline_runner 生成 fail-safe 唔 email | agent | Phase 1 候補 |
 | R-A5 | A | ~~High~~ **RESOLVED(2026-09-13晚)** | live 定價顯示 79/99 vs config 497/997/397 矛盾 | **再驗證**:live `/` 同 `/en` 均 US$497/997(4CEO cron 輪部署後);本地 landing_zh-Hant 同;之前 79/99 係舊 cached 版本 | ✅ 已解 | 留意將來 deploy 後再驗一次 |
+| R-A2 | A | ~~High~~ **CONTROLLED** | 孤單/死單無 watchdog | AP-1 job_watchdog.py 已實作+12/12 tests;stuck test orders 已歸檔 | ✅ controlled(staging);production 部署待排 |
 | R-A6 | A | High | 單點故障 — 全盤 build 喺 1 VPS + 1 container + JSON 檔 | 無 backup automation 現狀以外 | agent | ROLLBACK.md 有手動 backup;自動化屬 backlog |
 | R-A7 | A | Medium | production post-render scanner 仍 zlib(raw)而非 pypdf-only | pipeline/pdf_scanner.py + pipeline_runner.py:509 | agent | canonical service 已有 pypdf scan喺 step_deliver 前執行(Phase 1);舊 scanner 仍喺 research step 後執行(可移除) |
 | R-A8 | A | Medium | 無 security headers / /api/status 無認證 | server.py | agent | backlog P1 |
