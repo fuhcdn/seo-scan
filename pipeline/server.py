@@ -369,6 +369,41 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/health":
             self._send(200, {"ok": True, "server": "real-backend-v1",
                              "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+        elif path == "/sample-report":
+            # Sample report page — a real (sanitised, labelled) excerpt of a
+            # production-grade report structure, so buyers can judge quality before
+            # paying. Uses the approved Golden Reference B structure; explicitly
+            # labelled as a sample; zero fabricated claims.
+            html = """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<title>Sample Report — SEO Scan Audit</title>
+<style>body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#172b4d;background:#faf8f2;margin:28px auto;max-width:860px;line-height:1.55;padding:0 16px}
+h1{font-size:22px}h2{font-size:16px;border-bottom:1px solid #d9d2c0;padding-bottom:4px;margin-top:28px}
+.card{background:#fff;border:1px solid #e0dccd;border-radius:8px;padding:14px 18px;margin:12px 0}
+.lbl{color:#6b7280;font-size:12px;text-transform:uppercase;letter-spacing:.4px}
+.disc{color:#6b7280;font-size:12px;margin-top:24px}
+.cta{display:inline-block;background:#111;color:#fff;padding:11px 20px;border-radius:8px;text-decoration:none;margin-top:14px}</style></head><body>
+<h1>What a real SEO Scan Audit report looks like</h1>
+<p>This is an <strong>excerpt from a real production report</strong> (business details anonymised). Every recommendation in a paid report is tied to one exact page on your own website, with direct observation, the buyer question it answers, who executes it, and how to verify it worked.</p>
+<div class="card"><p class="lbl">Report type</p><p><strong>SEO Opportunity Diagnostic</strong> — evidence-led decision report for a professional-service firm (goal: more enquiries). Delivered as a PDF, in your chosen language, within 24 hours of payment.</p></div>
+<h2>Finding 1 (excerpt) — proof is what converts</h2>
+<div class="card">
+<p class="lbl">Customer page</p><p>[the firm's own criminal-defense service page]</p>
+<p class="lbl">Direct observation</p><p>The page lists practice coverage and fee flexibility, but shows <strong>no case results, no outcomes, no client proof</strong>, and never tells an anxious visitor what to do first after an arrest — the single question a person in that moment actually has.</p>
+<p class="lbl">Buyer question it fails to answer</p><p>"Will a lawyer take my case, what will it cost, and what do I do first?"</p>
+<p class="lbl">Specific gap</p><p>No visible proof, no immediate next-steps guide, no clear route to the free consultation from this page.</p>
+<p class="lbl">Business mechanism</p><p>A person needing a criminal-defense lawyer acts under urgency and anxiety; a page that stops at coverage does not convert hesitancy into a call — enquiries leak silently at the exact moment intent is highest.</p>
+<p class="lbl">Recommended change</p><p>Add an "Immediate next steps after an arrest" block plus a prominent free-case-evaluation CTA — content the owner approves before publication.</p>
+<p class="lbl">Investment status</p><p>VALIDATE FIRST (attorney-approved wording required before publishing legal guidance)</p>
+<p class="lbl">Definition of done</p><p>The module renders on mobile and desktop, links work, the approver signs off, and page-to-contact clicks are measured against a recorded 14-day baseline.</p>
+</div>
+<h2>What else the full report contains</h2>
+<div class="card"><p>Five findings of this depth · Investment decision matrix (DO NOW / VALIDATE FIRST / DEFER) · Customer journey map · 90-day execution roadmap with owners · First measurable signal and scale rule per action · Commercial opportunity model · Sources and honest limitations</p></div>
+<h2>What we will honestly not do</h2>
+<div class="card"><p>We do not invent rankings, traffic or revenue claims. If public evidence is not sufficient for an honest 90+ quality report, we tell you and stop — you are never sent a filler document.</p></div>
+<p><a class="cta" href="/#choose">Choose your report — US$497 / delivered in 24h</a></p>
+<p class="disc">Sample excerpt shown with business identity anonymised; structure and quality identical to the delivered report. Every paid report passes an independent 90+ semantic quality gate with a three-way verified PDF artifact.</p>
+</body></html>""".encode("utf-8")
+            self._send(200, html, ctype="text/html")
         elif path == "/robots.txt":
             # Static robots: allow normal crawling of public pages; block API/order
             # endpoints from index. Safe, standard SEO surface.
