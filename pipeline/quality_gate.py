@@ -432,10 +432,15 @@ def classify_findings(research, status, tier):
                      f"do not yet match the observed result pattern for the stated goal ({primary_goal}).")
         _a = _recommended_action_for_claim_competitor(gap_claim, co, primary_goal, offers, market, _customer_scope)
         _r = _business_reason_for_claim(gap_claim, co, primary_goal, offers, market, customer_domain)
+        _cid = ""
+        for _e in ledger:
+            if ("Competitor-page observation" in (_e.get("claim") or "")) and (_e.get("source_url") or "") == fu:
+                _cid = _e.get("evidence_id", "")
+                break
         findings.append({
             "priority": "P2", "category": "Commercial Intent / Competitor",
             "title": f"Competitor pattern: {host}", "claim": gap_claim[:220],
-            "claim_label": "INFERENCE", "evidence_ids": [],
+            "claim_label": "INFERENCE", "evidence_ids": [_cid] if _cid else [],
             "affected_scope": _customer_scope("site", ""),
             "business_reason": _r, "recommended_action": _a,
             "owner": "Content / SEO", "effort": "Medium", "confidence": "Medium",
@@ -446,6 +451,7 @@ def classify_findings(research, status, tier):
         })
 
     # 3) Valid SERP/result-pattern observations (customer-relevant, valid only)
+    _sid = 0
     for s in serp_valid[:6]:
         query = s.get("query") or ""
         pattern = s.get("result_pattern") or ""
@@ -456,12 +462,14 @@ def classify_findings(research, status, tier):
         _r = _business_reason_for_claim(
             f"Search result pattern for \"{query}\" shows {pattern or 'a mixed'} format; visitors expect this format",
             s, primary_goal, offers, market, customer_domain)
+        _sid += 1
+        _s_eid = s.get("evidence_id") or f"SRP-{_sid:03d}"
         findings.append({
             "priority": "P2", "category": "Commercial Intent",
             "title": f"Search result pattern for \"{query}\"",
             "claim": f"For \"{query}\", visible public results are mostly {pattern or 'mixed'} (observed {s.get('access_date') or ''}).",
             "claim_label": s.get("label", "INFERENCE"),
-            "evidence_ids": [s.get("evidence_id")] if s.get("evidence_id") else [],
+            "evidence_ids": [_s_eid],
             "affected_scope": _customer_scope("site", s.get("source_url") or ""),
             "business_reason": _r, "recommended_action": _a,
             "owner": "Content / SEO", "effort": "Medium",
