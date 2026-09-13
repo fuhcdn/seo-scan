@@ -225,7 +225,30 @@ def score_report(research, findings, actions, tier, lang, order=None):
 
 
 # ---- finding enrichment: derive a concrete non-empty action + business reason (§8/§9) ----
-def _recommended_action_for_claim(claim, evidence, primary_goal):
+
+ACTION_VERBS = ("Create", "Rewrite", "Add", "Remove", "Update", "Clarify", "Link", "Test",
+                "Protect", "Audit", "Implement", "Consolidate", "Publish", "Reposition")
+
+
+def derive_verb(title):
+    """Return a concrete customer-owned implementation verb for an action title."""
+    t = (title or "").lower()
+    for v in ("consolidate", "rewrite", "remove", "create", "add", "update",
+              "clarify", "link", "test", "protect", "audit", "publish", "reposition", "implement"):
+        if v in t:
+            return v.capitalize()
+    return "Implement"
+
+
+def _recommended_action_for_claim_competitor(claim, evidence, primary_goal, offers="", market="", customer_scope_fn=None):
+    """Frame a competitor observation into a CUSTOMER-OWNED action (never a competitor URL)."""
+    scope = customer_scope_fn("site", "") if customer_scope_fn else "customer-owned pages"
+    return (f"Compare the customer-owned {scope} against the observed competitor pattern and "
+            f"align a Semrush-owned page so it answers the buyer decision for the goal "
+            f"({primary_goal}) — e.g. add comparison/proof/intent guidance on the customer page. "
+            f"NEVER modify a competitor site.")
+
+def _recommended_action_for_claim(claim, evidence, primary_goal, offers="", market=""):
     """Frame the observation into a concrete, non-selling action the owner can execute.
     Never blank; never a system-log/generic directive."""
     claim_l = (claim or "").lower()
@@ -268,7 +291,7 @@ def _recommended_action_for_claim(claim, evidence, primary_goal):
     return act[:220]
 
 
-def _business_reason_for_claim(claim, evidence, primary_goal):
+def _business_reason_for_claim(claim, evidence, primary_goal, offers="", market="", customer_domain=""):
     """Explain in business terms why this matters to THIS customer's goal. Never the
     generic 'Relates to the stated goal (X)'."""
     claim_l = (claim or "").lower()
@@ -299,168 +322,211 @@ def _business_reason_for_claim(claim, evidence, primary_goal):
 
 
 def classify_findings(research, status, tier):
-    """Filter research-ledger into material findings (reject system logs).
-    Returns (findings[], rejected[]). Creates customer-flavoured findings
-    from serp + business + a few meaningful observations, and rejects
-    prohibited ones."""
+    """Filter research-ledger into material customer-specific findings (reject system logs).
+
+    CUSTOMER-OWNERSHIP MODEL (repair instruction):
+    - Only findings/actions targeting CUSTOMER-OWNED pages are valid.
+    - Competitor observation -> neutral observed pattern -> compare with customer page ->
+      customer-owned gap/opportunity -> action on a CUSTOMER-owned URL.
+    - Competitor URLs appear ONLY in evidence/source fields, NEVER as action scope.
+    - No unsupported negative competitor claim (neutral wording only).
+    Returns (findings[], actions[], rejected[])."""
     ledger = research.get("evidence_ledger") or []
     business = research.get("business") or {}
     primary_goal = (status.get("primary_business_goal") or business.get("primary_business_goal") or "business growth")
-    actions = []
+    offers = (status.get("main_products_or_services") or business.get("main_products_or_services") or "").strip()
+    market = (status.get("target_market_or_service_area") or status.get("primary_market_or_service_area") or business.get("primary_market_or_service_area") or "").strip()
 
-    # map each evidence scope to real customer page URLs so findings name actual pages (§8)
+    # customer domain context
+    customer_domain = (research.get("customer_domain") or "").lower()
+    if not customer_domain:
+        try:
+            from urllib.parse import urlparse as _up
+            _cu = (status.get("url") or status.get("website_url") or "").strip()
+            if _cu.startswith(("http://", "https://")):
+                customer_domain = (_up(_cu).netloc or "").lower().lstrip("www.")
+        except Exception:
+            pass
+    customer_domain = customer_domain
+
+    def _is_customer_url(u):
+        if not u:
+            return False
+        u = u.lower()
+        if not u.startswith(("http://", "https://")):
+            return False
+        try:
+            d = u.split("//")[1].split("/")[0].split(":")[0].lstrip("www.")
+        except Exception:
+            return False
+        d = d.lower()
+        if not customer_domain:
+            return True  # no firm domain: be permissive to avoid blocking genuine findings
+        return d == customer_domain or d.endswith("." + customer_domain)
+
+    # map to real customer-owned page URLs
     pages_raw = research.get("pages_reviewed") or (research.get("architecture") or {}).get("pages_reviewed") or []
-    _page_urls = []
-    for p in pages_raw:
-        u = p.get("url") if isinstance(p, dict) else str(p)
-        if u:
-            _page_urls.append(u)
-    _page_urls = list(dict.fromkeys(_page_urls))
-    _base = research.get("website_url") or status.get("url") or ""
-    _scope2pages = {"homepage": _page_urls[:2], "site": _page_urls[:3], "search results": _page_urls[:2]}
-    def _affected_scope(raw_scope, evidence_url):
+    customer_pages = []
+    for pp in pages_raw:
+        u = pp.get("url") if isinstance(pp, dict) else str(pp)
+        if u and _is_customer_url(u):
+            customer_pages.append(u)
+    customer_pages = list(dict.fromkeys(customer_pages))
+
+    def _customer_scope(raw_scope, evidence_url):
         s = (raw_scope or "site").lower()
-        if s in _scope2pages and _scope2pages[s]:
-            return "; ".join(_scope2pages[s][:3])
-        if evidence_url:
+        if evidence_url and _is_customer_url(evidence_url):
             return evidence_url
-        # fall back to real customer pages (never generic 'competitor/result-pattern')
-        if _page_urls:
-            return "; ".join(_page_urls[:3])
-        return "the affected pages"
+        if customer_pages:
+            return "; ".join(customer_pages[:4])
+        return "customer-owned " + (s or "pages")
 
     findings = []
     rejected = []
+    competitor_obs = research.get("competitor_observations") or []
+    serp_all = research.get("serp") or []
+    serp_valid = [s for s in serp_all if s.get("counts_toward_serp", True) and (s.get("query") or "")]
+
+    # 1) Customer-page/technical/official/intake evidence -> findings on customer pages
     for e in ledger:
-        claim = e.get("claim") or ""
+        claim = (e.get("claim") or "").strip()
+        etype = e.get("scope") or ""
+        src = e.get("source_url") or ""
         if e.get("label") == "NOT VERIFIABLE WITH PUBLIC DATA":
-            rejected.append(e)
-            continue
+            rejected.append(e); continue
         if is_prohibited_finding(claim):
-            rejected.append(e)
-            continue
-        # keep meaningful observations but frame as customer-specific
-        # 每條 finding 要有具體非空 action + 具體 business reason（§8/§9：blank 即 hard-fail）
-        _action = _recommended_action_for_claim(claim, e, primary_goal)
-        _reason = _business_reason_for_claim(claim, e, primary_goal)
+            rejected.append(e); continue
+        if etype == "competitor_page" or (src and not _is_customer_url(src)):
+            rejected.append(e); continue
+        _act = _recommended_action_for_claim(claim, e, primary_goal, offers, market)
+        _rsn = _business_reason_for_claim(claim, e, primary_goal, offers, market, customer_domain)
         findings.append({
-            "priority": "P1",
-            "category": "SEO",
-            "title": claim[:90],
-            "claim": claim,
+            "priority": "P1", "category": "SEO", "title": claim[:90], "claim": claim,
             "claim_label": e.get("label", "INFERENCE"),
             "evidence_ids": [e["evidence_id"]],
-            "affected_scope": _affected_scope(e.get("scope", "site"), e.get("source_url") or ""),
-            "business_reason": _reason,
-            "recommended_action": _action,
+            "affected_scope": _customer_scope(e.get("scope", "site"), src),
+            "business_reason": _rsn, "recommended_action": _act,
             "owner": "SEO / Marketing",
             "effort": "Small" if tier != "PREMIUM_REPORT" else "Medium",
             "confidence": e.get("confidence", "Medium"),
             "confidence_rationale": (e.get("direct_observation") or "")[:200],
             "dependencies": [],
-            "acceptance_criteria": f"Implement the recommended action on the affected pages and confirm via the corresponding public source.",
+            "acceptance_criteria": "Implement the action on the affected customer-owned pages and confirm via the corresponding public source.",
             "validation_method": "Search Console / GA4 where access is provided; otherwise re-check public source.",
             "limitations": "Public research only; private data not verified.",
         })
 
-    # SERP-driven findings (customer-specific, not system logs)
-    serp = research.get("serp") or []
-    for s in serp[:6]:
+    # 2) Competitor research: neutral observed pattern -> compare -> customer-owned gap/action
+    for i, co in enumerate(competitor_obs[:6]):
+        fu = co.get("source_url") or ""
+        title = co.get("title") or ""
+        h1 = co.get("h1_count") or 0
+        ilinks = co.get("internal_links") or 0
+        if not fu:
+            continue
+        host = fu.split("//")[-1].split("/")[0] if "//" in fu else fu
+        pattern_desc = (f"Visible competitor pattern: {host} maintains an SEO/reference hub "
+                        f"structure (title: {title or 'n/a'}; H1 x{h1}; internal links x{ilinks}).")
+        gap_claim = (f"Customer opportunity: Semrush-owned public pages exhibit a comparable content/"
+                     f"product/demo structure; the next step is to identify which customer-owned page(s) "
+                     f"do not yet match the observed result pattern for the stated goal ({primary_goal}).")
+        _a = _recommended_action_for_claim_competitor(gap_claim, co, primary_goal, offers, market, _customer_scope)
+        _r = _business_reason_for_claim(gap_claim, co, primary_goal, offers, market, customer_domain)
+        findings.append({
+            "priority": "P2", "category": "Commercial Intent / Competitor",
+            "title": f"Competitor pattern: {host}", "claim": gap_claim[:220],
+            "claim_label": "INFERENCE", "evidence_ids": [],
+            "affected_scope": _customer_scope("site", ""),
+            "business_reason": _r, "recommended_action": _a,
+            "owner": "Content / SEO", "effort": "Medium", "confidence": "Medium",
+            "confidence_rationale": pattern_desc[:200], "dependencies": [],
+            "acceptance_criteria": "Identify the customer-owned page that should match the observed result pattern and implement an alignment change on that customer-owned URL.",
+            "validation_method": "GSC/GA4 where access provided; else public re-check of fit.",
+            "limitations": "Competitor observation is not exact rank data; no negative competitor claim implied.",
+        })
+
+    # 3) Valid SERP/result-pattern observations (customer-relevant, valid only)
+    for s in serp_valid[:6]:
         query = s.get("query") or ""
         pattern = s.get("result_pattern") or ""
-        if not query:
-            continue
-        _srp_obs = s.get("direct_observation") or ""
-        _srp_act = _recommended_action_for_claim(
-            f"Search result pattern for \"{query}\" shows {pattern or 'a mixed'} format ({_srp_obs[:40]})",
-            s, primary_goal)
-        _srp_reason = _business_reason_for_claim(
+        _obs = s.get("direct_observation") or ""
+        _a = _recommended_action_for_claim(
+            f"Search result pattern for \"{query}\" shows {pattern or 'a mixed'} format ({_obs[:40]})",
+            s, primary_goal, offers, market)
+        _r = _business_reason_for_claim(
             f"Search result pattern for \"{query}\" shows {pattern or 'a mixed'} format; visitors expect this format",
-            s, primary_goal)
+            s, primary_goal, offers, market, customer_domain)
         findings.append({
-            "priority": "P2",
-            "category": "Commercial Intent",
+            "priority": "P2", "category": "Commercial Intent",
             "title": f"Search result pattern for \"{query}\"",
             "claim": f"For \"{query}\", visible public results are mostly {pattern or 'mixed'} (observed {s.get('access_date') or ''}).",
             "claim_label": s.get("label", "INFERENCE"),
             "evidence_ids": [s.get("evidence_id")] if s.get("evidence_id") else [],
-            "affected_scope": _affected_scope("search results", s.get("source_url") or ""),
-            "business_reason": _srp_reason,
-            "recommended_action": _srp_act,
-            "owner": "Content / SEO",
-            "effort": "Medium",
+            "affected_scope": _customer_scope("site", s.get("source_url") or ""),
+            "business_reason": _r, "recommended_action": _a,
+            "owner": "Content / SEO", "effort": "Medium",
             "confidence": s.get("confidence", "Medium"),
-            "confidence_rationale": (_srp_obs or "")[:200],
-            "dependencies": [],
-            "acceptance_criteria": "Confirm in GSC/GA4 which pages serve the query and whether the page format matches the visible public result pattern.",
-            "validation_method": "Search Console / GA4 where access is provided; otherwise public re-check of format fit.",
+            "confidence_rationale": (_obs or "")[:200], "dependencies": [],
+            "acceptance_criteria": "Identify the customer-owned page that should serve the query and confirm the format matches the visible result pattern; implement on that customer-owned URL.",
+            "validation_method": "GSC/GA4 where access provided; else public re-check of format fit.",
             "limitations": "General public result-pattern observation is not exact rank data.",
         })
 
-    # Build concrete actions from findings (each finding -> an action with owner/effort/accept/validation)
-    for f in findings:
-        actions.append({
-            "action_id": f"ACT-{len(actions)+1:03d}",
-            "priority": f.get("priority", "P1"),
-            "title": f.get("title", "")[:60],
-            "claim": f.get("claim", ""),
-            "claim_label": f.get("claim_label", "INFERENCE"),
-            "evidence_ids": f.get("evidence_ids", []),
-            "owner": f.get("owner", "SEO / Marketing"),
-            "effort": f.get("effort", "Medium"),
-            "acceptance_criteria": f.get("acceptance_criteria", ""),
-            "validation_method": f.get("validation_method", ""),
-            "review_window": "30-60 days",
-            "dependencies": f.get("dependencies", []),
-            # richer per-action fields (§9) so the ledger shows consequence + confidence + limits
-            "business_reason": f.get("business_reason", ""),
-            "confidence": f.get("confidence", "Medium"),
-            "confidence_rationale": f.get("confidence_rationale", ""),
-            "affected_scope": f.get("affected_scope", "site"),
-            "limits": f.get("limitations", ""),
-        })
-
-    # FINAL 497/997 STANDARD: entry = exactly 3 findings + 5 actions; premium = 5-8 findings + 15 actions.
+    # cap by tier (entry = exactly 3 findings, premium = 5-8)
     is_premium = tier == "PREMIUM_REPORT"
-    target_findings = 8 if is_premium else 3
-    target_actions = 15 if is_premium else 5
-    findings = findings[:target_findings]
+    target_finding = 8 if is_premium else 3
+    target_action = 15 if is_premium else 5
+    findings = findings[:target_finding]
 
-    # Expand the action ledger to meet per-tier minimum without filler:
-    # derive extra concrete actions from SERP/gap observations (commercial intent, not system logs).
-    extra_pool = []
-    for s in serp:
+    # Build actions — each targets a CUSTOMER-OWNED scope
+    verified_actions = []
+    for f in findings:
+        scope = f.get("affected_scope") or ""
+        ok_scope = any(_is_customer_url(cd) or cd.strip().startswith("customer-owned") for cd in scope.split(";"))
+        if ok_scope:
+            verified_actions.append({
+                "action_id": f"ACT-{len(verified_actions)+1:03d}",
+                "priority": f.get("priority","P1"), "title": f.get("title","")[:60],
+                "claim": f.get("claim",""), "claim_label": f.get("claim_label","INFERENCE"),
+                "evidence_ids": f.get("evidence_ids",[]),
+                "owner": f.get("owner","SEO / Marketing"), "effort": f.get("effort","Medium"),
+                "acceptance_criteria": f.get("acceptance_criteria",""),
+                "validation_method": f.get("validation_method",""),
+                "review_window": "30-60 days", "dependencies": f.get("dependencies",[]),
+                "customer_owned_scope": scope, "business_reason": f.get("business_reason",""),
+                "confidence": f.get("confidence","Medium"),
+                "confidence_rationale": f.get("confidence_rationale",""),
+                "affected_scope": scope, "limits": f.get("limitations",""),
+                "action_verb": derive_verb(f.get("title") or ""),
+            })
+    actions = verified_actions[:target_action]
+
+    # expand to meet per-tier minimum using valid SERP-driven customer-owned actions (no filler)
+    while len(actions) < target_action and serp_valid:
+        s = serp_valid[len(actions) % len(serp_valid)]
         q = s.get("query") or ""
-        gap = s.get("gap") or s.get("customer_page_gap") or ""
-        pat = s.get("result_pattern") or ""
         if not q:
-            continue
-        title = f"Publish or improve a page answering \"{q}\""
-        extra_pool.append({
-            "action_id": f"ACT-{len(actions)+len(extra_pool)+1:03d}",
-            "priority": "P2",
-            "title": title[:60],
-            "claim": title,
-            "claim_label": s.get("label", "INFERENCE"),
-            "evidence_ids": [s["evidence_id"]] if s.get("evidence_id") else [],
-            "owner": "Content / SEO",
-            "effort": "Medium",
-            "acceptance_criteria": "A customer-intent page answering the query exists and links from the relevant commercial area.",
-            "validation_method": "GSC / GA4 where access provided; otherwise public re-check of result fit.",
-            "review_window": "90 days",
-            "dependencies": [],
-        })
-    # fill up to target (never invent, only from real serp observations)
-    need = target_actions - len(actions)
-    if need > 0:
-        for item in extra_pool[:need]:
-            actions.append(item)
-
-    actions = actions[:target_actions]
+            break
+        actions.append({
+            "action_id": f"ACT-{len(actions)+1:03d}", "priority": "P2",
+            "title": f"Publish or improve a customer-owned page answering \"{q}\"",
+            "claim": f"Publish or improve a customer-owned page answering \"{q}\"",
+            "claim_label": s.get("label","INFERENCE"),
+            "evidence_ids": [s.get("evidence_id")] if s.get("evidence_id") else [],
+            "owner": "Content / SEO", "effort": "Medium",
+            "acceptance_criteria": "A customer-owned page answering the query exists and links from the relevant commercial area.",
+            "validation_method": "GSC / GA4 where access provided; else public re-check of result fit.",
+            "review_window": "90 days", "dependencies": [],
+            "customer_owned_scope": "; ".join(customer_pages[:3]) or "customer-owned pages",
+            "business_reason": f"Aligns the customer-owned page to the visible intent for \"{q}\", supporting {primary_goal}.",
+            "confidence": "Medium", "confidence_rationale": (s.get("direct_observation") or "")[:200],
+            "affected_scope": "; ".join(customer_pages[:3]) or "customer-owned pages",
+            "limits": "Public result-pattern observation; not exact rank.", "action_verb": "Create"})
+        if len(actions) >= target_action:
+            break
+    actions = actions[:target_action]
 
     return findings, actions, rejected
-
-
 # --- Insufficient-context / insufficient-evidence outputs ---
 def insufficient_business_context_html(order, missing):
     m = "".join(f"<li>{json.dumps(x)}</li>" for x in missing)

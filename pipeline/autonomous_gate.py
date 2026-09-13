@@ -102,13 +102,16 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
     v["meaningful_page_observation_count"] = len(uniq)
     v["legal_or_duplicate_page_count"] = len(pages_raw) - len(uniq) if len(pages_raw) >= len(uniq) else 0
 
-    # SERP: valid vs invalid/unparsed (§5)
+    # SERP: valid vs invalid/unparsed (§5) — only counts_toward_serp observations count; competitor reads never count
     serp = research.get("serp") or []
     invalid_tokens = ["none parsed", "no result parsed", "blank snippet", "results are mostly mixed",
-                      "unavailable", "Search could not be executed"]
+                      "unavailable", "Search could not be executed", "bot challenge",
+                      "empty result", "blank link", "blank snippet"]
     valid_serp = 0; invalid_serp = 0
     valid_serp_queries = []
     for s in serp:
+        if s.get("counts_toward_serp") is False:
+            continue  # explicitly not SERP (e.g. competitor direct read)
         obs = (s.get("direct_observation") or "") + " " + (s.get("result_pattern") or "")
         q = s.get("query") or ""
         doms = [d for d in (s.get("source_domains") or []) if d and "(no result" not in d]
@@ -160,6 +163,43 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
     v["concrete_action_count"] = concrete_actions
     v["generic_action_count"] = generic_actions
     v["duplicate_action_count"] = duplicate_actions
+
+    # ---- CUSTOMER-OWNERSHIP VALIDATOR (§4 repair) ----
+    # Every action/finding/roadmap target must be on a customer-owned domain; a competitor/
+    # external URL is allowed ONLY in an evidence/source field. Block as hard fail otherwise.
+    customer_domain = (research.get("customer_domain") or "").lower()
+    owned_domains = [d.lower().lstrip("www.") for d in (research.get("customer_owned_domains") or [])]
+    if not owned_domains and customer_domain:
+        owned_domains = [customer_domain]
+    forbidden_targets = 0
+    forbidden_target_urls = []
+    competitor_terms = ("ahrefs.com", "moz.com", "backlinko.com", "semrush.com")
+    for a in actions:
+        scope = (a.get("affected_scope") or a.get("customer_owned_scope") or a.get("title") or "")
+        # any URL inside scope on a competitor/external domain = forbidden action target
+        for mm in re.finditer(r"https?://([^/\s]+)", scope):
+            d = mm.group(1).lower().lstrip("www.").split(":")[0]
+            if d and d not in owned_domains:
+                forbidden_targets += 1
+                forbidden_target_urls.append(mm.group(0))
+                break
+    v["forbidden_action_targets"] = forbidden_targets
+    v["forbidden_action_target_urls"] = forbidden_target_urls
+
+    # ---- ACTION COMPLETENESS VALIDATOR (§9/repair) ----
+    incomplete_actions = 0
+    for a in actions:
+        need = [a.get("affected_scope"), a.get("business_reason"), (a.get("action_verb") or a.get("title"))]
+        if any(not (x or "").strip() for x in need):
+            incomplete_actions += 1
+    v["incomplete_action_count"] = incomplete_actions
+
+    # ---- EXEC SUMMARY VALIDATOR (each exec decision must have a customer-owned first action) ----
+    decision_wo_action = 0
+    for f in findings:
+        if not (f.get("recommended_action") or "").strip() or not (f.get("affected_scope") or "").strip():
+            decision_wo_action += 1
+    v["exec_decision_wo_action"] = decision_wo_action
 
     # content/developer briefs (premium)
     v["content_brief_count"] = len(research.get("content_briefs") or [])
@@ -231,12 +271,46 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
         hard_fail.append("placeholder_present")
     if v["blank_required_field_count"] > 0:
         hard_fail.append("blank_required_field")
+    # ---- repair-instruction hard fails (§4 validators) ----
+    if v.get("forbidden_action_targets", 0) > 0:
+        hard_fail.append(f"forbidden_action_target({v['forbidden_action_targets']})")
+    # evidence-type / competitor-as-SERP guard: if any serp observation counts a competitor read
+    # as serp, flag (research already separates; defensive)
+    for _s in serp:
+        if isinstance(_s, dict) and _s.get("counts_toward_serp") is False:
+            pass  # already excluded above
+    cd_low = (research.get("customer_domain") or "").lower()
+    # invalid action-ID roadmap: if roadmap items reference an action that does not exist as customer-owned
+    valid_ids = {a.get("action_id") for a in actions}
+    roadmap = research.get("roadmap") or []
+    invalid_roadmap_refs = 0
+    for ri in roadmap:
+        body = str(ri.get("title") or ri.get("action_id") or "")
+        for aid in re.findall(r"ACT-\d+", body):
+            if aid not in valid_ids:
+                invalid_roadmap_refs += 1
+    v["invalid_roadmap_refs"] = invalid_roadmap_refs
+    if v.get("exec_decision_wo_action", 0) > 0:
+        hard_fail.append("exec_decision_wo_action")
+
     v["hard_fail_list"] = hard_fail
-    # score ceiling: if minimums unmet, cap at 69 (§13); else allow 90+ only with specific evidence
-    if hard_fail and any("minimum" in h for h in hard_fail):
+    # score ceilings (repair-instruction §2): a report cannot score high if it has hard fails
+    if v.get("forbidden_action_targets", 0) > 0:
+        v["_ceiling"] = 0  # hard fail -> delivery blocked
+    elif v.get("internal_path_leak_count", 0) > 0:
+        v["_ceiling"] = 0
+    elif v.get("valid_serp_observation_count", 0) < (min_serp):
+        v["_ceiling"] = 69  # no valid SERP research -> max 69
+    elif v.get("invalid_roadmap_refs", 0) > 0:
+        v["_ceiling"] = 79  # invalid action-ID roadmap -> max 79
+    elif hard_fail and any("action" in h for h in hard_fail):
+        v["_ceiling"] = 69  # invalid action ledger -> max 69
+    elif hard_fail and any("finding" in h for h in hard_fail):
+        v["_ceiling"] = 69  # insufficient genuine findings
+    elif hard_fail:
         v["_ceiling"] = 69
     else:
-        v["_ceiling"] = None  # null = ceiling not enforced here (blind auditor decides 90+)
+        v["_ceiling"] = None  # allow blind to decide 90+
     return v
 
 

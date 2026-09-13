@@ -57,6 +57,8 @@ def mk_research(npages=8, nserp_valid=5, ncomp=3, legal_pages=False, bad_serp=Fa
                "direct_observation": "Sampled commercial pages justify the finding.", "confidence": "Medium"}
               for i in range(5)]
     return {"website_url": "https://client.example.com/business/", "access_date": "2026-09-13",
+            "customer_domain": "client.example.com",
+            "customer_owned_domains": ["client.example.com"],
             "pages_reviewed": pages, "evidence_ledger": ledger, "serp": serp,
             "competitors": comps,
             "business": {"primary_business_goal": "more qualified leads", "company_name": "Example Business"},
@@ -76,6 +78,7 @@ def mk_findings(n=3, blank_action=False, generic_reason=False, blank_owner=False
                     "recommended_action": "" if blank_action else f"Add decision-support section to service page {i} with proof and single CTA",
                     "owner": "" if blank_owner else "Content",
                     "effort": "Medium",
+                    "affected_scope": "https://client.example.com/business/service/0",
                     "acceptance_criteria": f"Service page {i} contains decision section + CTA",
                     "validation_method": "GSC/GA4 where access; else public re-check"})
     return out
@@ -132,6 +135,26 @@ def run_tests():
     det = AG.deterministic_validate(res, mk_findings(3), mk_actions(5), "ENTRY_REPORT", mk_order(), doc_text="ORD-ABC123 payment_ref pi_live_123 localhost /app/pipeline secret sk_live_")
     e_blocked = det.get("internal_path_leak_count", 0) > 0 or det.get("placeholder_count", 0) > 0 or det.get("privacy_leak", 0) > 0
     results.append(("E-privacy-leak-flagged", e_blocked, "leak_count", det.get("internal_path_leak_count")))
+
+    # ---- Test F: customer-ownership — action targeting competitor domain must block ----
+    res_f = mk_research(npages=8, nserp_valid=5, ncomp=3)
+    findings_f = mk_findings(3)
+    actions_f = mk_actions(5)
+    actions_f[0]["affected_scope"] = "https://comped.com/service"
+    actions_f[0]["customer_owned_scope"] = "https://comped.com/service"
+    det_f = AG.deterministic_validate(res_f, findings_f, actions_f, "ENTRY_REPORT", mk_order(), doc_text="clean")
+    f_blocked = det_f.get("forbidden_action_targets", 0) > 0 and any("forbidden_action_target" in h for h in (det_f.get("hard_fail_list") or []))
+    results.append(("F-competitor-target-blocked", f_blocked, "targets", det_f.get("forbidden_action_target_urls")))
+
+    # ---- Test G: evidence-type separation — competitor_page evidence must NOT count as SERP ----
+    res_g = dict(mk_research(npages=8, nserp_valid=5, ncomp=3))
+    res_g["serp"] = [{"query": "q0", "direct_observation": "Top results: none parsed — links: (no result parsed)",
+                      "source_domains": ["(no result parsed)"], "counts_toward_serp": False}]
+    res_g["competitor_observations"] = [{"source": "competitor_page", "source_url": "https://ahrefs.com/blog/",
+                                         "title": "Ahrefs Blog", "counts_toward_serp": False, "label": "FACT"}]
+    det_g = AG.deterministic_validate(res_g, mk_findings(3), mk_actions(5), "ENTRY_REPORT", mk_order(), doc_text="clean")
+    g_pass = det_g.get("valid_serp_observation_count", 0) == 0
+    results.append(("G-competitor-not-serp", g_pass, "valid_serp", det_g.get("valid_serp_observation_count")))
 
     print("=" * 60)
     ok_count = 0
