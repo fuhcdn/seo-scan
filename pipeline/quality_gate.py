@@ -244,7 +244,7 @@ def _recommended_action_for_claim_competitor(claim, evidence, primary_goal, offe
     """Frame a competitor observation into a CUSTOMER-OWNED action (never a competitor URL)."""
     scope = customer_scope_fn("site", "") if customer_scope_fn else "customer-owned pages"
     return (f"Compare the customer-owned {scope} against the observed competitor pattern and "
-            f"align a Semrush-owned page so it answers the buyer decision for the goal "
+            f"build or update a customer-owned page so it answers the buyer decision for the goal "
             f"({primary_goal}) — e.g. add comparison/proof/intent guidance on the customer page. "
             f"NEVER modify a competitor site.")
 
@@ -427,7 +427,7 @@ def classify_findings(research, status, tier):
         host = fu.split("//")[-1].split("/")[0] if "//" in fu else fu
         pattern_desc = (f"Visible competitor pattern: {host} maintains an SEO/reference hub "
                         f"structure (title: {title or 'n/a'}; H1 x{h1}; internal links x{ilinks}).")
-        gap_claim = (f"Customer opportunity: Semrush-owned public pages exhibit a comparable content/"
+        gap_claim = (f"Customer opportunity: competitor public pages ({host}) exhibit a comparable content/"
                      f"product/demo structure; the next step is to identify which customer-owned page(s) "
                      f"do not yet match the observed result pattern for the stated goal ({primary_goal}).")
         _a = _recommended_action_for_claim_competitor(gap_claim, co, primary_goal, offers, market, _customer_scope)
@@ -438,7 +438,7 @@ def classify_findings(research, status, tier):
                 _cid = _e.get("evidence_id", "")
                 break
         _cust_nm = customer_domain.split(".")[0].capitalize() if customer_domain else "Customer"
-        _comp_title = f"{_cust_nm} should strengthen its own page that answers the same intent competitors serve ({host})"
+        _comp_title = f"{_cust_nm} should strengthen its own page that answers the same intent the observed competitor serves"
         findings.append({
             "priority": "P2", "category": "Commercial Intent / Competitor",
             "title": _comp_title[:90], "claim": gap_claim[:220],
