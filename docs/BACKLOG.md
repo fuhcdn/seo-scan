@@ -1,12 +1,10 @@
 # BACKLOG — 按優先排序嘅未完成工作
 
 ## Phase 1 剩餘(agent 可自主,safe/reversible)
-- [ ] B1. 移除 pipeline_runner 內舊 zlib post-render scan(已被 canonical 取代;step_deliver 前有 pypdf scan)— 保留 pipeline/pdf_scanner.py 檔案作可選 layer
-- [ ] B2. Watchdog / durable job reconcile:任何 running >N 小時嘅 order 自動 retry 或 escalate(需 design,唔影響 production)
-- [ ] B3. 付款確認 email 模板(需 owner 批內容先可啟用)
-- [ ] B4. Fail-safe(insufficient-evidence)報告送客機制(需 owner 批)
-- [ ] B5. server.py docstring 更新(真實 route 描述)
-- [ ] B6. /sitemap.xml + robots.txt(safe,自家 SEO)
+- [x] B2. ✅ Watchdog/durable job reconcile — DONE(AP-1,12/12 tests,stuck test orders archived)
+- [x] B5. ✅ server.py docstring 更新 — DONE(7acc233)
+- [x] B6. ✅ /sitemap.xml + robots.txt — DONE(staging 200 驗證,7acc233;production deploy 待下輪 bundle)
+- [ ] B1. 移除 pipeline_runner 內舊 zlib post-render scan — **保留**(owner 指示:legacy scanner 作 secondary defense-in-depth 直至 evidence_v1 approved rollout)
 - [ ] B7. Security headers(CSP/HSTS/X-Frame-Options 等)
 - [ ] B8. /api/status 認證(token or order-id-bound)
 - [ ] B9. Uptime probe + 基本告警(external free tier 可)

@@ -2,6 +2,7 @@
 # 機密/執行期生成/審查暫存/成品輸出，一律唔入 repo
 secrets.env
 output/
+email_drafts/
 pipeline/out/
 pipeline/__pycache__/
 __pycache__/
