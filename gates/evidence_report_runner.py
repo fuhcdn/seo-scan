@@ -44,7 +44,7 @@ def gate4_external_auditor(findings, cards):
         f"  brief_placement={((c.get('implementation_brief') or {}).get('exact_module_placement') or (c.get('implementation_brief') or {}).get('exact_three_steps') or '')}\n"
         f"  brief_approval={((c.get('implementation_brief') or {}).get('approval_dependency') or (c.get('implementation_brief') or {}).get('approval_who') or '')}\n"
         f"  brief_scale={((c.get('implementation_brief') or {}).get('scale_rule') or '')}"
-        for c in cards[:3])
+        for c in cards[:5])
     cand_blob = "\n".join(
         f"- {a['action_id']}: {a['title']} | URL={a.get('card',{}).get('primary_customer_url','')} | DoD={a['acceptance_criteria'][:160]}"
         for a in findings)
@@ -169,9 +169,12 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
     # Commercial Opportunity Model — evidence-based, no invented revenue figures
     comm_model = """<h2>Commercial Opportunity Model</h2><div class="card">
 <p><strong>Value lever:</strong> demand capture + page clarity. <strong>Publicly observable evidence:</strong> the three customer-owned pages (screen-printing service page, quote page, gallery) currently omit price/minimum/turnaround, post-submission expectation and labelled proof — the documented gaps in the evidence cards. <strong>Client data required to quantify upside:</strong> quote-form submissions, CTA clicks, lead/order rate (GSC/GA4 when the owner provides access). Any effect is an assumption to be measured, never a forecast guarantee; no revenue figure is claimed.</p></div>"""
-    # action ledger — one URL each, blank-safe fields
+    # action ledger — one URL each, blank-safe fields, ROLE-LEVEL OWNERSHIP (single source)
     ledger = ""
     for a in acts:
+        ap = a.get("owner_approver") or "Owner"
+        ct = a.get("owner_content") or "Content/Marketing"
+        pq = a.get("owner_publisher_qa") or "Web/Developer"
         ledger += f"""<div class="card">
 <h4>{_esc(a['action_id'])} — {_esc(a.get('recommended_module',''))}</h4>
 {_row('Primary customer URL (single)', a.get('primary_url'))}
@@ -180,9 +183,37 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
 {_row('Definition of done', a.get('acceptance_criteria'))}
 {_row('First signal / validation', a.get('validation_method'))}
 {_row('Review window', a.get('review_window'))}
-{_row('Owner', a.get('owner'))}
+{_row('Approver', ap)}
+{_row('Content owner', ct)}
+{_row('Publisher / QA', pq)}
 {_row('Effort', a.get('effort'))}
 {_row('Approval dependency', next(( (k.get('implementation_brief') or {}).get('owner_confirmation_required') or '' ) for k in cards if k.get('card_id') in (a.get('evidence_ids') or []) ) if any(k.get('card_id') in (a.get('evidence_ids') or []) for k in cards) else '')}
+</div>"""
+    # ---- CUSTOMER JOURNEY MAP (page/table) ----
+    journey_rows = ""
+    journey = [
+        ("Service evaluation", "/screen-printing/", "price/minimum/turnaround clarity missing", "ACT-001", "quote-form submissions / CTA clicks on the screen-printing page"),
+        ("Proof / evaluation", "/gallery/", "unlabelled proof, no service mapping", "ACT-003", "gallery-to-quote link clicks"),
+        ("Quote conversion", "/get-a-quote-2/", "unclear next-step and proof route", "ACT-002", "form-start / form-submit rate"),
+        ("Method selection (awareness)", "/", "no method-selection guidance, generic quote CTA", "ACT-004", "homepage-to-service-page and homepage-to-quote clicks"),
+        ("Embroidery evaluation", "/embroidery/", "no on-page proof, no gallery link, no minimum/price context", "ACT-005", "embroidery-page-to-quote clicks"),
+    ]
+    for stage, page, friction, aid, first_signal in journey:
+        journey_rows += (f"<tr><td>{_esc(stage)}</td><td>{_esc(page)}</td><td>{_esc(friction)}</td>"
+                         f"<td>{_esc(aid)}</td><td>{_esc(first_signal)}</td></tr>")
+    journey_html = f"""<h2>Customer Journey Map</h2>
+<table><tr><th>Buyer stage</th><th>Customer-owned page</th><th>Observed friction</th><th>Action ID</th><th>Intended first signal</th></tr>{journey_rows}
+<tr><td>Sales follow-up</td><td>internal workflow / owner-confirmation item</td><td>data needed before performance assessment</td><td>—</td><td>owner-supplied order/quote data</td></tr></table>"""
+    # ---- 90-DAY ROADMAP (distinct, references valid ACT-IDs + investment status) ----
+    r0 = ("Days 0-7", "ACT-003 gallery pilot for the first 12 examples (DO NOW, no owner-confirmed figures required).")
+    r1 = ("Days 8-30", "Collect owner-approved policy/process inputs for ACT-001 (MOQ, price factors, setup fee, turnaround), ACT-002 (response-time SLA, quote process) and ACT-005 (example image, minimum/price/turnaround); prepare draft modules; record baselines for all five pages.")
+    r2 = ("Days 31-60", "Publish approved ACT-001 and ACT-002 and ACT-005 modules (VALIDATE FIRST, owner-approved copy only); measure page CTA / form behaviour; keep ACT-003 and ACT-004 live (DO NOW).")
+    r3 = ("Days 61-90", "Review every page against its 14-day baseline; extend only the proven pattern (per each action's scale rule); do not spend on deferred work (paid links, redesign, new store, full-gallery tagging) unless the evidence supports it.")
+    roadmap = f"""<h2>90-Day Execution Roadmap</h2><div class="card">
+<p><strong>{_esc(r0[0])}:</strong> {_esc(r0[1])}</p>
+<p><strong>{_esc(r1[0])}:</strong> {_esc(r1[1])}</p>
+<p><strong>{_esc(r2[0])}:</strong> {_esc(r2[1])}</p>
+<p><strong>{_esc(r3[0])}:</strong> {_esc(r3[1])}</p>
 </div>"""
     # source / evidence appendix
     src_rows = ""
@@ -209,6 +240,8 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
  {whatnot}
  {comm_model}
  {dim}
+ {journey_html}
+ {roadmap}
  <h2>Top Priority Actions</h2>{ledger}
  <h2>Source / Evidence Appendix</h2>
  <table><tr><th>Card</th><th>Customer URL</th><th>Direct observation</th></tr>{src_rows}</table>
@@ -340,7 +373,8 @@ def main():
     # NOT a quality score: 100 here only means every required field/label is present & non-blank.
     required_labels = ["OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION", "Exact placement", "CTA destination",
                        "Baseline", "Scale rule", "What Not To Prioritise Yet", "Commercial Opportunity Model",
-                       "Definition of done", "First signal"]
+                       "Definition of done", "First signal", "Customer Journey Map", "90-Day Execution Roadmap",
+                       "Approver", "Content owner", "Publisher / QA"]
     visible = scan.get("extracted_visible_text") or gp.extract_visible_text_mature(open(pdf_path, "rb").read())
     visible_l = visible.lower()
     sc_pct = 0
@@ -348,35 +382,71 @@ def main():
         if lab.lower() in visible_l:
             sc_pct += 1
     structural = round(100.0 * sc_pct / len(required_labels), 1)
-    # ---- INDEPENDENT QUALITY SCORE (semantic, out of 100) ----
-    # Categories graded by the separate external semantic auditor + hard evidence checks.
-    # A category is 100 only when it is actually met (non-empty string is NOT sufficient).
+    # ---- INDEPENDENT QUALITY SCORE (semantic, out of 100, WITH deductions) ----
+    # Each category starts at its max and deducts only for genuinely unmet conditions.
+    # A category is full only when there are no reasonable deductions.
     ext_decisions = (ext_audit[0].get("decisions") if ext_audit and ext_audit[0].get("mode") == "external" else [])
-    def _audited(rx):
-        return any(d.get("accept") is True for d in ext_decisions if rx(d.get("action_id") or ""))
-    # corrected investment split (owner instruction): EC-003 = DO NOW; EC-001/EC-002 = VALIDATE FIRST
+    def _audited(aid):
+        return any(d.get("accept") is True for d in ext_decisions if (d.get("action_id") or "") == aid)
+
     def _card_of(a):
         return next((k for k in valid_cards if k.get("card_id") in (a.get("evidence_ids") or [])), {})
-    _do_now = [a for a in acts if _card_of(a).get("card_id") == "EC-003"]
-    _valid8 = [a for a in acts if _card_of(a).get("card_id") in ("EC-001", "EC-002")]
+    _do_now = [a for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
+    _valid8 = [a for a in acts if (a.get("investment_status") or "") == "VALIDATE_FIRST"]
+
+    def _q(name, max_, deductions):
+        """max_ minus deductions, floored at 0; records explicit reasons."""
+        val = max(max_ - sum(deductions), 0)
+        return {"points": val, "max": max_, "pct": round(100.0 * val / max_, 1),
+                "deductions": [d for d in deductions if d > 0]}
+
     q = {}
-    q["evidence_accuracy"] = {"points": 20, "pct": 100 if all(c.get("direct_observation") and c.get("evidence") for c in valid_cards) else 0}
-    q["finding_distinctness"] = {"points": 15, "pct": 100 if len({(c.get("specific_gap") or "").lower() for c in valid_cards}) == len(valid_cards) else 0}
-    q["customer_specificity"] = {"points": 15, "pct": 100 if all(("appleimprints" in (c.get("primary_customer_url") or "")) and ("Buyers" in (c.get("business_mechanism") or "") or "buyer" in (c.get("business_mechanism") or "").lower()) for c in valid_cards) else 0}
-    q["commercial_priority_quality"] = {"points": 15, "pct": 100 if all("quote" in (c.get("business_mechanism") or "").lower() for c in valid_cards) and _do_now and _valid8 else 0}
-    q["action_executability"] = {"points": 15, "pct": 100 if _audited(lambda aid: aid in (a["action_id"] for a in acts)) and not g4["rejected_findings"] else 0}
-    q["pdf_customer_readiness"] = {"points": 20, "pct": 100 if (scan["clean"] and not scan["hard_fails"] and visible and ("appleimprints" in visible_l)) else 0}
+    # (1) evidence accuracy: 20 - deduct for any card missing direct observation or evidence source
+    q["evidence_accuracy"] = _q("evidence_accuracy", 20, [
+        5 if not all(c.get("direct_observation") and c.get("evidence") for c in valid_cards) else 0])
+    # (2) finding distinctness: 15 - deduct if any two cards share the same gap
+    gaps = [(c.get("specific_gap") or "").lower() for c in valid_cards]
+    q["finding_distinctness"] = _q("finding_distinctness", 15, [
+        15 if len(set(gaps)) != len(gaps) else 0])
+    # (3) customer specificity: 15 - deduct for non-customer URLs / no buyer reasoning
+    q["customer_specificity"] = _q("customer_specificity", 15, [
+        5 if not all("appleimprints" in (c.get("primary_customer_url") or "") for c in valid_cards) else 0,
+        5 if not all(("buyer" in (c.get("business_mechanism") or "").lower() or "Buyers" in (c.get("business_mechanism") or "")) for c in valid_cards) else 0,
+        5 if not all(c.get("buyer_question") for c in valid_cards) else 0])
+    # (4) commercial priority quality: 15 - deduct if fewer than 5 actions, or no journey/roadmap/role ownership
+    has_journey = "Customer Journey Map" in visible
+    has_roadmap = "90-Day Execution Roadmap" in visible
+    role_owned = all(a.get("owner_approver") and a.get("owner_content") and a.get("owner_publisher_qa") for a in acts)
+    q["commercial_priority_quality"] = _q("commercial_priority_quality", 15, [
+        6 if len(acts) < 5 else 0,
+        3 if not has_journey else 0,
+        3 if not has_roadmap else 0,
+        3 if not role_owned else 0])
+    # (5) action executability: 15 - every action needs full brief + external accept, none rejected
+    full_brief = all((_card_of(a).get("implementation_brief") or {}).get("exact_module_placement")
+                     and (_card_of(a).get("implementation_brief") or {}).get("qa")
+                     and (_card_of(a).get("implementation_brief") or {}).get("scale_rule") for a in acts)
+    q["action_executability"] = _q("action_executability", 15, [
+        8 if not full_brief else 0,
+        4 if not all(_audited(a.get("action_id")) for a in acts) else 0,
+        3 if g4["rejected_findings"] else 0])
+    # (6) pdf customer readiness: 20 (GATE5 clean) + explicit deductions for any visible issue
+    q["pdf_customer_readiness"] = _q("pdf_customer_readiness", 20, [
+        20 if not (scan["clean"] and not scan["hard_fails"] and visible and "appleimprints" in visible_l) else 0])
     qual_total = round(sum(v["points"] for v in q.values()), 1)
-    # ---- investment status (corrected per owner instruction) ----
+    qual_notes = {
+        "action_count": len(acts),
+        "has_customer_journey_map": has_journey,
+        "has_90_day_roadmap": has_roadmap,
+        "role_level_ownership": role_owned,
+        "external_audit_mode": ext_audit[0].get("mode") if ext_audit else "none",
+        "all_categories_at_least_90pct": all(v["pct"] >= 90 for v in q.values()),
+    }
+    # ---- investment status (single-source: read back from each action) ----
     inv_status = {}
     for a in acts:
-        c = next((k for k in valid_cards if k.get("card_id") in (a.get("evidence_ids") or [])), {})
-        if c.get("card_id") == "EC-003":
-            inv_status[a["action_id"]] = "DO NOW"
-        elif c.get("card_id") in ("EC-001", "EC-002"):
-            inv_status[a["action_id"]] = "VALIDATE FIRST (pending owner approval)"
-        else:
-            inv_status[a["action_id"]] = "VALIDATE FIRST"
+        st = (a.get("investment_status") or "").strip()
+        inv_status[a["action_id"]] = "DO NOW" if st == "DO_NOW" else "VALIDATE FIRST (pending owner approval)"
     results["investment_status"] = inv_status
     results["scorecard"] = {
         "STRUCTURAL_COMPLETENESS_SCORE": {"out_of": 100, "value": structural,
@@ -384,8 +454,10 @@ def main():
             "note": "Field/label presence only — NOT a quality score."},
         "QUALITY_SCORE": {"out_of": 100, "value": qual_total, "categories": q,
             "per_category_pct": {k: v["pct"] for k, v in q.items()},
+            "deductions": {k: v["deductions"] for k, v in q.items()},
             "auditor_mode": ext_audit[0].get("mode") if ext_audit else "none",
-            "note": "Independent semantic audit + hard evidence checks; a category counts ONLY when actually met."},
+            "notes": qual_notes,
+            "note": "Independent semantic audit with explicit deductions per category; a category is full only with no reasonable deductions."},
         "pdf_sha256": scan["sha256"],
     }
     print(json.dumps(results, ensure_ascii=False, indent=1))

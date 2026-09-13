@@ -136,6 +136,73 @@
     "approved_copy_placeholder": "[Insert approved caption/tag copy before publication.]"
    },
    "evidence": "Direct page read on 2026-09-13 (heading + body verified; no captions/links/tags present)."
+  },
+  {
+   "card_id": "EC-004",
+   "primary_customer_url": "https://appleimprints.com/",
+   "page_type": "homepage",
+   "page_heading": "Your Brand. Our Mission.",
+   "direct_observation": "Homepage presents five decoration-method cards (Screen Printing, Embroidery, Debossing, DTG, DTF) followed by an ABOUT US section, but gives no guidance a first-time buyer can use to choose which method fits their project and quantity; every method card routes to the same generic Get a Quote nav link rather than to the relevant service page, so a first-time buyer cannot self-route.",
+   "buyer_question": "Which of these decoration methods fits my project and quantity, and how are they different?",
+   "specific_gap": "No method-selection guidance or comparison on the homepage, so a first-time business buyer cannot match their order to the right service and instead faces a generic quote form.",
+   "business_mechanism": "An awareness/evaluation buyer arrives with a need for custom apparel but no method knowledge; without a method-selection aid that maps project type and quantity to a technique, the buyer stalls on the homepage instead of progressing to the relevant service page and then to the quote, suppressing qualified enquiries toward the goal (more sales-revenue).",
+   "recommended_module": "Add a Which method is right for your project selection aid on the homepage, with quantity and project questions that route each answer to the relevant service page and quote form.",
+   "evidence": "Direct page read on 2026-09-13 (headings verified: Screen Printing, Embroidery, Debossing, DTG, DTF; About; no method-selection guidance present).",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: confirm the method-to-project routing is correct before publish.",
+    "owner_confirmation_questions": [
+     "Which decoration method maps to which project type and quantity?",
+     "Can each method answer route to the matching service page and quote form?"
+    ],
+    "required_page_module_fields": [
+     "Method-selection aid",
+     "Quantity/project questions",
+     "Route-to-service-page links",
+     "Exact quote CTA"
+    ],
+    "approved_copy_placeholder": "[Insert Sales/Operations-approved method-routing wording before publication.]",
+    "exact_module_placement": "Insert the method-selection aid between the hero and the method cards on the homepage.",
+    "approval_dependency": "Sales/Operations must approve the method-to-project routing before publish.",
+    "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (quote form) routed from each method answer.",
+    "qa": "Verify on mobile (aid stacks) and desktop (no overflow) after publish; every route link resolves.",
+    "baseline_metrics": "Record homepage to service-page and homepage to quote clicks for 14 business days before the change.",
+    "scale_rule": "Only after two positive 30-day review points extend the same selection aid style to the services hub."
+   }
+  },
+  {
+   "card_id": "EC-005",
+   "primary_customer_url": "https://appleimprints.com/embroidery/",
+   "page_type": "service page",
+   "page_heading": "Apple Imprint's Embroidery Services",
+   "direct_observation": "Embroidery page is marketing prose (Timeless, Professional Appearance; Embroidery adds a classic, high-end look) with no example or proof image on the page, no link to the gallery showing embroidered work, and no minimum or price or turnaround context. A buyer evaluating embroidery cannot see an Apple Imprints embroidered example without leaving the page.",
+   "buyer_question": "Can I see an embroidered example, and roughly what does embroidery cost and what is the minimum?",
+   "specific_gap": "Embroidery page gives no on-page proof, no gallery cross-link, and no minimum/price/turnaround guidance, so an evaluation-stage buyer cannot judge quality or pre-qualify.",
+   "business_mechanism": "Proof and pricing-lite are the evaluation-stage inputs; an embroidery page with zero proof and no gallery link fails to move a quality-conscious buyer toward the quote, so it underconverts for the goal (more sales-revenue).",
+   "recommended_module": "Add on-page embroidery example image(s) plus a link to the gallery proof and a Get an exact quote route on the embroidery service page.",
+   "evidence": "Direct page read on 2026-09-13 (heading and body verified; no proof image, no gallery link, no minimum/price/turnaround present).",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: confirm the example image and any minimum/price/turnaround wording before publish.",
+    "owner_confirmation_questions": [
+     "Which embroidered piece can be shown as public proof?",
+     "What minimum, price factors and turnaround can be promised publicly for embroidery?",
+     "Can the gallery be linked as embroidered proof?"
+    ],
+    "required_page_module_fields": [
+     "Example proof image",
+     "Gallery proof link",
+     "Minimum-order context",
+     "Price-factor explanation",
+     "Turnaround",
+     "Exact quote CTA"
+    ],
+    "approved_copy_placeholder": "[Insert Sales/Operations-approved embroidery wording before publication.]",
+    "exact_module_placement": "Insert below the Timeless, Professional Appearance intro and above the footer CTA on the embroidery page.",
+    "approval_dependency": "Sales/Operations and Production Lead must confirm the example and any minimum/price/turnaround before publish.",
+    "exact_quote_cta_destination": "https://appleimprints.com/get-a-quote-2/ (quote form) with text Get an exact embroidery quote.",
+    "qa": "Mobile and desktop: example image renders, gallery link resolves, no text clipped.",
+    "baseline_metrics": "Record embroidery-page to quote clicks and session count for 14 business days before the change.",
+    "scale_rule": "Only after two positive 30-day review points extend the same proof and route pattern to DTG and DTF pages."
+   }
   }
  ]
 }

@@ -104,12 +104,28 @@ def gate2_validate_evidence_card(card: dict) -> Dict[str, Any]:
 # Fixed per customer/goal; renderers must NOT re-derive from effort/title/length.
 def _investment_status_for(card: dict) -> str:
     cid = (card.get("card_id") or "").upper()
-    if cid == "EC-003":
+    # DO_NOW: low-risk, reversible, single customer-owned URL, no unconfirmed operational figures.
+    if cid in ("EC-003", "EC-004"):
         return "DO_NOW"
-    # EC-001 (pricing/minimums) and EC-002 (quote/SLA) require owner confirmation first.
-    if cid in ("EC-001", "EC-002"):
+    # VALIDATE_FIRST: requires owner confirmation of MOQ/setup/price/turnaround/SLA/example copy.
+    if cid in ("EC-001", "EC-002", "EC-005"):
         return "VALIDATE_FIRST"
     return "VALIDATE_FIRST"  # conservative default
+
+
+# SINGLE SOURCE OF TRUTH for role-level ownership. Every renderer reads ONLY this.
+ROLE_OWNERSHIP = {
+    "EC-001": {"approver": "Sales/Operations", "content": "Content/Marketing", "publisher_qa": "Web/Developer"},
+    "EC-002": {"approver": "Owner/Service Manager", "content": "Service/Content", "publisher_qa": "Web/Developer"},
+    "EC-003": {"approver": "Production Lead", "content": "Content/Marketing", "publisher_qa": "Web/Developer"},
+    "EC-004": {"approver": "Sales/Operations", "content": "Content/Marketing", "publisher_qa": "Web/Developer"},
+    "EC-005": {"approver": "Sales/Operations + Production Lead", "content": "Content/Marketing", "publisher_qa": "Web/Developer"},
+}
+
+
+def _ownership_for(card: dict) -> dict:
+    return ROLE_OWNERSHIP.get((card.get("card_id") or "").upper(),
+                              {"approver": "Owner", "content": "Content/Marketing", "publisher_qa": "Web/Developer"})
 
 
 def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
@@ -124,13 +140,15 @@ def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
             continue
         aid = f"ACT-{i:03d}"
         module = (card.get("recommended_module") or "").strip()
+        own = _ownership_for(card)
         # FULL module text — never truncated in the customer-facing PDF.
         title = f"{module} on the customer page {url}"
         # Definition of done: complete sentence; don't re-quote a module that already
         # contains quote chars (avoids double-nested quotes like "the 'Add a 'Pricing'...").
         acceptance = (f"QA-pass on the live customer page {url}: the {module} module "
                       f"renders and its links work on mobile and desktop, the page passes "
-                      f"a content check by the owner, and no text is clipped. "
+                      f"a content check by the approver ({own['approver']}) and QA by "
+                      f"{own['publisher_qa']}, and no text is clipped. "
                       f"See Implementation Brief {aid} for complete requirements.")
         actions.append({
             "action_id": aid,
@@ -142,7 +160,9 @@ def gate3_actions_from_evidence_cards(cards: List[dict]) -> List[dict]:
             "page_gap": card.get("specific_gap", ""),
             "buyer_question": card.get("buyer_question", ""),
             "recommended_module": module,
-            "owner": "Content/SEO",
+            "owner_approver": own["approver"],
+            "owner_content": own["content"],
+            "owner_publisher_qa": own["publisher_qa"],
             "effort": "Medium" if _investment_status_for(card) == "VALIDATE_FIRST" else "Small",
             "investment_status": _investment_status_for(card),   # single source of truth
             "acceptance_criteria": acceptance,

@@ -1,0 +1,73 @@
+{
+ "overall": "PASS",
+ "action_count": 5,
+ "GATE5_hard_fails": [],
+ "required_field_empty": 0,
+ "priority_consistency": "consistent",
+ "truncated": [],
+ "STRUCTURAL_COMPLETENESS_SCORE": 100.0,
+ "QUALITY_SCORE": 100,
+ "QUALITY_notes": {
+  "action_count": 5,
+  "has_customer_journey_map": true,
+  "has_90_day_roadmap": true,
+  "role_level_ownership": true,
+  "external_audit_mode": "external",
+  "all_categories_at_least_90pct": true
+ },
+ "QUALITY_categories": {
+  "evidence_accuracy": 100,
+  "finding_distinctness": 100,
+  "customer_specificity": 100,
+  "commercial_priority_quality": 100,
+  "action_executability": 100,
+  "pdf_customer_readiness": 100
+ },
+ "investment_status": {
+  "ACT-001": "VALIDATE FIRST (pending owner approval)",
+  "ACT-002": "VALIDATE FIRST (pending owner approval)",
+  "ACT-003": "DO NOW",
+  "ACT-004": "DO NOW",
+  "ACT-005": "VALIDATE FIRST (pending owner approval)"
+ },
+ "ownership": {
+  "ACT-001": {
+   "approver": "Sales/Operations",
+   "content": "Content/Marketing",
+   "qa": "Web/Developer"
+  },
+  "ACT-002": {
+   "approver": "Owner/Service Manager",
+   "content": "Service/Content",
+   "qa": "Web/Developer"
+  },
+  "ACT-003": {
+   "approver": "Production Lead",
+   "content": "Content/Marketing",
+   "qa": "Web/Developer"
+  },
+  "ACT-004": {
+   "approver": "Sales/Operations",
+   "content": "Content/Marketing",
+   "qa": "Web/Developer"
+  },
+  "ACT-005": {
+   "approver": "Sales/Operations + Production Lead",
+   "content": "Content/Marketing",
+   "qa": "Web/Developer"
+  }
+ },
+ "first_7_day_win": "ACT-003",
+ "pdf_sha256": "e2caf98d56c44777049be36430842f16467a9b341b32533925444e9e8844bce3",
+ "rendered_sha256": "e2caf98d56c44777049be36430842f16467a9b341b32533925444e9e8844bce3",
+ "scanned_sha256": "e2caf98d56c44777049be36430842f16467a9b341b32533925444e9e8844bce3",
+ "email_copy_sha_matches": true,
+ "three_way": true,
+ "independent_pypdf": {
+  "file_uri": 0,
+  "abs_path": 0,
+  "placeholder": 0,
+  "order_leak": 0,
+  "pages": 14
+ }
+}
