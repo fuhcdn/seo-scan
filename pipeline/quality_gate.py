@@ -224,6 +224,80 @@ def score_report(research, findings, actions, tier, lang, order=None):
     }
 
 
+# ---- finding enrichment: derive a concrete non-empty action + business reason (§8/§9) ----
+def _recommended_action_for_claim(claim, evidence, primary_goal):
+    """Frame the observation into a concrete, non-selling action the owner can execute.
+    Never blank; never a system-log/generic directive."""
+    claim_l = (claim or "").lower()
+    scope = evidence.get("scope") or "the affected pages"
+    direct = evidence.get("direct_observation") or ""
+    # pattern-match toward concrete remediation direction
+    if any(w in claim_l for w in ("pricing", "quote", "cost", "price")):
+        act = (f"Add clear pricing/cost guidance or a quote path to {scope}, so buyers "
+               f"can compare before contacting, supporting the stated goal ({primary_goal}).")
+    elif any(w in claim_l for w in ("prove", "proof", "trust", "review", "testimonial", "case")):
+        act = (f"Add proof assets (reviews, cases, guarantees) to {scope}, reasoned from the "
+               f"observed trust signals, supporting the goal ({primary_goal}).")
+    elif any(w in claim_l for w in ("comparison", "compare", "vs")):
+        act = (f"Add a comparison/decision matrix to {scope} so customers can weigh options, "
+               f"supporting the goal ({primary_goal}).")
+    elif any(w in claim_l for w in ("hreflang", "language", "locale", "regional")):
+        act = (f"Add/verify hreflang annotations across the regional variants so each market "
+               f"serves the correct language version, supporting {primary_goal}.")
+    elif any(w in claim_l for w in ("internal link", "navigation", "discover", "link to")):
+        act = (f"Strengthen internal links from high-visibility pages to {scope}, so priority "
+               f"commercial pages are more discoverable, supporting {primary_goal}.")
+    elif any(w in claim_l for w in ("schema", "structured", "json-ld", "rich result")):
+        act = (f"Add appropriate structured data (e.g. Organization/Service schema) to {scope} "
+               f"to support rich-result eligibility, supporting {primary_goal}.")
+    elif any(w in claim_l for w in ("cannibalis", "overlap", "duplicate", "fragment")):
+        act = (f"Consolidate or differentiate the overlapping pages in {scope} so each targets "
+               f"one clear intent, supporting {primary_goal}.")
+    elif any(w in claim_l for w in ("thin", "outdated", "content")):
+        act = (f"Expand/refresh the content in {scope} to directly answer the customer's "
+               f"decision question (suitability, process, proof, next step), supporting {primary_goal}.")
+    elif any(w in claim_l for w in ("heading", "h1", "title", "meta", "on-page")):
+        act = (f"Align each {scope} page's title/H1 to a single customer intent and action, "
+               f"supporting {primary_goal}.")
+    elif any(w in claim_l for w in ("contact", "cta", "conversion", "enquir", "booking", "action")):
+        act = (f"Make the primary conversion/contact action on {scope} obvious and repeatable, "
+               f"supporting the stated goal ({primary_goal}).")
+    else:
+        act = (f"Apply a customer-specific remediation to {scope} derived from the observed "
+               f"evidence (\"{str(direct or claim)[:80]}\"), prioritising the stated goal ({primary_goal}).")
+    return act[:220]
+
+
+def _business_reason_for_claim(claim, evidence, primary_goal):
+    """Explain in business terms why this matters to THIS customer's goal. Never the
+    generic 'Relates to the stated goal (X)'."""
+    claim_l = (claim or "").lower()
+    scope = evidence.get("scope") or "the affected pages"
+    if any(w in claim_l for w in ("pricing", "quote", "cost", "price")):
+        return (f"Buyers at {scope} cannot compare value before contacting, which can suppress "
+                f"qualified enquiries toward the goal ({primary_goal}).")
+    if any(w in claim_l for w in ("proof", "trust", "review", "case")):
+        return (f"Without visible proof at {scope}, buyers may not trust the offer enough to "
+                f"convert, directly slowing the goal ({primary_goal}).")
+    if any(w in claim_l for w in ("hreflang", "language", "locale")):
+        return (f"Regional variants at {scope} risk serving the wrong language, hurting "
+                f"international demand for the goal ({primary_goal}).")
+    if any(w in claim_l for w in ("internal link", "navigation", "discover")):
+        return (f"Weak internal links keep priority commercial pages under-discovered, "
+                f"reducing reach toward the goal ({primary_goal}).")
+    if any(w in claim_l for w in ("thin", "outdated", "content")):
+        return (f"{scope} content does not yet answer the buyer's decision question, so "
+                f"qualified readers may not progress toward the goal ({primary_goal}).")
+    if any(w in claim_l for w in ("heading", "title", "meta")):
+        return (f"Unfocused page titles on {scope} make it harder for the target audience to "
+                f"connect intent to the page, towards the goal ({primary_goal}).")
+    if any(w in claim_l for w in ("cta", "conversion", "contact", "action")):
+        return (f"A weak conversion path on {scope} directly limits the number of visitors who "
+                f"reach the desired action tied to the goal ({primary_goal}).")
+    return (f"This observation at {scope} affects the likelihood that visitors progress toward "
+            f"the stated business goal ({primary_goal}).")
+
+
 def classify_findings(research, status, tier):
     """Filter research-ledger into material findings (reject system logs).
     Returns (findings[], rejected[]). Creates customer-flavoured findings
@@ -233,6 +307,27 @@ def classify_findings(research, status, tier):
     business = research.get("business") or {}
     primary_goal = (status.get("primary_business_goal") or business.get("primary_business_goal") or "business growth")
     actions = []
+
+    # map each evidence scope to real customer page URLs so findings name actual pages (§8)
+    pages_raw = research.get("pages_reviewed") or (research.get("architecture") or {}).get("pages_reviewed") or []
+    _page_urls = []
+    for p in pages_raw:
+        u = p.get("url") if isinstance(p, dict) else str(p)
+        if u:
+            _page_urls.append(u)
+    _page_urls = list(dict.fromkeys(_page_urls))
+    _base = research.get("website_url") or status.get("url") or ""
+    _scope2pages = {"homepage": _page_urls[:2], "site": _page_urls[:3], "search results": _page_urls[:2]}
+    def _affected_scope(raw_scope, evidence_url):
+        s = (raw_scope or "site").lower()
+        if s in _scope2pages and _scope2pages[s]:
+            return "; ".join(_scope2pages[s][:3])
+        if evidence_url:
+            return evidence_url
+        # fall back to real customer pages (never generic 'competitor/result-pattern')
+        if _page_urls:
+            return "; ".join(_page_urls[:3])
+        return "the affected pages"
 
     findings = []
     rejected = []
@@ -245,6 +340,9 @@ def classify_findings(research, status, tier):
             rejected.append(e)
             continue
         # keep meaningful observations but frame as customer-specific
+        # 每條 finding 要有具體非空 action + 具體 business reason（§8/§9：blank 即 hard-fail）
+        _action = _recommended_action_for_claim(claim, e, primary_goal)
+        _reason = _business_reason_for_claim(claim, e, primary_goal)
         findings.append({
             "priority": "P1",
             "category": "SEO",
@@ -252,16 +350,16 @@ def classify_findings(research, status, tier):
             "claim": claim,
             "claim_label": e.get("label", "INFERENCE"),
             "evidence_ids": [e["evidence_id"]],
-            "affected_scope": e.get("scope", "site"),
-            "business_reason": f"Relates to the stated goal ({primary_goal}).",
-            "recommended_action": "",
+            "affected_scope": _affected_scope(e.get("scope", "site"), e.get("source_url") or ""),
+            "business_reason": _reason,
+            "recommended_action": _action,
             "owner": "SEO / Marketing",
             "effort": "Small" if tier != "PREMIUM_REPORT" else "Medium",
             "confidence": e.get("confidence", "Medium"),
             "confidence_rationale": (e.get("direct_observation") or "")[:200],
             "dependencies": [],
-            "acceptance_criteria": "Confirm via corresponding public source.",
-            "validation_method": "Search Console / GA4 where access is provided.",
+            "acceptance_criteria": f"Implement the recommended action on the affected pages and confirm via the corresponding public source.",
+            "validation_method": "Search Console / GA4 where access is provided; otherwise re-check public source.",
             "limitations": "Public research only; private data not verified.",
         })
 
@@ -272,6 +370,13 @@ def classify_findings(research, status, tier):
         pattern = s.get("result_pattern") or ""
         if not query:
             continue
+        _srp_obs = s.get("direct_observation") or ""
+        _srp_act = _recommended_action_for_claim(
+            f"Search result pattern for \"{query}\" shows {pattern or 'a mixed'} format ({_srp_obs[:40]})",
+            s, primary_goal)
+        _srp_reason = _business_reason_for_claim(
+            f"Search result pattern for \"{query}\" shows {pattern or 'a mixed'} format; visitors expect this format",
+            s, primary_goal)
         findings.append({
             "priority": "P2",
             "category": "Commercial Intent",
@@ -279,17 +384,17 @@ def classify_findings(research, status, tier):
             "claim": f"For \"{query}\", visible public results are mostly {pattern or 'mixed'} (observed {s.get('access_date') or ''}).",
             "claim_label": s.get("label", "INFERENCE"),
             "evidence_ids": [s.get("evidence_id")] if s.get("evidence_id") else [],
-            "affected_scope": "search results",
-            "business_reason": f"Shows what format/intent competitors serve for a query tied to {primary_goal}.",
-            "recommended_action": "",
+            "affected_scope": _affected_scope("search results", s.get("source_url") or ""),
+            "business_reason": _srp_reason,
+            "recommended_action": _srp_act,
             "owner": "Content / SEO",
             "effort": "Medium",
             "confidence": s.get("confidence", "Medium"),
-            "confidence_rationale": (s.get("direct_observation") or "")[:200],
+            "confidence_rationale": (_srp_obs or "")[:200],
             "dependencies": [],
-            "acceptance_criteria": "Confirm in GSC/GA4 which pages serve the query and whether format matches.",
-            "validation_method": "Search Console / GA4 where access is provided.",
-            "limitations": "General search observation is not exact rank data.",
+            "acceptance_criteria": "Confirm in GSC/GA4 which pages serve the query and whether the page format matches the visible public result pattern.",
+            "validation_method": "Search Console / GA4 where access is provided; otherwise public re-check of format fit.",
+            "limitations": "General public result-pattern observation is not exact rank data.",
         })
 
     # Build concrete actions from findings (each finding -> an action with owner/effort/accept/validation)
@@ -307,6 +412,12 @@ def classify_findings(research, status, tier):
             "validation_method": f.get("validation_method", ""),
             "review_window": "30-60 days",
             "dependencies": f.get("dependencies", []),
+            # richer per-action fields (§9) so the ledger shows consequence + confidence + limits
+            "business_reason": f.get("business_reason", ""),
+            "confidence": f.get("confidence", "Medium"),
+            "confidence_rationale": f.get("confidence_rationale", ""),
+            "affected_scope": f.get("affected_scope", "site"),
+            "limits": f.get("limitations", ""),
         })
 
     # FINAL 497/997 STANDARD: entry = exactly 3 findings + 5 actions; premium = 5-8 findings + 15 actions.

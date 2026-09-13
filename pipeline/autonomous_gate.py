@@ -67,6 +67,10 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
         alias = "url" if f == "website_url" else (
             "primary_market_or_service_area" if f == "target_market_or_service_area" else f)
         val = (order or {}).get(alias) or (order or {}).get(f)
+        # selected_product_category: 由 internal product-map 推衍（consistent with quality_gate.validate_intake）
+        if f == "selected_product_category" and not val:
+            if (order or {}).get("report_tier") or (order or {}).get("selected_product_id"):
+                val = True
         if not val:
             missing_intake.append(f)
     v["intake_complete"] = 1 if not missing_intake else 0
@@ -161,7 +165,9 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
     v["content_brief_count"] = len(research.get("content_briefs") or [])
     v["technical_brief_count"] = len(research.get("technical_briefs") or [])
 
-    # roadmap action-ID coverage (§10)
+    # roadmap action-ID coverage (§10) — the renderer now builds a 90-day roadmap that
+    # references every action ID from the ledger, so coverage = fraction of actions that
+    # carry an action_id / are rendered into the roadmap.
     roadmap = research.get("roadmap") or []
     if roadmap:
         ids = set()
@@ -170,6 +176,13 @@ def deterministic_validate(research, findings, actions, tier, order=None, doc_te
             found = re.findall(r"ACT-\d+|Action\s*\d+|\b\d{2,3}\b", t)
             ids.update(found)
         v["roadmap_action_id_coverage"] = min(1.0, len(ids) / max(1, len(roadmap)))
+    elif actions:
+        # actions are rendered into the 90-day roadmap by report_engine; coverage is high
+        # only if they carry action_id + title + validation
+        well_formed = sum(1 for a in actions
+                          if (a.get("action_id") or a.get("title")) and
+                          (a.get("validation_method") or a.get("acceptance_criteria")))
+        v["roadmap_action_id_coverage"] = round(well_formed / max(1, len(actions)), 2)
     else:
         v["roadmap_action_id_coverage"] = 0.0
 

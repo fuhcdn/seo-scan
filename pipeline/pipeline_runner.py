@@ -354,14 +354,20 @@ def step_report(status, audit_path=None):
         status["deterministic_validator"] = det
         status["draft_score"] = None  # generator no longer sets final score
 
-        # 4) INDEPENDENT BLIND QUALITY AUDITOR (separate AI, never sees generator score)
-        _draft_excerpt = " ".join(
-            (f.get("claim") or f.get("title") or "") + " :: " + (f.get("business_reason") or "")
-            + " :: action: " + (f.get("recommended_action") or "")
-            for f in findings) + " || " + " ".join(
-            (a.get("title") or a.get("claim") or "") + " (owner " + (a.get("owner") or "") +
-            "; acceptance: " + (a.get("acceptance_criteria") or "") + "; validate: " +
-            (a.get("validation_method") or "") + ")" for a in actions)
+        # 4) build the actual draft HTML BEFORE the blind audit so the auditor reviews the
+        #    real rendered report draft (Final standard §14: auditor receives report draft/PDF)
+        html = _re.build_report(order, research, findings, actions, tier, lang)
+
+        # 5) INDEPENDENT BLIND QUALITY AUDITOR (separate AI, never sees generator score)
+        #    It reviews the rendered draft text + evidence ledger + coverage metrics.
+        _draft_text = re.sub(r"<[^>]+>", " ", html)
+        _draft_text = re.sub(r"\s+", " ", _draft_text)
+        _draft_excerpt = _draft_text[:6000]
+        # also include the findings/actions specifics (in case html stripping loses them)
+        _addl = " ".join(
+            (f.get("claim") or "") + " :: " + (f.get("business_reason") or "")
+            + " :: action: " + (f.get("recommended_action") or "") for f in findings)
+        _draft_excerpt = (_draft_excerpt + " || FINDINGS: " + _addl)[:6000]
         try:
             blind = _ag.run_blind_audit(
                 tier,
@@ -386,7 +392,7 @@ def step_report(status, audit_path=None):
             "F_pdf": blind.get("F_pdf", {}).get("points", 0),
         }
 
-        # 5) DELIVERY DECISION ENGINE — ONLY component allowed to set READY_TO_DELIVER
+        # 6) DELIVERY DECISION ENGINE — ONLY component allowed to set READY_TO_DELIVER
         state, why = _ag.decide_delivery(det, blind, is_pdf_clean=True)
         status["delivery_state"] = state
         status["delivery_reasons"] = why
@@ -400,7 +406,7 @@ def step_report(status, audit_path=None):
             return _insufficient_evidence_pdf(status, research,
                 why or ["report did not reach independent 90/100 validation"])
 
-        # 6) I1 QA gate (deterministic, report_engine)
+        # 7) I1 QA gate (deterministic, report_engine)
         qa_ok, qa_issues = _re.run_qa(research, findings, tier, lang, order=order)
         if not qa_ok:
             status["delivery_state"] = "PDF_REPAIRING"
@@ -410,7 +416,6 @@ def step_report(status, audit_path=None):
             save_status(status)
             return _insufficient_evidence_pdf(status, research, qa_issues)
 
-        html = _re.build_report(order, research, findings, actions, tier, lang)
         domain = safe_domain(order.get("url", "demo"))
         # §11 clean customer-safe filename (no order id / internal id / path)
         safe_company = re.sub(r"[^A-Za-z0-9]+", "-", (order.get("company_name") or "Report")).strip("-").lower() or "report"

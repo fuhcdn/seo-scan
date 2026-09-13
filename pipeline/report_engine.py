@@ -576,16 +576,40 @@ def build_report(order, research, findings, actions=None, tier="ENTRY_REPORT", l
     pages_ok = [p for p in research.get("architecture", {}).get("pages_reviewed", []) if p.get("ok")]
     pages_txt = "; ".join(esc(p.get("url")) for p in pages_ok[:8])
 
-    # 90-day plan blocks (localized)
+    # 90-day plan blocks (localized) — §10: MUST reference actual Action IDs, no generic prose
     def plan_block(title0, items):
         lis = "".join(f"<li>{esc(i)}</li>" for i in items)
         return f"<h3>{esc(title0)}</h3><ul>{lis}</ul>"
-    plan = plan_block(_u(u, 'plan_days0'),
-                      [_u(u,'plan_days0_1'), _u(u,'plan_days0_2'), _u(u,'plan_days0_3')])
-    plan += plan_block(_u(u, 'plan_days1'),
-                       [_u(u,'plan_days1_1'), _u(u,'plan_days1_2'), _u(u,'plan_days1_3')])
-    plan += plan_block(_u(u, 'plan_days2'),
-                       [_u(u,'plan_days2_1'), _u(u,'plan_days2_2')])
+
+    # build an action-ID-linked 90-day roadmap from the real action ledger
+    real_actions = actions or []
+    act_refs = ""
+    for i, a2 in enumerate(real_actions):
+        aid = a2.get("action_id") or f"ACT-{i+1:03d}"
+        act_refs += f"<li><strong>{esc(aid)}</strong> — {esc(a2.get('title') or a2.get('claim') or '')} (owner {esc(a2.get('owner') or 'n/a')}; {esc(a2.get('effort') or '')})</li>"
+    if act_refs:
+        # split across the three windows, referencing the real action IDs
+        n = len(real_actions)
+        third = max(1, (n + 2) // 3)
+        w0 = real_actions[:third]
+        w1 = real_actions[third:2 * third]
+        w2 = real_actions[2 * third:]
+        def _win(ws):
+            return "".join(
+                f"<li><strong>{esc(a.get('action_id') or f'ACT-{real_actions.index(a)+1:03d}')}</strong> "
+                f"— {esc(a.get('title') or a.get('claim') or '')}; "
+                f"validate: {esc(a.get('validation_method') or 'public re-check')}. "
+                f"Acceptance: {esc(a.get('acceptance_criteria') or 'implemented')}.</li>" for a in ws)
+        plan = (f"<h3>{esc(_u(u,'plan_days0'))}</h3><ul>{_win(w0) or '<li>finalise validation setup and quick wins</li>'}</ul>"
+                f"<h3>{esc(_u(u,'plan_days1'))}</h3><ul>{_win(w1) or '<li>execute highest-value page/content actions</li>'}</ul>"
+                f"<h3>{esc(_u(u,'plan_days2'))}</h3><ul>{_win(w2) or '<li>validate, scale successful patterns, decide next quarter</li>'}</ul>")
+    else:
+        plan = plan_block(_u(u, 'plan_days0'),
+                          [_u(u,'plan_days0_1'), _u(u,'plan_days0_2'), _u(u,'plan_days0_3')])
+        plan += plan_block(_u(u, 'plan_days1'),
+                           [_u(u,'plan_days1_1'), _u(u,'plan_days1_2'), _u(u,'plan_days1_3')])
+        plan += plan_block(_u(u, 'plan_days2'),
+                           [_u(u,'plan_days2_1'), _u(u,'plan_days2_2')])
 
     # SERP evidence (localized wrapper)
     rp_l = _u(u, "result_pattern_l"); obs_l = _u(u, "observed_l")
@@ -729,16 +753,23 @@ def _render_action_ledger(actions, findings, lang):
     """Render the action ledger (owner/effort/acceptance/validation) as a readable table,
     or a concise list of material findings when no structured action ledger is passed."""
     E = lambda k: _u(lang, k, )
+    _BR_FALLBACK = "see linked finding for business consequence"
     acts = actions or []
     if acts:
         rows = "".join(
             f"<tr><td>{esc(a.get('action_id',''))}</td><td>{esc(a.get('title',''))}</td>"
             f"<td>{esc(a.get('priority','P1'))}</td><td>{esc(a.get('owner',''))}</td>"
-            f"<td>{esc(a.get('effort',''))}</td><td>{esc(a.get('acceptance_criteria',''))}</td>"
-            f"<td>{esc(a.get('validation_method',''))}</td><td>{esc(a.get('review_window',''))}</td></tr>"
+            f"<td>{esc(a.get('effort',''))}</td>"
+            f"<td>{(esc(a.get('business_reason')) or _BR_FALLBACK)}</td>"
+            f"<td>{esc(a.get('acceptance_criteria',''))}</td>"
+            f"<td>{esc(a.get('validation_method',''))}</td>"
+            f"<td>{esc(a.get('review_window',''))}</td>"
+            f"<td>{esc(a.get('confidence',''))}</td>"
+            f"<td>{esc(', '.join(a.get('evidence_ids') or []))}</td></tr>"
             for a in acts)
-        return f"""<table><tr><th>ID</th><th>Action</th><th>Priority</th><th>Owner</th><th>Effort</th>
-          <th>Acceptance</th><th>Validate</th><th>Review</th></tr>{rows}</table>"""
+        return f"""<table><tr><th>ID</th><th>Action</th><th>Pr</th><th>Owner</th><th>Effort</th>
+          <th>Business consequence</th><th>Acceptance</th><th>Validate</th><th>Review</th>
+          <th>Confidence</th><th>Evidence</th></tr>{rows}</table>"""
     # fallback: list material findings (never raw logs)
     lvs = "".join(
         f"<li><strong>{esc(f.get('priority','P1'))}</strong> — {esc(f.get('title',''))}"
