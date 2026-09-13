@@ -586,6 +586,13 @@ def classify_findings(research, status, tier):
         _serp_gap = page_gap_reason(
             f"visible {pattern or 'a mixed'} result format; {_cust_name} page should bridge this buyer intent",
             _obs, _serp_scope)
+        # customer-specific business mechanism: the buyer asking this query expects a decision-format
+        # page on {_customer}'s own site; without a page matching the visible result format, the
+        # {_customer} page cannot capture that buyer's decision step.
+        _r = (f"Buyers searching \\\"{query}\\\" expect a dedicated {_cust_name}-owned page (target {_serp_scope[:80]}) "
+              f"that answers the intent in the {pattern or 'expected'} format; today that page does not yet "
+              f"cover this query, so decision-ready visitors for {offers or 'the offer'} may not reach the quote/CTA. "
+              f"Adding it converts an existing visible demand signal into a capture point for {primary_goal}.")
         _fit_ok, _fit_note = business_model_fit(_decision_title, _r, offers,
                                                 status.get("primary_customer_action") or "", market)
         # § §8: a public result-pattern observation is an INTERPRETATION, never a standalone FACT.
@@ -605,9 +612,12 @@ def classify_findings(research, status, tier):
             "buyer_questions": _buyer_buckets_descr,
             "owner": "Content / SEO", "effort": "Medium",
             "confidence": s.get("confidence", "Medium"),
-            "confidence_rationale": (_obs or "")[:200], "dependencies": [],
-            "acceptance_criteria": "Identify the customer-owned page that should serve the query and confirm the format matches the visible result pattern; implement on that customer-owned URL.",
-            "validation_method": "GSC/GA4 where access provided; else public re-check of format fit.",
+            "confidence_rationale": (_obs or "")[:200],
+            "dependencies": ["customer-owned target(s): " + (_serp_scope or "")[:120]],
+            "acceptance_criteria": (f"Live customer-owned page {(_serp_scope or 'the page')[:100]} answers "
+                                    f"\\\"{query}\\\" with the {pattern or 'expected'} format; QA: link renders, "
+                                    f"mobile + desktop, intent is explicit. Owner: Content/SEO.")[:300],
+            "validation_method": "First measurable signal: impressions/CTR on the target page for the query within 30 days (GSC/GA4 where access; else public re-check). Review at 30 and 60 days; scale after two positive review points.",
             "limitations": "General public result-pattern observation is not exact rank data.",
         })
 

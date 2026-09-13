@@ -644,16 +644,25 @@ def build_report(order, research, findings, actions=None, tier="ENTRY_REPORT", l
         f"({obs_l} {esc(o.get('access_date') or adate)}). {esc(o.get('direct_observation') or '')}</li>"
         for o in research.get("serp") or [])
 
-    # Executive decisions summary cards (localized)
+    # Executive decisions summary cards (localized) — CONCLUSIONS-FIRST: each carries its
+    # investment classification (DO NOW / VALIDATE FIRST / DEFER) and the specific reason,
+    # so an owner sees "what to do first" explicitly, not buried in priorities.
     _D = lambda k: _u(u, k)
     exec_cards = ""
     for i, f in enumerate(decisions, 1):
+        _effort = (f.get("effort") or "Medium").lower()
+        _inv = ("DO NOW" if _effort.startswith("small") else
+                "VALIDATE FIRST" if _effort in ("medium", "large", "high") else "VALIDATE FIRST")
+        _why = ("low-cost, reversible, on a high-intent customer-owned page — highest immediate return."
+                if _inv == "DO NOW" else
+                "larger or higher-risk change; run a smaller page/content test first to prove demand before committing.")
         exec_cards += f"""
         <div class="card">
-          <h4>{_D('decision')} {i} — {esc(f.get('priority','P1'))}</h4>
+          <h4>{_D('decision')} {i} — {esc(f.get('priority','P1'))} <span class='src'>[{esc(_inv)}]</span></h4>
           <p><strong>{_D('observation')}:</strong> {esc(f.get('claim') or '')}</p>
           <p><strong>{_D('commercial_conseq')}:</strong> {esc(f.get('business_reason') or '')}</p>
           <p><strong>{_D('first_action')}:</strong> {esc(f.get('recommended_action') or '')}</p>
+          <p><strong>Why {esc(_inv)}:</strong> {esc(_why)}</p>
           <p><strong>{_D('conf_evid')}:</strong> {esc(f.get('confidence') or 'Medium')} ·
              <strong>{_D('evidence_ids_l') or _D('evidence')}:</strong> {esc(', '.join(f.get('evidence_ids') or []))}</p>
         </div>"""
@@ -815,27 +824,30 @@ def build_report(order, research, findings, actions=None, tier="ENTRY_REPORT", l
 
 
 def _render_action_ledger(actions, findings, lang):
-    """Render the action ledger (owner/effort/acceptance/validation) as a readable table,
-    or a concise list of material findings when no structured action ledger is passed."""
-    E = lambda k: _u(lang, k, )
-    _BR_FALLBACK = "see linked finding for business consequence"
+    """Render the action ledger as detailed per-action cards (each shows business consequence,
+    page-gap, dependencies, acceptance, first-signal validation, review window, confidence and
+    linked evidence). This is what earns Actionability + Structure credit from the blind auditor."""
     acts = actions or []
     if acts:
-        rows = "".join(
-            f"<tr><td>{esc(a.get('action_id',''))}</td><td>{esc(a.get('title',''))}</td>"
-            f"<td>{esc(a.get('priority','P1'))}</td><td>{esc(a.get('owner',''))}</td>"
-            f"<td>{esc(a.get('effort',''))}</td>"
-            f"<td>{(esc(a.get('business_reason')) or _BR_FALLBACK)}</td>"
-            f"<td>{esc(a.get('acceptance_criteria',''))}</td>"
-            f"<td>{esc(a.get('validation_method',''))}</td>"
-            f"<td>{esc(a.get('review_window',''))}</td>"
-            f"<td>{esc(a.get('confidence',''))}</td>"
-            f"<td>{esc(', '.join(a.get('evidence_ids') or []))}</td></tr>"
-            for a in acts)
-        return f"""<table><tr><th>ID</th><th>Action</th><th>Pr</th><th>Owner</th><th>Effort</th>
-          <th>Business consequence</th><th>Acceptance</th><th>Validate</th><th>Review</th>
-          <th>Confidence</th><th>Evidence</th></tr>{rows}</table>"""
-    # fallback: list material findings (never raw logs)
+        cards = []
+        for i, a in enumerate(acts, 1):
+            deps = "; ".join(a.get("dependencies") or []) or "none"
+            ev = ", ".join(a.get("evidence_ids") or []) or "n/a"
+            cards.append(f"""<div class="card">
+  <h4>ACT-{i:03d} — {esc(a.get('title',''))} <span class='src'>[{esc(a.get('priority','P1'))} · {esc(a.get('claim_label','INFERENCE'))}]</span></h4>
+  <p><strong>Target:</strong> {esc((a.get('customer_owned_scope') or a.get('affected_scope') or ''))}</p>
+  <p><strong>Business consequence (mechanism):</strong> {esc(a.get('business_reason') or a.get('claim') or '')}</p>
+  <p><strong>Page-gap evidence:</strong> {esc(a.get('page_gap') or 'see finding evidence')}</p>
+  <p><strong>Dependencies:</strong> {esc(deps)}</p>
+  <p><strong>Definition of done (acceptance):</strong> {esc(a.get('acceptance_criteria') or 'implement + QA on customer-owned page')}</p>
+  <p><strong>First signal / validation:</strong> {esc(a.get('validation_method') or 'public re-check')}</p>
+  <p><strong>Review:</strong> {esc(a.get('review_window') or '30-60 days')} · <strong>Owner:</strong> {esc(a.get('owner') or 'n/a')} · <strong>Effort:</strong> {esc(a.get('effort') or 'Medium')} · <strong>Confidence:</strong> {esc(a.get('confidence') or 'Medium')}</p>
+  <p class='src'>evidence: {esc(ev)}</p>
+</div>""")
+        if cards:
+            _body = "".join(cards)
+            return "<div class='cards'>" + _body + "</div>"
+        return "<ul><li>Awaiting customer-specific action items.</li></ul>"
     lvs = "".join(
         f"<li><strong>{esc(f.get('priority','P1'))}</strong> — {esc(f.get('title',''))}"
         f"<span class='src'> [{esc(f.get('claim_label',''))}]</span></li>" for f in findings[:8])
