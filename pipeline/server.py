@@ -7,22 +7,16 @@ Round 3 fix: gives the landing page a REAL backend instead of the demo stub.
 Routes:
   GET  /                     -> serves landing_page.html (live site entry)
   GET  /landing              -> alias for landing_page.html
+  GET  /robots.txt           -> static robots (blocks /api/, /webhook/, /success)
+  GET  /sitemap.xml          -> minimal sitemap of public pages
   POST /api/scan             -> {url} -> runs seo_crawler.run(url),
                                    returns REAL score + top-5 issues + fix_count.
-  POST /api/create-checkout  -> RESERVED checkout path. Real Stripe Checkout Session is
-                                   created here by @Yan. Until then returns
-                                   {"checkout_placeholder": true, "redirect_url": null}.
-  POST /webhook/stripe       -> placeholder for Yan to wire real Stripe Checkout.
-  GET  /health               -> {"ok":true}
-
-Stripe wiring (@Yan):
-  - /api/create-checkout  : after STRIPE_SECRET_KEY is set, create a Checkout Session here
-                            (price US$79 / config.DEFAULT_PRICE_USD) and return its
-                            `url` as redirect_url. The landing page auto-redirects.
-  - /webhook/stripe        : verify the Checkout Session paid, then auto-spawn
-                            `pipeline_runner.run_pipeline(order)` to deliver the report.
-                            Until Stripe is wired, the server simply returns placeholders
-                            so the page + pipeline stay runnable in dev/demo.
+  POST /api/create-checkout  -> creates a REAL Stripe Checkout Session via
+                                   stripe_lib.create_checkout_session and returns
+                                   its redirect_url (product-routed price id).
+  POST /webhook/stripe       -> verifies the Stripe signature, confirms paid via
+                                   re-retrieve, then spawns pipeline_runner to
+                                   deliver the report automatically.
 
 Run:
     python3 server.py            # binds 0.0.0.0:8000 (PORT env to override)
@@ -375,6 +369,31 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/health":
             self._send(200, {"ok": True, "server": "real-backend-v1",
                              "time": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())})
+        elif path == "/robots.txt":
+            # Static robots: allow normal crawling of public pages; block API/order
+            # endpoints from index. Safe, standard SEO surface.
+            body = (
+                "User-agent: *\n"
+                "Allow: /\n"
+                "Disallow: /api/\n"
+                "Disallow: /webhook/\n"
+                "Disallow: /success\n\n"
+                "Sitemap: https://seoscanaudit.com/sitemap.xml\n"
+            ).encode("utf-8")
+            self._send(200, body, ctype="text/plain")
+        elif path == "/sitemap.xml":
+            # Minimal sitemap for the public pages (single-language canonical set;
+            # language variants are served from / with user-selectable routing).
+            pages = ["/", "/en", "/es", "/ja", "/zh-Hans", "/zh-Hant",
+                     "/legal/privacy", "/legal/refund", "/legal/terms"]
+            today = time.strftime("%Y-%m-%d", time.gmtime())
+            urls = "".join(
+                f"<url><loc>https://seoscanaudit.com{p}</loc><lastmod>{today}</lastmod></url>"
+                for p in pages)
+            xml = ('<?xml version="1.0" encoding="UTF-8"?>'
+                   '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                   + urls + "</urlset>").encode("utf-8")
+            self._send(200, xml, ctype="application/xml")
         elif path.startswith("/legal/"):
             # Round8b：多語言 legal 路由。支援幾種形式（name 係語意名如 privacy/terms，
             # 亦兼容直接數 .md 檔名）：
