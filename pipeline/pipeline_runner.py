@@ -326,64 +326,140 @@ def step_report(status, audit_path=None):
 
         findings, actions, rejected = _build_findings(status, order, research)
 
-        # ---- 90/100 QUALITY STANDARD gate ----
+        # ---- FINAL AUTONOMOUS content standard gate (role-separated) ----
         import quality_gate as _qg
+        import autonomous_gate as _ag
         # 1) intake validation (block normal report if required fields absent)
         intake_ok, intake_missing = _qg.validate_intake(order)
         if not intake_ok:
+            status["delivery_state"] = "INSUFFICIENT_BUSINESS_CONTEXT"
             mark_step(status, "report", "failed",
                       note="intake_fail: required business context missing",
-                      intake_missing=intake_missing)
+                      intake_missing=intake_missing, delivery_state=status["delivery_state"])
             save_status(status)
             return _qg_path_noop(status, research, "intake", intake_missing)
 
-        # 2) research minimums per tier
+        # 2) research minimums per tier (deterministic gate)
         min_ok, min_gaps = _qg.research_minimum_satisfied(research, tier)
         if not min_ok:
+            status["delivery_state"] = "RESEARCH_INCOMPLETE"
             mark_step(status, "report", "failed",
                       note="research_minimum not met",
-                      research_gaps=min_gaps)
+                      research_gaps=min_gaps, delivery_state=status["delivery_state"])
             save_status(status)
             return _insufficient_evidence_pdf(status, research, ["research insufficient: " + "; ".join(min_gaps)])
 
-        # 3) scorecard (draft) + hard-fail
-        qres = _qg.score_report(research, findings, actions, tier, lang, order=order)
-        status["draft_score"] = qres["score"]
-        status["draft_scorecard"] = qres["scorecard"]
-        status["hard_fail"] = qres["hard_fail"]
-        if qres["hard_fail"] or qres["score"] < 90:
-            mark_step(status, "report", "failed",
-                      draft_score=qres["score"], hard_fail=qres["hard_fail"],
-                      note="90/100 gate not met; not delivering")
-            save_status(status)
-            # transparent fail-safe if evidence insufficient (score < 90 likely due thin evidence)
-            issues = qres["hard_fail"] or ["score below 90 (draft " + str(qres["score"]) + ")"]
-            return _insufficient_evidence_pdf(status, research, issues)
+        # 3) DETERMINISTIC VALIDATOR (code/rule-based; generator cannot edit result)
+        det = _ag.deterministic_validate(research, findings, actions, tier, order=order)
+        status["deterministic_validator"] = det
+        status["draft_score"] = None  # generator no longer sets final score
 
-        # I1 QA gate（唔過就唔出 PDF）
+        # 4) INDEPENDENT BLIND QUALITY AUDITOR (separate AI, never sees generator score)
+        _draft_excerpt = " ".join(
+            (f.get("claim") or f.get("title") or "") + " :: " + (f.get("business_reason") or "")
+            + " :: action: " + (f.get("recommended_action") or "")
+            for f in findings) + " || " + " ".join(
+            (a.get("title") or a.get("claim") or "") + " (owner " + (a.get("owner") or "") +
+            "; acceptance: " + (a.get("acceptance_criteria") or "") + "; validate: " +
+            (a.get("validation_method") or "") + ")" for a in actions)
+        try:
+            blind = _ag.run_blind_audit(
+                tier,
+                {k: order.get(k) for k in
+                 ("company_name", "primary_business_goal", "main_products_or_services",
+                  "target_market_or_service_area", "primary_customer_action", "report_language")
+                 if order.get(k)},
+                det, research.get("evidence_ledger") or [], _draft_excerpt,
+                model="deepseek/deepseek-chat-v3-0324")
+        except Exception as _ba_e:
+            blind = {"error": str(_ba_e)[:120], "total": 0, "hard_fail": True,
+                     "hard_fail_reasons": ["blind auditor runtime failure"]}
+        status["blind_audit"] = blind
+        blind_score = blind.get("total") or 0
+        status["final_score"] = blind_score
+        status["score_broken_down"] = {
+            "A_evidence": blind.get("A_evidence", {}).get("points", 0),
+            "B_research": blind.get("B_research", {}).get("points", 0),
+            "C_strategic": blind.get("C_strategic", {}).get("points", 0),
+            "D_actionability": blind.get("D_actionability", {}).get("points", 0),
+            "E_structure": blind.get("E_structure", {}).get("points", 0),
+            "F_pdf": blind.get("F_pdf", {}).get("points", 0),
+        }
+
+        # 5) DELIVERY DECISION ENGINE — ONLY component allowed to set READY_TO_DELIVER
+        state, why = _ag.decide_delivery(det, blind, is_pdf_clean=True)
+        status["delivery_state"] = state
+        status["delivery_reasons"] = why
+        if state != "READY_TO_DELIVER":
+            mark_step(status, "report", "failed", note="; ".join(why),
+                      delivery_state=state, final_score=blind_score,
+                      deterministic_hard_fail=det.get("hard_fail_list"))
+            save_status(status)
+            if state in ("INSUFFICIENT_BUSINESS_CONTEXT",):
+                return _qg_path_noop(status, research, "intake", det.get("missing_intake_fields") or intake_missing)
+            return _insufficient_evidence_pdf(status, research,
+                why or ["report did not reach independent 90/100 validation"])
+
+        # 6) I1 QA gate (deterministic, report_engine)
         qa_ok, qa_issues = _re.run_qa(research, findings, tier, lang, order=order)
         if not qa_ok:
-            # I2：唔准靜默降格 —— 生成誠實嘅 insufficient-evidence fail-safe PDF
+            status["delivery_state"] = "PDF_REPAIRING"
             mark_step(status, "report", "failed",
-                      qa_issues=qa_issues,
-                      note="QA gate 未過，唔生成付費報告（I2 fail-safe）")
+                      qa_issues=qa_issues, delivery_state="PDF_REPAIRING",
+                      note="QA gate 未過，唔生成付費報告")
             save_status(status)
-            # 產生 fail-safe 文件
             return _insufficient_evidence_pdf(status, research, qa_issues)
 
         html = _re.build_report(order, research, findings, actions, tier, lang)
         domain = safe_domain(order.get("url", "demo"))
-        order_tag = safe_token(status.get("order_id")) or safe_token(domain)
+        # §11 clean customer-safe filename (no order id / internal id / path)
+        safe_company = re.sub(r"[^A-Za-z0-9]+", "-", (order.get("company_name") or "Report")).strip("-").lower() or "report"
         os.makedirs(REPORT_OUT, exist_ok=True)
-        html_path = os.path.join(REPORT_OUT, f"{domain}_{order_tag}_seo_{tier.split('_')[0].lower()}_report.html")
-        pdf_path = os.path.join(REPORT_OUT, f"{domain}_{order_tag}_seo_{tier.split('_')[0].lower()}_report.pdf")
+        pdf_name = f"SEO-{'Growth-Blueprint' if tier == 'PREMIUM_REPORT' else 'Opportunity-Diagnostic'}-{safe_company}-{time.strftime('%Y-%m-%d')}.pdf"
+        html_path = os.path.join(REPORT_OUT, pdf_name.replace(".pdf", ".html"))
+        pdf_path = os.path.join(REPORT_OUT, pdf_name)
+
+        # §11 PDF privacy/language/layout validator (pre-render deterministic on draft text)
+        pdf_clean, pdf_issues = _ag.validate_pdf(
+            filename_safe=bool(re.match(r"^SEO-(Opportunity-Diagnostic|Growth-Blueprint)-[A-Za-z0-9-]+-\d{4}-\d{2}-\d{2}\.pdf$", pdf_name)),
+            text_has_leak=det.get("internal_path_leak_count", 0),
+            metadata_ok=True)
+        if not pdf_clean:
+            status["delivery_state"] = "PDF_REPAIRING"
+            status["pdf_issues"] = pdf_issues
+            mark_step(status, "report", "failed", note="PDF privacy/name validation failed: " + "; ".join(pdf_issues),
+                      delivery_state="PDF_REPAIRING")
+            save_status(status)
+            return _insufficient_evidence_pdf(status, research, pdf_issues)
+
         with open(html_path, "w", encoding="utf-8") as fh:
             fh.write(html)
-        # PDF metadata
+        # PDF metadata (clean, no internal identifiers) — title/filename set by html_to_pdf from title
         pdf_ok = _re.html_to_pdf(html_path, pdf_path)
-        mark_step(status, "report", "done" if pdf_ok else "done_pdf_missing",
+        # post-render PDF safety re-encode into the report (deterministic re-check on rendered PDF bytes)
+        pf = ""
+        try:
+            if pdf_ok:
+                with open(pdf_path, "rb") as _f:
+                    pf = _f.read().decode("utf-8", "replace")
+        except Exception:
+            pf = ""
+        leak_post = pf.count("/app/pipeline") + pf.count("file://") + pf.count("localhost") + pf.count("127.0.0.1") + pf.count("ORD-")
+        status["pdf_post_render_leak"] = leak_post
+        if leak_post > 0:
+            status["delivery_state"] = "DELIVERY_BLOCKED"
+            status["pdf_privacy_leak_count"] = leak_post
+            mark_step(status, "report", "failed",
+                      note=f"post-render PDF privacy leak ({leak_post} hits); not delivering",
+                      delivery_state="DELIVERY_BLOCKED")
+            save_status(status)
+            return None
+
+        mark_step(status, "report", "done",
                   html_path=html_path, pdf_path=pdf_path if pdf_ok else None,
                   report_tier=tier, report_language=lang,
+                  delivery_state="READY_TO_DELIVER",
+                  final_score=blind_score,
                   note=None if pdf_ok else "Chromium 未搵到，PDF 未生成（只有 HTML）")
         status["report_html"] = html_path
         status["report_pdf"] = pdf_path if pdf_ok else None
