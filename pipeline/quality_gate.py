@@ -259,7 +259,7 @@ def _recommended_action_for_claim(claim, evidence, primary_goal, offers="", mark
         act = (f"Add clear pricing/cost guidance or a quote path to {scope}, so buyers "
                f"can compare before contacting, supporting the stated goal ({primary_goal}).")
     elif any(w in claim_l for w in ("prove", "proof", "trust", "review", "testimonial", "case")):
-        act = (f"Add proof assets (reviews, cases, guarantees) to {scope}, reasoned from the "
+        act = (f"Add proof assets (reviews, testimonials, case studies) to {scope}, reasoned from the "
                f"observed trust signals, supporting the goal ({primary_goal}).")
     elif any(w in claim_l for w in ("comparison", "compare", "vs")):
         act = (f"Add a comparison/decision matrix to {scope} so customers can weigh options, "

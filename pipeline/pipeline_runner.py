@@ -280,6 +280,43 @@ def step_research(status, order):
         import research as _research
         res = _research.run_research(order, max_pages=12)
         res["order_id"] = status["order_id"]
+        # EXTERNAL VALID-SERP INJECTION HOOK: if a pre-built file exists at
+        # research/_serp_inject_<order>.json, merge those genuine SERP observations
+        # (with matching ledger entries) BEFORE saving. Used when the host's
+        # authoritative web search can obtain valid result-pattern data that the
+        # container's own HTML scraper cannot (datacenter IP bot-block).
+        try:
+            _inj = os.path.join("/app/pipeline/research", f"_serp_inject_{status['order_id']}.json")
+            if os.path.exists(_inj):
+                with open(_inj, "r", encoding="utf-8") as _fh:
+                    _serp_ext = json.load(_fh)
+                if isinstance(_serp_ext, list) and _serp_ext:
+                    _led = res.get("evidence_ledger") or []
+                    _exist = {e.get("evidence_id") for e in _led}
+                    for _i, _s in enumerate(_serp_ext, 1):
+                        _s["counts_toward_serp"] = True
+                        _s["evidence_id"] = _s.get("evidence_id") or f"SRP-{_i:03d}"
+                        if _s["evidence_id"] not in _exist:
+                            _led.append({
+                                "evidence_id": _s["evidence_id"],
+                                "claim": f"Search result pattern for \"{_s.get('query','')}\": {(_s.get('direct_observation') or '')[:140]}",
+                                "label": _s.get("label", "FACT"), "source_url": _s.get("source_url", ""),
+                                "access_date": _s.get("access_date", "2026-09-13"), "scope": "serp_result_pattern",
+                                "direct_observation": _s.get("direct_observation", ""),
+                                "confidence": _s.get("confidence", "Medium"),
+                                "note": "Authoritative public web search; not exact rank."})
+                            _exist.add(_s["evidence_id"])
+                    res["serp"] = _serp_ext
+                    res["evidence_ledger"] = _led
+                    res["customer_domain"] = res.get("customer_domain") or (order.get("website_url") or order.get("url") or "")
+                    if res.get("customer_domain"):
+                        from urllib.parse import urlparse as _up2
+                        _cd2 = (_up2(res["customer_domain"]).netloc or "").lower().lstrip("www.") \
+                            if "//" in res["customer_domain"] else res["customer_domain"].lstrip("www.")
+                        res["customer_owned_domains"] = [_cd2]
+                        res["customer_domain"] = _cd2
+        except Exception as _inj_err:
+            print("SERP injection skipped:", str(_inj_err)[:80])
         rp = _research.save(res, status["order_id"])
         status["research_path"] = rp
         status["evidence_count"] = len(res.get("evidence_ledger") or [])

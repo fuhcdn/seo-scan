@@ -9,6 +9,7 @@
 """
 import html as _html
 import json
+import re
 import os
 import time
 
@@ -799,11 +800,26 @@ def run_qa(research, findings, tier, lang, order=None):
     # Strategy checks
     max_dec = 5 if tier == "PREMIUM_REPORT" else 3
     # exec decisions count handled at render; here ensure <= max
-    # no outcome guarantee text
+    # no outcome guarantee text — but only flag ASSERTIVE outcome claims, not the mandatory
+    # disclaimer ("does not guarantee...", "no outcome is guaranteed") nor a guarantee refund
+    # served as a trust asset. Regex: guarantee(d|s|ing)? followed by an outcome noun/verb.
     joined = " ".join(f.get("claim", "") + " " + f.get("business_reason", "") + " " + f.get("recommended_action", "") for f in findings).lower()
-    for banned in ("guarantee", "guaranteed", "we promise", "will rank"):
-        if banned in joined:
-            issues.append(f"Outcome-guarantee language detected: '{banned}'")
+    joined_l = joined
+    guar_re = re.compile(
+        r"(?:we\s+)?(?:guarantee(?:d|s|ing)?\s+(?:to\s+)?(?:rank|traffic|lead|revenue|sale|conversion|position|index))|"
+        r"(?:guaranteed?\s+(?:to\s+)?(?:rank|increase|drive|be indexed|improve conversions))|"
+        r"(?:\bwill\s+(?:rank|increase traffic|drive revenue|be indexed|improve conversions)\b)|"
+        r"(?:we\s+promise\b)", re.I)
+    for m in guar_re.finditer(joined_l):
+        issues.append(f"Outcome-guarantee language detected: '{m.group(0)}'")
+    # also reject bare positive "guarantee" when NOT immediately negated and NOT a trust-asset noun
+    for m in re.finditer(r"\bguarantee(?:d|s|ing)?\b", joined_l):
+        ctx = joined_l[max(0, m.start()-12): m.end()+40]
+        if re.search(r"\b(doesn'?t|not|no|never)\b", ctx[:20]):
+            continue  # disclaimer/negation
+        if re.search(r"\b(review|refund|money-back|[^ ]*assur)\w*", ctx):
+            continue  # trust/refund-asset usage
+        issues.append(f"Potential outcome-guarantee wording: '{m.group(0)}' ({ctx.strip()[:40]}...")
 
     # no fabricated precision in claims
     # language/format
