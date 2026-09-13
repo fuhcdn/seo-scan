@@ -10,6 +10,7 @@ import base64
 import hashlib
 import html as H
 import json
+import re
 import os
 import sys
 import time
@@ -75,10 +76,11 @@ def gate4_external_auditor(findings, cards):
         return [{"mode": "external-error", "error": str(e)[:120], "reasons": []}]
 
 
-def build_report(customer, pages, findings, acts, auditor_output, cards=None):
+def build_report(customer, pages, findings, acts, auditor_output, cards=None, journey_rows_data=None):
     """Evidence-led report. SINGLE SOURCE OF TRUTH: every section reads `investment_status`
     from the action (set once in GATE 3) — never re-derived from effort/title/length. No
-    truncated customer text. Not-applicable labels are not rendered at all."""
+    truncated customer text. Not-applicable labels are not rendered at all.
+    journey_rows_data: optional customer-specific [{stage,page,friction,action,first_signal}]."""
     cards = cards or []
     status_label = {"DO_NOW": "DO NOW", "VALIDATE_FIRST": "VALIDATE FIRST"}
 
@@ -146,31 +148,35 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
 {_row('Baseline & review criteria', base)}
 {_row('Scale rule', scale)}
 </div>"""
-    # First 7-Day Win — fixed: ALWAYS ACT-003 (gallery captions; low risk, reversible,
-    # single customer-owned URL, no unconfirmed MOQ/setup/turnaround/SLA required).
-    qw = next((a for a in acts if (a.get("investment_status") or "") == "DO_NOW"), acts[0] if acts else None)
+    # First 7-Day Win — lowest-effort, reversible, single customer-owned URL action.
+    # For all-VALIDATE_FIRST customers (e.g. law firm) it targets that action and states the
+    # owner approval that must precede publish, so it stays honest.
+    qw = next((a for a in acts if (a.get("investment_status") or "") == "DO_NOW"), None)
+    if qw is None and acts:
+        qw = min(acts, key=lambda a: len((a.get("recommended_module") or "") or ""))  # lowest effort
     if qw:
         cq = next((k for k in cards if k.get("card_id") in (qw.get("evidence_ids") or [])), {})
+        qw_status = "DO NOW" if (qw.get("investment_status") or "") == "DO_NOW" else "VALIDATE FIRST (owner approval required before publication)"
         quick = f"""<div class="card"><h4>First 7-Day Win</h4>
-<p><strong>{_esc(qw['action_id'])}</strong> — {_esc(qw.get('recommended_module',''))}</p>
+<p><strong>{_esc(qw['action_id'])}</strong> — {_esc(qw.get('recommended_module',''))} <span class="src">[{_esc(qw_status)}]</span></p>
 <p><strong>Single customer page:</strong> {_esc(qw['primary_url'])}</p>
-<p>Why this is the First 7-Day Win: it is low-risk and reversible, targets a single customer-owned URL ({_esc(qw['primary_url'])}), needs none of the unconfirmed MOQ / setup-fee / turnaround / SLA figures, tests with the first 12 gallery examples only, and directly improves the proof → service → quote journey for the goal ({_esc(customer.get('business_goal',''))}). See Implementation Brief {_esc((cq.get('card_id') or ''))} for the full brief.</p></div>"""
+<p>Why this is the First 7-Day Win: it is low-risk and reversible, targets a single customer-owned URL, and directly improves the conversion journey for the goal ({_esc(customer.get('business_goal',''))}). See Implementation Brief {_esc((cq.get('card_id') or ''))} for the full brief.</p></div>"""
     else:
         quick = ""
     # Investment Decision Matrix — read statuses from the single source
     do_now = [a for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
     vf = [a for a in acts if (a.get("investment_status") or "") == "VALIDATE_FIRST"]
-    do_now_items = "".join(f"<li>{_esc(a['action_id'])} — {_esc(a.get('recommended_module',''))} (on {_esc(a['primary_url'])})</li>" for a in do_now) or "<li>None</li>"
+    do_now_items = "".join(f"<li>{_esc(a['action_id'])} — {_esc(a.get('recommended_module',''))} (on {_esc(a['primary_url'])})</li>" for a in do_now) or "<li>None in this report (all actions need owner confirmation).</li>"
     vf_items = "".join(f"<li>{_esc(a['action_id'])} — {_esc(a.get('recommended_module',''))} (on {_esc(a['primary_url'])}); requires owner confirmation before publication.</li>" for a in vf) or "<li>None</li>"
     dim = f"""<h2>Investment Decision Matrix</h2>
 <div class="card"><h4>DO NOW</h4><ul>{do_now_items}</ul>
 <h4>VALIDATE FIRST (pending owner approval)</h4><ul>{vf_items}</ul>
-<h4>DEFER / DO NOT PRIORITISE YET</h4><p>For Apple Imprints specifically: do not spend on a paid link-building campaign, a full site redesign, a new online store, or expanding gallery tagging beyond the first 12 items until the customer-owned page changes above are proven. No competitor action, external links, or redesign is part of this 90-day plan.</p></div>"""
+<h4>DEFER / DO NOT PRIORITISE YET</h4><p>Defer spending on paid advertising, a full site redesign, or any expansion beyond the actions above until the customer-owned page changes are proven against their baselines. No competitor action, external links, or unbudgeted work is part of this 90-day plan without evidence.</p></div>"""
     whatnot = f"""<h2>What Not To Prioritise Yet</h2><div class="card">
-<p>For Apple Imprints specifically, the evidence does not yet justify spending on: (1) a paid link-building campaign, (2) a redesign of the whole site, (3) a new online store, or (4) expanding gallery tagging beyond the first 12 items — the three customer-owned page gaps documented here (pricing/minimums on screen-printing, trust/expectation on the quote form, labelled proof on the gallery) are cheaper and higher-leverage first.</p></div>"""
+    <p>For {_esc(customer.get('company','this business'))} specifically, the evidence does not yet justify spending on paid advertising, a full site redesign, or any expansion beyond the documented customer-owned page changes above — the gaps here are cheaper and higher-leverage first.</p></div>"""
     # Commercial Opportunity Model — evidence-based, no invented revenue figures
-    comm_model = """<h2>Commercial Opportunity Model</h2><div class="card">
-<p><strong>Value lever:</strong> demand capture + page clarity. <strong>Publicly observable evidence:</strong> the three customer-owned pages (screen-printing service page, quote page, gallery) currently omit price/minimum/turnaround, post-submission expectation and labelled proof — the documented gaps in the evidence cards. <strong>Client data required to quantify upside:</strong> quote-form submissions, CTA clicks, lead/order rate (GSC/GA4 when the owner provides access). Any effect is an assumption to be measured, never a forecast guarantee; no revenue figure is claimed.</p></div>"""
+    comm_model = f"""<h2>Commercial Opportunity Model</h2><div class="card">
+<p><strong>Value lever:</strong> demand capture + page clarity on the customer's own conversion route. <strong>Publicly observable evidence:</strong> the customer-owned pages documented in the evidence cards currently omit the decision inputs (pricing/detail, post-submission expectation, proof, self-routing or first-steps guidance) that a conversion-stage visitor needs. <strong>Client data required to quantify upside:</strong> contact/enquiry submissions, CTA clicks, call or booking rate (GSC/GA4 or CRM when the owner provides access). Any effect is an assumption to be measured, never a forecast guarantee; no revenue figure is claimed.</p></div>"""
     # action ledger — one URL each, blank-safe fields, ROLE-LEVEL OWNERSHIP (single source)
     ledger = ""
     for a in acts:
@@ -192,21 +198,25 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
 {_row('Effort', a.get('effort'))}
 {_row('Approval dependency', next(( (k.get('implementation_brief') or {}).get('owner_confirmation_required') or '' ) for k in cards if k.get('card_id') in (a.get('evidence_ids') or []) ) if any(k.get('card_id') in (a.get('evidence_ids') or []) for k in cards) else '')}
 </div>"""
-    # ---- CUSTOMER JOURNEY MAP (page/table) ----
+    # ---- CUSTOMER JOURNEY MAP (customer-specific, data-driven) ----
     journey_rows = ""
-    journey = [
+    jd = journey_rows_data or [
         ("Service evaluation", "/screen-printing/", "price/minimum/turnaround clarity missing", "ACT-001", "quote-form submissions / CTA clicks on the screen-printing page"),
         ("Proof / evaluation", "/gallery/", "unlabelled proof, no service mapping", "ACT-003", "gallery-to-quote link clicks"),
         ("Quote conversion", "/get-a-quote-2/", "unclear next-step and proof route", "ACT-002", "form-start / form-submit rate"),
         ("Method selection (awareness)", "/", "no method-selection guidance, generic quote CTA", "ACT-004", "homepage-to-service-page and homepage-to-quote clicks"),
         ("Embroidery evaluation", "/embroidery/", "no on-page proof, no gallery link, no minimum/price context", "ACT-005", "embroidery-page-to-quote clicks"),
     ]
-    for stage, page, friction, aid, first_signal in journey:
+    for jr in jd:
+        if isinstance(jr, dict):
+            stage, page, friction, aid, sig = (jr.get("stage") or ""), (jr.get("page") or ""), (jr.get("friction") or ""), (jr.get("action") or "—"), (jr.get("first_signal") or "")
+        else:
+            stage, page, friction, aid, sig = jr
         journey_rows += (f"<tr><td>{_esc(stage)}</td><td>{_esc(page)}</td><td>{_esc(friction)}</td>"
-                         f"<td>{_esc(aid)}</td><td>{_esc(first_signal)}</td></tr>")
+                         f"<td>{_esc(aid)}</td><td>{_esc(sig)}</td></tr>")
     journey_html = f"""<h2>Customer Journey Map</h2>
 <table><tr><th>Buyer stage</th><th>Customer-owned page</th><th>Observed friction</th><th>Action ID</th><th>Intended first signal</th></tr>{journey_rows}
-<tr><td>Sales follow-up</td><td>internal workflow / owner-confirmation item</td><td>data needed before performance assessment</td><td>—</td><td>owner-supplied order/quote data</td></tr></table>"""
+<tr><td>Client intake / follow-up</td><td>internal workflow / owner-confirmation item</td><td>data needed before performance assessment</td><td>—</td><td>owner-supplied order/quote/case data</td></tr></table>"""
     # ---- 90-DAY ROADMAP (data-driven: statuses render EXCLUSIVELY from immutable investment_status) ----
     # A VALIDATE_FIRST action's roadmap sentences MUST NOT assign DO NOW / live / publish / launch
     # unless qualified by "only after owner approval". Each action's status is read from the action.
@@ -226,13 +236,14 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
         if (a.get("investment_status") or "") == "VALIDATE_FIRST":
             _ap = a.get("owner_approver") or "Owner"
             r1_items.append(f"{a['action_id']} draft layout prepared; collect owner-approved inputs (approver {_esc(_ap)})")
-    r1 = ("Days 8-30", "Collect owner-approved policy/process inputs and prepare draft modules: " + "; ".join(r1_items) + f"; record 14-day baselines for all five pages. ACT-004: prepare the draft layout AND collect Sales/Operations-approved method-to-project routing rules.")
+    _has_act4 = any(a.get("action_id") == "ACT-004" for a in acts)
+    r1 = ("Days 8-30", "Collect owner-approved policy/process inputs and prepare draft modules: " + "; ".join(r1_items) + f"; record 14-day baselines for all pages." + (" ACT-004: prepare the draft layout AND collect Sales/Operations-approved method-to-project routing rules." if _has_act4 else ""))
     # Days 31-60 — publish only owner-approved VALIDATE FIRST; DO NOW stays live
     r2_pub = [f"{a['action_id']} published only after owner approval" for a in acts if (a.get("investment_status") or "") == "VALIDATE_FIRST"]
     r2_keep = [f"{a['action_id']} remains live (DO NOW)" for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
-    r2 = ("Days 31-60", "; ".join(r2_pub + r2_keep) + "; measure page CTA/form behaviour. ACT-004: publish ONLY after the method-to-project routing rules are approved; if approval is not provided, retain VALIDATE FIRST and do not route visitors using unapproved business rules.")
+    r2 = ("Days 31-60", "; ".join(r2_pub + r2_keep) + "; measure page CTA/form behaviour." + (" ACT-004: publish ONLY after the method-to-project routing rules are approved; if approval is not provided, retain VALIDATE FIRST and do not route visitors using unapproved business rules." if _has_act4 else ""))
     # Days 61-90 — measure against baseline, expand only proven pattern
-    r3 = ("Days 61-90", "Measure every page against its 14-day baseline using the action-specific first signal; extend only the proven pattern per the card's quantified scale rule (rate improves vs baseline + lead quality not down + no confusion + owner approval). ACT-004: measure method-selection completion and homepage-to-service-page clicks against baseline only after the approved module is live. Do not spend on deferred work (paid links, redesign, new store, full-gallery tagging) unless evidence supports it.")
+    r3 = ("Days 61-90", "Measure every page against its 14-day baseline using the action-specific first signal; extend only the proven pattern per the card's quantified scale rule (rate improves vs baseline + lead quality not down + no confusion + owner approval)." + (" ACT-004: measure method-selection completion and homepage-to-service-page clicks against baseline only after the approved module is live." if _has_act4 else "") + " Do not spend on deferred work (paid links, redesign, new store, unbudgeted expansion) unless evidence supports it.")
     roadmap = f"""<h2>90-Day Execution Roadmap</h2><div class="card">
 <p><strong>{_esc(r0[0])}:</strong> {_esc(r0[1])}</p>
 <p><strong>{_esc(r1[0])}:</strong> {_esc(r1[1])}</p>
@@ -279,18 +290,31 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-dir", default="/app/pipeline/out")
     ap.add_argument("--customer-email", default="")
+    ap.add_argument("--customer", default="appleimprints", help="customer config key: appleimprints | brunnerlaw")
     ap.add_argument("--send", action="store_true", help="email only after hash verification")
     args = ap.parse_args()
 
     out_dir = args.out_dir
     os.makedirs(out_dir, exist_ok=True)
     here = os.path.dirname(os.path.abspath(__file__))
-    cards_file = json.load(open(os.path.join(here, "golden_evidence_cards_appleimprints.json"), encoding="utf-8"))
+    _cust = args.customer
+    _CARDS_FILES = {"appleimprints": "golden_evidence_cards_appleimprints.json",
+                    "brunnerlaw": "golden_evidence_cards_brunnerlaw.json"}
+    _PAGES_FILES = {"appleimprints": "gate1_appleimprints_pages.py",
+                    "brunnerlaw": "gate1_brunnerlaw_pages.py"}
+    cards_json = _CARDS_FILES.get(_cust, "golden_evidence_cards_appleimprints.json")
+    pages_py = _PAGES_FILES.get(_cust, "gate1_appleimprints_pages.py")
+    cards_file = json.load(open(os.path.join(here, cards_json), encoding="utf-8"))
     cards = cards_file["golden_evidence_cards"]
     customer = cards_file["customer"]
+    journey_rows_data = cards_file.get("customer_journey", [])
+    _cust_domain = (customer.get("primary_domain") or customer.get("domain") or (_cust if _cust != "appleimprints" else "appleimprints.com")).lower()
+    if _cust_domain.startswith("www."):
+        _cust_domain = _cust_domain[4:]
+    _cust_domain = _cust_domain.rstrip("/")
 
     import importlib.util
-    sp = importlib.util.spec_from_file_location("g1p", os.path.join(here, "gate1_appleimprints_pages.py"))
+    sp = importlib.util.spec_from_file_location("g1p", os.path.join(here, pages_py))
     g1m = importlib.util.module_from_spec(sp); sp.loader.exec_module(g1m)
     pages = g1m.structured_pages
 
@@ -329,7 +353,8 @@ def main():
                         "rejected": g4["rejected_findings"],
                         "external": ext_audit}
     # ---- Build + GATE 5 ----
-    html_doc = build_report(customer, pages, accepted, acts, results["GATE4"], cards=valid_cards)
+    html_doc = build_report(customer, pages, accepted, acts, results["GATE4"], cards=valid_cards,
+                            journey_rows_data=journey_rows_data)
     # DETERMINISTIC ROADMAP STATUS CONSISTENCY: roadmap must derive exclusively from
     # immutable investment_status. Block if any VALIDATE_FIRST action gets a publication word.
     import re as _re
@@ -343,8 +368,10 @@ def main():
                           "reason": "PRIORITY_CONSISTENCY_FAIL: " + "; ".join(rm_ok["issues"] or []) + (";" if rm_ok["issues"] else "") + str(this_pc.get("conflict", ""))}, indent=1))
         return
     results["GATE5_ROADMAP_STATUS_CHECK"] = {"consistent": rm_ok["consistent"], "issues": rm_ok["issues"], "checked": rm_ok["checks"]}
-    html_path = os.path.join(out_dir, "SEO-Opportunity-Diagnostic-Apple-Imprints-2026-09-13-5gate.html")
-    pdf_path = os.path.join(out_dir, "SEO-Opportunity-Diagnostic-Apple-Imprints-2026-09-13-5gate.pdf")
+    _company_slug = re.sub(r"[^A-Za-z0-9]+", "-", (customer.get("company") or "Report").strip()).strip("-")
+    _stamp = "2026-09-13"
+    html_path = os.path.join(out_dir, f"SEO-Opportunity-Diagnostic-{_company_slug}-{_stamp}-5gate.html")
+    pdf_path = os.path.join(out_dir, f"SEO-Opportunity-Diagnostic-{_company_slug}-{_stamp}-5gate.pdf")
     with open(html_path, "w", encoding="utf-8") as f:
         f.write(html_doc)
     from report_engine import html_to_pdf
@@ -456,13 +483,15 @@ def main():
         7 if len(set(urls)) != len(urls) else 0],
         "all 5 findings are distinct gaps and each targets a different customer-owned page (no overlapping scope)")
     # (3) CUSTOMER SPECIFICITY 15 — customer-owned URL, buyer question, customer-owned mechanism
+    _owned = _cust_domain  # e.g. thebrunnerlawfirm.com / appleimprints.com
     mech = [(c.get("business_mechanism") or "").lower() for c in valid_cards]
+    _cust_words = ("buyer", "buyers", "customer", "client", "prospect", "person", "the firm", "conversion", "consultat")
     q["customer_specificity"] = _q("customer_specificity", 15, [
-        4 if not all("appleimprints" in (c.get("primary_customer_url") or "") for c in valid_cards) else 0,
-        4 if not all(("buyer" in m or "buyers" in m) for m in mech) else 0,
+        4 if not all(_owned in (c.get("primary_customer_url") or "") for c in valid_cards) else 0,
+        4 if not all(any(w in m for w in _cust_words) for m in mech) else 0,
         4 if not all(c.get("buyer_question") for c in valid_cards) else 0,
         3 if any(m.startswith(("improve", "add keywords", "this observation")) for m in mech) else 0],
-        "all findings target appleimprints.com, each has a buyer question, and mechanisms reason from the customer buyer journey (no generic improve-SEO language)")
+        f"all findings target the customer-owned domain ({_owned}), each has a buyer question, and mechanisms reason from the customer buyer journey (no generic improve-SEO language)")
     # (4) COMMERCIAL PRIORITY QUALITY 15 — honest priority per action (DO NOW / VALIDATE FIRST),
     #     no ambiguity, journey + roadmap + role ownership
     pri_ambig = 0
@@ -477,13 +506,16 @@ def main():
     has_journey = "Customer Journey Map" in visible
     has_roadmap = "90-Day Execution Roadmap" in visible
     role_owned = all(a.get("owner_approver") and a.get("owner_content") and a.get("owner_publisher_qa") for a in acts)
+    _do_now_ids = [a.get("action_id") for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
+    _pri_note = ("no priority ambiguity (each action's status renders from the single investment_status source; all VALIDATE FIRST need owner approval)" +
+                 (f", with {', '.join(_do_now_ids)} as DO NOW" if _do_now_ids else ", and no action is DO NOW because every published module needs owner confirmation"))
     q["commercial_priority_quality"] = _q("commercial_priority_quality", 15, [
         6 if len(acts) < 5 else 0,
         4 if pri_ambig else 0,
         2 if not has_journey else 0,
         2 if not has_roadmap else 0,
         1 if not role_owned else 0],
-        "5 actions with no priority ambiguity (each VALIDATE FIRST needs owner approval; only ACT-003 is DO NOW), plus Customer Journey Map, 90-Day Roadmap and role-level ownership present")
+        f"5 actions with {_pri_note}, plus Customer Journey Map, 90-Day Roadmap and role-level ownership present")
     # (5) ACTION EXECUTABILITY 15 — action-specific measurement, quantified scale rule, full brief,
     #     external accept, no rejected actions, no overlapping scope
     generic_sig = [a for a in acts if (a.get("first_signal") or "").lower() in ("", "n/a", "cta clicks", "clicks")
@@ -503,7 +535,7 @@ def main():
         "every action has an action-specific first signal and a quantified scale rule (baseline-compared, no undefined 'two review points'), a full implementation brief, is accepted by the independent external auditor, and none was rejected")
     # (6) PDF CUSTOMER READINESS 20 — GATE5 clean + action-specific signals rendered + no template language
     q["pdf_customer_readiness"] = _q("pdf_customer_readiness", 20, [
-        10 if not (scan["clean"] and not scan["hard_fails"] and visible and "appleimprints" in visible_l) else 0,
+        10 if not (scan["clean"] and not scan["hard_fails"] and visible and _owned in visible_l) else 0,
         5 if "Founding finding" in visible or "Founding decision" in visible else 0,  # template defect
         5 if any(lab not in visible for lab in ["First measurable signal", "Scale rule"]) else 0],
         "GATE5 scan is clean with no internal path/file-URI/placeholder/secret/order-ID, the rendered PDF uses customer-facing 'Finding N' (no 'Founding finding' template defect), and the action-specific signals and scale rules are present in the visible text")

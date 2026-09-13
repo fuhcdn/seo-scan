@@ -103,12 +103,14 @@ def gate2_validate_evidence_card(card: dict) -> Dict[str, Any]:
 # SINGLE SOURCE OF TRUTH for investment status. Every action reads ONLY this map.
 # Fixed per customer/goal; renderers must NOT re-derive from effort/title/length.
 def _investment_status_for(card: dict) -> str:
+    # Per-customer single source: if the evidence card carries its own status, use it.
+    cs = (card.get("investment_status") or "").strip().upper()
+    if cs in ("DO_NOW", "VALIDATE_FIRST"):
+        return cs
+    # Default routing (used when a card does not declare status, e.g. legacy Apple cards).
     cid = (card.get("card_id") or "").upper()
-    # DO_NOW: low-risk, reversible, single customer-owned URL, no owner-approved figures/rule needed.
     if cid == "EC-003":
         return "DO_NOW"
-    # VALIDATE_FIRST: publication/routing/pricing requires owner confirmation first.
-    # EC-004's method-to-project routing needs Sales/Operations approval -> not DO NOW.
     if cid in ("EC-001", "EC-002", "EC-004", "EC-005"):
         return "VALIDATE_FIRST"
     return "VALIDATE_FIRST"  # conservative default
@@ -125,6 +127,10 @@ ROLE_OWNERSHIP = {
 
 
 def _ownership_for(card: dict) -> dict:
+    # Per-customer single source: if the card declares role-level ownership, use it.
+    own = card.get("ownership")
+    if own and own.get("approver") and own.get("content") and own.get("publisher_qa"):
+        return own
     return ROLE_OWNERSHIP.get((card.get("card_id") or "").upper(),
                               {"approver": "Owner", "content": "Content/Marketing", "publisher_qa": "Web/Developer"})
 

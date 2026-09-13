@@ -1,0 +1,267 @@
+{
+ "customer": {
+  "company": "The Brunner Law Firm",
+  "primary_domain": "thebrunnerlawfirm.com",
+  "owned_domains": [
+   "thebrunnerlawfirm.com"
+  ],
+  "business_goal": "more enquiries (client intake)",
+  "market": "Round Rock / Central Texas (serves statewide on TX criminal matters)",
+  "offers": [
+   "Criminal defense",
+   "DWI/DUI defense",
+   "Drug crimes defense",
+   "Theft crimes defense",
+   "Fraud/white-collar defense",
+   "Criminal appeals",
+   "Expungements"
+  ],
+  "primary_customer_action": "consultation",
+  "tier": "US$497",
+  "report_language": "en",
+  "vertical": "professional service (law firm) / consultation-conversion",
+  "known_competitors": [
+   "https://austinlegal.net/",
+   "https://jleedslawfirm.com/",
+   "https://andersonlaw.com/"
+  ]
+ },
+ "golden_evidence_cards": [
+  {
+   "card_id": "GB-001",
+   "primary_customer_url": "https://thebrunnerlawfirm.com/practice-areas/criminal-defense.html",
+   "page_type": "service page",
+   "page_heading": "Criminal Defense",
+   "direct_observation": "Criminal Defense page states coverage (misdemeanor+felony, TX state and federal) and describes case preparation (discovery, witness interviews, motion practice), and mentions 'Flat fees for most matters' and 'payment plans available', but does not list any case results, outcomes, or testimonials as proof, and does not answer what to do immediately after an arrest or how long a case typically takes.",
+   "buyer_question": "Will a criminal defense lawyer actually take my case, what does it cost, and what are my first steps after an arrest?",
+   "specific_gap": "Criminal defense page has no visible case results/proof, no after-arrest first-steps guide, and only vague 'flat fees for most matters' without guidance on how to reach the free consultation from this page.",
+   "business_mechanism": "A person arrested faces anxiety and urgency; the criminal defense page stops at coverage+prep and does not convert hesitancy into action, so a worried prospect leaves without booking the free consultation, suppressing the engagement enquiries that drive the goal (more leads for the firm).",
+   "recommended_module": "Add an 'Immediate Next Steps After an Arrest' block and a prominent 'Free Case Evaluation' CTA with a phone+form high-light, plus a short 'No upfront fee for the initial consultation' trust line on the criminal-defense page.",
+   "evidence": "Direct page read on 2026-09-13 (heading 'Criminal Defense'; flat-fee + payment-plan text present; no results/testimonials; CTA is generic nav 'Free Consultation').",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: confirm the after-arrest guidance and any 'free consultation'/'no upfront fee' wording before publish.",
+    "owner_confirmation_questions": [
+     "Is the initial consultation genuinely free and is it confidential?",
+     "Which after-arrest steps can the firm publicly advise for all Texas cases?",
+     "Can the firm commit a response-time for the free consultation request?"
+    ],
+    "required_page_module_fields": [
+     "Immediate-next-steps block",
+     "Free Case Evaluation CTA with phone + form",
+     "No-upfront-fee trust line"
+    ],
+    "approved_copy_placeholder": "[Insert attorney-approved after-arrest + consultation wording before publication.]",
+    "exact_module_placement": "Insert the 'Immediate Next Steps' block directly under the Criminal Defense intro, and place the high-visibility 'Free Case Evaluation' CTA above the page footer.",
+    "approval_dependency": "The lead attorney must approve after-arrest guidance, free-consultation wording and any response-time promise before publish.",
+    "exact_quote_cta_destination": "https://thebrunnerlawfirm.com/contact.html (contact/case-eval form) + tel link",
+    "qa": "Mobile + desktop: CTA and form link resolve; after-arrest steps render without clipping.",
+    "baseline_metrics": "Record criminal-defense page to contact-form clicks and phone calls for 14 business days before the change.",
+    "scale_rule": "A pattern can expand from criminal-defense evidence only: (1) contact/conversion rate improves versus the 14-day baseline; (2) lead quality does not fall where phone/CRM data available; (3) no operational or client-confusion issue; (4) the owner approves expansion. If no analytics data provided, no scale decision can be made beyond public QA.",
+    "scope_note": "Scope is limited to the criminal-defense service page and the free-case-evaluation CTA/highlight; does not change fee terms already stated on the site. Price or structured fees are NOT added here (owner confirmation required)."
+   },
+   "investment_status": "VALIDATE_FIRST",
+   "ownership": {
+    "approver": "Lead Attorney / Managing Partner",
+    "content": "Content/Marketing",
+    "publisher_qa": "Web/Developer"
+   },
+   "first_signal": "criminal-defense page to contact-form click and call rate"
+  },
+  {
+   "card_id": "GB-002",
+   "primary_customer_url": "https://thebrunnerlawfirm.com/contact.html",
+   "page_type": "contact/conversion page",
+   "page_heading": "Contact Us / Free Consultation",
+   "direct_observation": "Contact page has a form (fields: name, email, practice, subject, message) with 'Free Consultation' and 'Contact Us' CTA text, and hours 'Monday-Friday 9:00 AM-6:00 PM CT', but gives no statement of what happens after submission (response time, next step, whether the consultation is confidential/free), and no proof of past work from this page.",
+   "buyer_question": "After I submit this form, what happens next, when will someone respond, and is the initial consultation really free and confidential?",
+   "specific_gap": "Contact form collects details but sets no post-submission expectation, response-time, confidentiality or free-consultation confirmation, so a hesitant prospect may not trust the form or may expect a slow/no reply.",
+   "business_mechanism": "Post-submission expectation and trust are decision-stage blockers for an anxious new client; a form with no response-time and no free/confidential confirmation suppresses form completions, directly limiting the engagement enquiries that drive more leads.",
+   "recommended_module": "Add a 3-step 'What happens next' under the form (1 review request, 2 call back within stated time, 3 confidential free evaluation) plus a 'Free & confidential initial consultation' trust line.",
+   "evidence": "Direct page read on 2026-09-13 (form fields name/email/practice/subject/message; 'Free Consultation'; hours; no post-submission expectation or confidentiality statement).",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: confirm the response-time promise, free-consultation and confidentiality wording before publish.",
+    "owner_confirmation_questions": [
+     "What response-time can the firm publicly commit?",
+     "Is the initial consultation and case evaluation free and confidential — confirm wording?",
+     "Which next steps can be described after form submission?"
+    ],
+    "required_page_module_fields": [
+     "3-step What-happens-next",
+     "Response-time promise",
+     "Free & confidential consultation line"
+    ],
+    "approved_copy_placeholder": "[Insert attorney-approved response-time + confidentiality wording before publication.]",
+    "exact_module_placement": "Insert the 3-step explainer BELOW the form so the form stays above the fold on mobile.",
+    "approval_dependency": "The owner/service manager must approve the response-time and free/confidential wording before publish.",
+    "exact_quote_cta_destination": "https://thebrunnerlawfirm.com/contact.html (the form itself)",
+    "qa": "Mobile: form fields remain above the fold; Desktop: 3-step block inline, no overflow.",
+    "baseline_metrics": "Record form-start and form-submit rate for 14 business days before the change.",
+    "scale_rule": "A pattern can expand from contact-form trust/expectation evidence only when its contact form-start to form-submit completion rate improves versus the recorded 14-day baseline using that action-specific first signal; and only if (1) the relevant click/conversion rate improves versus baseline; (2) lead quality does not fall where phone/CRM data is available; (3) there is no operational or client-confusion issue; (4) the owner approves the expansion. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
+    "scope_note": "Scope is the /contact.html form trust/expectation block only. Does not change the form's data collection, the submit destination, or any legal/availability claim without owner confirmation."
+   },
+   "investment_status": "VALIDATE_FIRST",
+   "ownership": {
+    "approver": "Owner / Service Manager",
+    "content": "Service/Content",
+    "publisher_qa": "Web/Developer"
+   },
+   "first_signal": "contact form-start to form-submit completion rate"
+  },
+  {
+   "card_id": "GB-003",
+   "primary_customer_url": "https://thebrunnerlawfirm.com/practice-areas.html",
+   "page_type": "service hub",
+   "page_heading": "Practice Areas",
+   "direct_observation": "Practice Areas hub lists coverage ('Criminal defense is what we do... from misdemeanor citations to first-degree felonies') but only enumerates practice-area names with no guidance helping a prospect self-identify which charge/area applies to their specific situation, and no per-practice fee guidance.",
+   "buyer_question": "Which practice area does my specific charge fall under, and is it the kind of case this firm handles?",
+   "specific_gap": "Hub lists areas but gives no decision aid mapping a situation/charge to the right practice page, so a prospect cannot self-route and may leave instead of drilling into a matching practice page.",
+   "business_mechanism": "A prospect with an ambiguous charge needs a self-routing aid; without one they cannot confirm the firm handles their matter, reducing the progression from hub to the relevant practice page to the free consultation, suppressing leads.",
+   "recommended_module": "Add a 'Which practice area applies to my situation?' selection aid with charge/situation questions routing to the matching practice page, plus a final route to the free consultation.",
+   "evidence": "Direct page read on 2026-09-13 (heading 'Practice Areas'; enumeration only; no self-routing aid; generic 'Free Consultation' CTA).",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: confirm the situation-to-practice routing is correct before publish.",
+    "owner_confirmation_questions": [
+     "Which situation maps to which practice area?",
+     "Can each answer route to the matching practice page and contact form?"
+    ],
+    "required_page_module_fields": [
+     "Self-routing aid",
+     "Situation questions",
+     "Route-to-practice links",
+     "Free consultation CTA"
+    ],
+    "approved_copy_placeholder": "[Insert attorney-approved routing wording before publication.]",
+    "exact_module_placement": "Insert the selection aid between the hub intro and the practice-area list.",
+    "approval_dependency": "The lead attorney must approve the situation-to-practice routing before publish.",
+    "exact_quote_cta_destination": "https://thebrunnerlawfirm.com/contact.html",
+    "qa": "Mobile: aid stacks; Desktop: no overflow; every route link resolves.",
+    "baseline_metrics": "Record hub-to-practice-page and hub-to-contact clicks for 14 business days.",
+    "scale_rule": "A pattern can expand from self-routing aid evidence only when its practice-hub to practice-page and to-contact click improves versus the recorded 14-day baseline using that action-specific first signal; and only if (1) the relevant click/conversion rate improves versus baseline; (2) lead quality does not fall where phone/CRM data is available; (3) there is no operational or client-confusion issue; (4) the owner approves the expansion. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
+    "scope_note": "Scope is the /practice-areas.html self-routing aid for ambiguous charges. Does not reword any practice area's actual legal scope; only helps the visitor self-select toward the right page/consultation."
+   },
+   "investment_status": "VALIDATE_FIRST",
+   "ownership": {
+    "approver": "Lead Attorney / Managing Partner",
+    "content": "Content/Marketing",
+    "publisher_qa": "Web/Developer"
+   },
+   "first_signal": "practice-hub to practice-page and to-contact click"
+  },
+  {
+   "card_id": "GB-004",
+   "primary_customer_url": "https://thebrunnerlawfirm.com/blog/what-to-do-after-an-arrest-in-texas.html",
+   "page_type": "blog/educational",
+   "page_heading": "What To Do After an Arrest in Texas: A Step by Step Guide",
+   "direct_observation": "Blog post educates on what to do after a Texas arrest, but does not clearly route a reader to the firm's free consultation CTA from within the body, and does not include a 'Do NOT do this' or 'choose a lawyer' reference from this page — the educational trust asset does not convert to a contact.",
+   "buyer_question": "I've been arrested or someone I know has — what do I do now, and should I talk to this firm?",
+   "specific_gap": "Educational article builds authority but has no strong in-body route to the free consultation or phone, so a reader leaves informed but not converted into an enquiry.",
+   "business_mechanism": "Educational content earns trust but only converts if the reader is guided to act; a post with no prominent consultation/phone CTA loses high-intent readers, leaving leads on the table versus the conversion the goal needs.",
+   "recommended_module": "Add a contextually placed 'Free Confidential Consultation' CTA (phone + form link) mid-article and a 'When to talk to a lawyer' callout, plus a 'Top mistakes to avoid' list.",
+   "evidence": "Direct page read on 2026-09-13 (heading 'What To Do After an Arrest...'; educational body; no prominent in-body contact/consultation CTA).",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: confirm the free/confidential consultation wording and 'top mistakes' guidance before publish.",
+    "owner_confirmation_questions": [
+     "Can the firm commit a response-time for blog-sourced consultation requests?",
+     "Which 'mistakes to avoid' apply to all Texas cases?"
+    ],
+    "required_page_module_fields": [
+     "Mid-article Free Consultation CTA with phone",
+     "When-to-talk-to-a-lawyer callout",
+     "Top-mistakes-to-avoid list"
+    ],
+    "approved_copy_placeholder": "[Insert attorney-approved consultation + mistakes wording before publication.]",
+    "exact_module_placement": "Insert the CTA callout after the first two sections and again before the conclusion.",
+    "approval_dependency": "The lead attorney must approve the consultation wording and mistakes list before publish.",
+    "exact_quote_cta_destination": "https://thebrunnerlawfirm.com/contact.html + tel link",
+    "qa": "Mobile + desktop: CTA renders, phone link tap works, no clipping.",
+    "baseline_metrics": "Record blog to contact/consultation clicks for 14 business days.",
+    "scale_rule": "A pattern can expand from blog consultation-CTA treatment only when its blog to consultation/contact click improves versus the recorded 14-day baseline using that action-specific first signal; and only if (1) the relevant click/conversion rate improves versus baseline; (2) lead quality does not fall where phone/CRM data is available; (3) there is no operational or client-confusion issue; (4) the owner approves the expansion. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
+    "scope_note": "Scope is the blog post /blog/what-to-do-after-an-arrest-in-texas.html consultation/phone CTA treatment. Does not add content beyond the stated CTA; no automated scheduling or new page is built."
+   },
+   "investment_status": "VALIDATE_FIRST",
+   "ownership": {
+    "approver": "Lead Attorney / Managing Partner",
+    "content": "Content/Marketing",
+    "publisher_qa": "Web/Developer"
+   },
+   "first_signal": "blog to consultation/contact click"
+  },
+  {
+   "card_id": "GB-005",
+   "primary_customer_url": "https://thebrunnerlawfirm.com/practice-areas/dwi-dui-defense.html",
+   "page_type": "service page",
+   "page_heading": "DWI / DUI Defense",
+   "direct_observation": "DWI/DUI page mentions coverage and 'license suspension hearings' but gives no concrete first-steps for a DWI stop/arrest, no fee guidance specific to DWI, and no proof of prior DWI defense outcomes — similar to the criminal-defense page but for the DWI audience.",
+   "buyer_question": "I was stopped/charged with DWI — what do I do now, what will it cost, and can I keep my license?",
+   "specific_gap": "DWI page lacks a DWI-specific first-steps guide, license-suspension process steps, and a route to the free consultation, so the DWI anxious prospect is not converted.",
+   "business_mechanism": "DWI is time-sensitive (license suspension hearings); a page that does not explain the immediate process or route to the consultation loses prospects who must act fast, suppressing the urgent enquiries that drive more DWI cases to the goal.",
+   "recommended_module": "Add a 'DWI First Steps + License Suspension Process' block and a 'Free Case Evaluation' CTA specific to DWI on the DWI page.",
+   "evidence": "Direct page read on 2026-09-13 (heading 'DWI / DUI Defense'; license-suspension mention; no first-steps/fee/outcome detail; generic CTA).",
+   "implementation_brief": {
+    "owner_confirmation_required": "OWNER CONFIRMATION REQUIRED BEFORE PUBLICATION: confirm DWI-specific guidance, license-suspension process and any fee/consultation wording before publish.",
+    "owner_confirmation_questions": [
+     "What DWI-specific first steps can the firm publicly advise?",
+     "Can the license-suspension hearing process be summarized accurately?",
+     "What response-time can be promised?"
+    ],
+    "required_page_module_fields": [
+     "DWI first-steps block",
+     "License-suspension process",
+     "DWI Free Case Evaluation CTA"
+    ],
+    "approved_copy_placeholder": "[Insert attorney-approved DWI guidance before publication.]",
+    "exact_module_placement": "Insert the DWI first-steps block under the DWI page intro and a DWI-specific CTA near the footer.",
+    "approval_dependency": "The lead attorney must approve DWI guidance, license-suspension summary and consultation wording before publish.",
+    "exact_quote_cta_destination": "https://thebrunnerlawfirm.com/contact.html + tel link",
+    "qa": "Mobile + desktop: block renders, CTA resolves, no clipping.",
+    "baseline_metrics": "Record DWI page to contact clicks and calls for 14 business days.",
+    "scale_rule": "A pattern can expand from DWI immediate-action treatment only when its DWI page to contact click and call rate improves versus the recorded 14-day baseline using that action-specific first signal; and only if (1) the relevant click/conversion rate improves versus baseline; (2) lead quality does not fall where phone/CRM data is available; (3) there is no operational or client-confusion issue; (4) the owner approves the expansion. If no analytics/CRM data is provided, no scale decision can be made beyond public QA.",
+    "scope_note": "Scope is the DWI service page immediate-action + CTA treatment only. Pricing, retainer or firm commitment wording is deferred; license-suspension facts are not asserted without owner confirmation."
+   },
+   "investment_status": "VALIDATE_FIRST",
+   "ownership": {
+    "approver": "Lead Attorney / Managing Partner",
+    "content": "Content/Marketing",
+    "publisher_qa": "Web/Developer"
+   },
+   "first_signal": "DWI page to contact click and call rate"
+  }
+ ],
+ "customer_journey": [
+  {
+   "stage": "Immediate need / awareness (arrest or charge)",
+   "page": "The Brunner Law Firm homepage + DWI/criminal-defense pages",
+   "friction": "no after-arrest first-steps guidance, anxious prospect may not act",
+   "action": "GB-001 / GB-005",
+   "first_signal": "page to contact/consultation click + call"
+  },
+  {
+   "stage": "Practice-area selection (which charge?)",
+   "page": "/practice-areas.html",
+   "friction": "no self-routing aid for ambiguous charge",
+   "action": "GB-003",
+   "first_signal": "hub to practice-page or to-contact click"
+  },
+  {
+   "stage": "Trust / educational (what to do)",
+   "page": "/blog/what-to-do-after-an-arrest-in-texas.html",
+   "friction": "blog builds trust but no prominent in-body consultation CTA",
+   "action": "GB-004",
+   "first_signal": "blog to consultation/contact click"
+  },
+  {
+   "stage": "Consultation enquiry",
+   "page": "/contact.html",
+   "friction": "form gives no post-submission expectation, free/confidential not confirmed",
+   "action": "GB-002",
+   "first_signal": "form-start to form-submit completion rate"
+  },
+  {
+   "stage": "Client intake / engagement",
+   "page": "internal workflow / owner-confirmation item",
+   "friction": "data needed before performance assessment",
+   "action": "—",
+   "first_signal": "owner-supplied case/CRM data"
+  }
+ ]
+}
