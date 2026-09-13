@@ -50,3 +50,6 @@ dump.py
 extract*.py
 # 舊 TOP-LEVEL 報告 txt
 /tests/fixtures/*.txt*
+# canonical delivery runtime records
+*.delivery-record.json
+*.for-email.pdf.delivery-record.json
