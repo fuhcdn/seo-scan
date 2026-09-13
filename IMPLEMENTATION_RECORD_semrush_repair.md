@@ -3,6 +3,19 @@
 Date: 2026-09-13
 Trigger: hermes-next-step-repair-semrush-test-report.pdf
 
+## FINAL STATUS (repair complete)
+Semrush test report true delivery status: **DELIVERY_BLOCKED** (not a passing report, not customer-deliverable).
+
+The new (repaired) model, when run on the same Semrush target, now correctly resolves to:
+- rejected_findings_count: 7 (competitor observations no longer become findings)
+- action_count: 3 (only customer-owned actions)
+- delivery_state: RESEARCH_INCOMPLETE (no valid SERP from datacenter IP; competitor reads don't count)
+- No normal PDF produced / not emailed (no fake passage).
+
+This is the CORRECT insufficient-public-evidence path per repair instruction §2: "If valid SERP result
+evidence cannot be obtained from permitted sources, do not fake a passing test. Demonstrate the correct
+insufficient-evidence path and report the capability limitation."
+
 ## Immediate correction
 The Semrush test report PDF (SEO-Opportunity-Diagnostic-semrush-test-2026-09-13.pdf)
 is NOT a passing report. Its true delivery status: **DELIVERY_BLOCKED**.
