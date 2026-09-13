@@ -251,6 +251,28 @@ def run_tests():
     p_pass = ps["blocked"] is True and ps["hard_fail"] == "INTERNAL_PATH_LEAK"
     results.append(("P-pdf-scanner-file-url-blocked", p_pass, "hits", ps["hits"]))
 
+    # ---- Test Q: staging threshold must yield STAGING_TEST_PASS, never READY_TO_DELIVER ----
+    res_q = mk_research(npages=8, nserp_valid=5, ncomp=3)
+    det_q = AG.deterministic_validate(res_q, mk_findings(3), mk_actions(5), "ENTRY_REPORT", mk_order(), doc_text="clean")
+    # threshold 80 (staging/test) -> must be STAGING_TEST_PASS even with blind 95
+    st80, why80 = AG.decide_delivery(det_q, {"total": 95, "hard_fail": False}, is_pdf_clean=True, min_score=80)
+    # threshold 90 (production) -> READY_TO_DELIVER
+    st90, why90 = AG.decide_delivery(det_q, {"total": 95, "hard_fail": False}, is_pdf_clean=True, min_score=90)
+    q_pass = (st80 == "STAGING_TEST_PASS") and (st90 == "READY_TO_DELIVER")
+    results.append(("Q-staging-vs-ready-state-separation", q_pass, "st80/st90", f"{st80}|{st90}"))
+
+    # ---- Test R: scorecard is explicit out-of-100, per-category raw+pct, threshold+transition ----
+    blind_r = {"total": 95, "hard_fail": False,
+               "A_evidence": {"points": 19}, "B_research": {"points": 19},
+               "C_strategic": {"points": 19}, "D_actionability": {"points": 19},
+               "E_structure": {"points": 10}, "F_pdf": {"points": 9}}
+    sc = AG.build_scorecard(det_q, blind_r, "READY_TO_DELIVER", min_score=90)
+    # ensure no ambiguous "x/y" out-of-100 rendering; explicit out-of-100 + per-category pct
+    r_pass = (sc["score_out_of"] == 100 and sc["final_out_of"] == 100
+              and sc["threshold"] == 90 and sc["threshold_role"] == "production"
+              and sc["per_category_pct"]["A_evidence"] == 95.0 and sc["state"] == "READY_TO_DELIVER")
+    results.append(("R-explicit-scorecard-out-of-100", r_pass, "sample", f"A=95% thresh={sc['threshold']} role={sc['threshold_role']}"))
+
     print("=" * 60)
     ok_count = 0
     for name, passed, info_k, info_v in results:

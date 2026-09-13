@@ -573,10 +573,17 @@ DELIVERY_STATES = [
 
 def decide_delivery(deterministic, blind, is_pdf_clean=True, min_score=None):
     """ONLY function permitted to set READY_TO_DELIVER. Returns (state, reason_list).
-    READY_TO_DELIVER only when: deterministic PASS (no hard_fail_list) AND blind total>=90
-    (or >=min_score when explicitly overridden, e.g. owner test) AND blind no hard_fail
-    AND no deterministic hard-fail AND pdf clean."""
-    # threshold: default 90 (permanent standard); owner may raise/lower for a test only via env
+
+    STATE SEPARATION (permanent master spec):
+    - READY_TO_DELIVER : ONLY when the production threshold (90) is used AND deterministic PASS
+      + blind >=90 + no hard fail + pdf clean. Means a real customer report may be delivered.
+    - STAGING_TEST_PASS : a test artifact passed its OWN explicitly documented staging/test
+      threshold (<90 via MIN_REPORT_SCORE). It NEVER means customer deliverable. Used only for
+      owner demos / staging regression. No email to a real customer from this state.
+    - INSUFFICIENT_BUSINESS_CONTEXT / RESEARCH_INCOMPLETE / QUALITY_REPAIRING / AUDIT_FAILED /
+      PDF_REPAIRING / DELIVERY_BLOCKED : as before.
+    """
+    # threshold: default 90 (permanent standard, production gate). Lower = test/staging only.
     if min_score is None:
         try:
             min_score = int(os.environ.get("MIN_REPORT_SCORE", "90"))
@@ -606,8 +613,49 @@ def decide_delivery(deterministic, blind, is_pdf_clean=True, min_score=None):
     if b_total >= min_score:
         if not is_pdf_clean:
             return "PDF_REPAIRING", ["PDF privacy/layout validation failed"]
-        return "READY_TO_DELIVER", [f"deterministic PASS + blind {b_total}/{min_score} PASS"]
+        # ---- SEPARATION ----
+        if min_score >= 90:
+            return "READY_TO_DELIVER", [f"deterministic PASS + blind {b_total}/100 PASS (production gate {min_score})"]
+        return "STAGING_TEST_PASS", [f"deterministic PASS + blind {b_total}/100 PASS at staging/test threshold {min_score}; NOT a customer deliverable"]
     return "DELIVERY_BLOCKED", ["unclassified"]
+
+
+def build_scorecard(deterministic, blind, state, min_score=None):
+    """Persist a full, explicit quality scorecard out of 100.
+
+    Returns dict: {score, categ, per_category_raw, per_category_pct, overall, threshold,
+    state, transition_reason, per_category_max}. Every category's max mirrors the blind
+    auditor rubric (A20 B20 C20 D20 E10 F10 = 100). No ambiguous '90/80' formats.
+    """
+    if min_score is None:
+        try:
+            min_score = int(os.environ.get("MIN_REPORT_SCORE", "90"))
+        except Exception:
+            min_score = 90
+    _MAX = {"A_evidence": 20, "B_research": 20, "C_strategic": 20,
+            "D_actionability": 20, "E_structure": 10, "F_pdf": 10}
+    _KEYS = ["A_evidence", "B_research", "C_strategic", "D_actionability", "E_structure", "F_pdf"]
+    raw = {k: int((blind.get(k) or {}).get("points", 0)) for k in _KEYS}
+    pct = {k: round(100.0 * raw[k] / _MAX[k], 1) if isinstance(raw[k], (int, float)) else 0.0
+           for k in _KEYS}
+    total = int(blind.get("total") or sum(raw.values()))
+    status_ = "PASS" if state in ("READY_TO_DELIVER", "STAGING_TEST_PASS") else "FAIL/BLOCK"
+    return {
+        "score": total,
+        "score_out_of": 100,
+        "per_category_raw": raw,
+        "per_category_max": _MAX,
+        "per_category_pct": pct,
+        "final": total,
+        "final_out_of": 100,
+        "threshold": min_score,
+        "threshold_role": "production" if min_score >= 90 else "staging/test",
+        "state": state,
+        "state_transition_reason": [r for r in (blind.get("hard_fail_reasons") or [])] or (
+            ["all gates pass at " + str(min_score) + "/100"] if status_ == "PASS" else ["gate not met"]),
+        "each_category_is_percentage_of_max": True,
+        "all_categories_at_least_90pct": all(p >= 90 for p in pct.values()),
+    }
 
 
 # ---------------- PDF privacy/language/layout validator ----------------

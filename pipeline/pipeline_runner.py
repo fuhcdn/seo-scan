@@ -443,13 +443,19 @@ def step_report(status, audit_path=None):
 
         # 6) DELIVERY DECISION ENGINE — ONLY component allowed to set READY_TO_DELIVER
         state, why = _ag.decide_delivery(det, blind, is_pdf_clean=True)
+        scorecard = _ag.build_scorecard(det, blind, state)
         status["delivery_state"] = state
         status["delivery_reasons"] = why
+        status["quality_scorecard"] = scorecard
         if state != "READY_TO_DELIVER":
             mark_step(status, "report", "failed", note="; ".join(why),
                       delivery_state=state, final_score=blind_score,
                       deterministic_hard_fail=det.get("hard_fail_list"))
             save_status(status)
+            # STAGING_TEST_PASS: an explicit test threshold result — NOT a customer deliverable.
+            # Show it clearly, never email a real customer.
+            if state == "STAGING_TEST_PASS":
+                return status
             if state in ("INSUFFICIENT_BUSINESS_CONTEXT",):
                 return _qg_path_noop(status, research, "intake", det.get("missing_intake_fields") or intake_missing)
             return _insufficient_evidence_pdf(status, research,
