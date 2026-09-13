@@ -1,0 +1,39 @@
+{
+ "overall": "PASS",
+ "roadmap_status_check": {
+  "consistent": true,
+  "issues": [],
+  "checked": [
+   "ACT-001",
+   "ACT-002",
+   "ACT-003",
+   "ACT-004",
+   "ACT-005"
+  ]
+ },
+ "investment_status": [
+  "ACT-001 VALIDATE_FIRST",
+  "ACT-002 VALIDATE_FIRST",
+  "ACT-003 DO_NOW",
+  "ACT-004 VALIDATE_FIRST",
+  "ACT-005 VALIDATE_FIRST"
+ ],
+ "roadmap_days0_7": "ACT-003 live (gallery captions); low-risk, reversible, no owner-approved figures required",
+ "roadmap_days31_60": "ACT-001/002/004/005 published only after owner approval; ACT-003 remains live (DO NOW); ACT-004 publish ONLY after routing rules approved else retain VALIDATE FIRST",
+ "roadmap_days61_90": "ACT-004 measure only after approved module is live; extend per quantified scale rule",
+ "STRUCTURAL_COMPLETENESS_SCORE": 100.0,
+ "QUALITY_SCORE": 100,
+ "QUALITY_deductions": {
+  "evidence_accuracy": [],
+  "finding_distinctness": [],
+  "customer_specificity": [],
+  "commercial_priority_quality": [],
+  "action_executability": [],
+  "pdf_customer_readiness": []
+ },
+ "pdf_sha256": "cc1d7b9620c2a4b6f85b6a3101e69a835a014f2b032f6fe06a9b83af1204c35c",
+ "rendered_sha256": "cc1d7b9620c2a4b6f85b6a3101e69a835a014f2b032f6fe06a9b83af1204c35c",
+ "scanned_sha256": "cc1d7b9620c2a4b6f85b6a3101e69a835a014f2b032f6fe06a9b83af1204c35c",
+ "email_copy_sha_matches": true,
+ "three_way": true
+}

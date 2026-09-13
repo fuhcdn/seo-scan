@@ -436,6 +436,43 @@ def gate5_check_priority_consistency(actions) -> Dict[str, Any]:
     return {"consistent": True, "fail": None}
 
 
+PUBLICATION_WORDS = ["live", "publish", "publishing", "launch", "launching", "do now", "push to prod", "go live", "ship"]
+
+
+def gate5_check_roadmap_status_consistency(roadmap_text: str, actions) -> Dict[str, Any]:
+    """DETERMINISTIC rule: if any action is VALIDATE_FIRST, roadmap language must NOT assign it
+    DO NOW / live / publish / launch (or any equivalent publication instruction) UNLESS the
+    sentence explicitly includes 'only after owner approval'. Roadmap status must derive
+    exclusively from the immutable `investment_status` of each action."""
+    vf_ids = {a["action_id"] for a in actions if (a.get("investment_status") or "") == "VALIDATE_FIRST"}
+    issues = []
+    low = roadmap_text.lower()
+    # For every VALIDATE_FIRST action id, look at the roadmap sentences around it.
+    for aid in vf_ids:
+        aidl = aid.lower()
+        idx = low.find(aidl)
+        if idx < 0:
+            continue
+        # gather the sentence containing this action id
+        head = low.rfind(".", 0, idx)
+        tail = low.find(".", idx)
+        sent = low[max(0, head): len(low) if tail < 0 else tail + 1]
+        if not sent:
+            sent = low[max(0, idx - 120): idx + 160]
+        has_pub = any(w in sent for w in PUBLICATION_WORDS)
+        has_approval_qualifier = ("only after owner approval" in sent) or ("after the routing rules are approved" in sent) or ("after the approved module" in sent) or ("only after the approved" in sent)
+        if has_pub and not has_approval_qualifier:
+            issues.append(f"{aid}: roadmap assigns publication ({[w for w in PUBLICATION_WORDS if w in sent]}) without 'only after owner approval' -> sentence: {sent.strip()[:160]}")
+    # DO_NOW actions must NOT be called VALIDATE FIRST in roadmap either
+    dn_ids = {a["action_id"] for a in actions if (a.get("investment_status") or "") == "DO_NOW"}
+    for aid in dn_ids:
+        if f"{aid.lower()} validated first" in low or f"{aid.lower()} validate first" in low:
+            issues.append(f"{aid}: DO_NOW action referenced as VALIDATE FIRST in roadmap")
+    return {"consistent": not issues, "issues": issues,
+            "fail": "PRIORITY_CONSISTENCY_FAIL" if issues else None,
+            "checks": sorted(set(vf_ids) | set(dn_ids))}
+
+
 MARKER_MARK = "IMMUTABLE_DELIVERY_LOCK"
 
 

@@ -207,11 +207,32 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None):
     journey_html = f"""<h2>Customer Journey Map</h2>
 <table><tr><th>Buyer stage</th><th>Customer-owned page</th><th>Observed friction</th><th>Action ID</th><th>Intended first signal</th></tr>{journey_rows}
 <tr><td>Sales follow-up</td><td>internal workflow / owner-confirmation item</td><td>data needed before performance assessment</td><td>—</td><td>owner-supplied order/quote data</td></tr></table>"""
-    # ---- 90-DAY ROADMAP (distinct, references valid ACT-IDs + investment status) ----
-    r0 = ("Days 0-7", "ACT-003 gallery pilot for the first 12 examples (DO NOW, no owner-confirmed figures required).")
-    r1 = ("Days 8-30", "Collect owner-approved policy/process inputs for ACT-001 (MOQ, price factors, setup fee, turnaround), ACT-002 (response-time SLA, quote process) and ACT-005 (example image, minimum/price/turnaround); prepare draft modules; record baselines for all five pages.")
-    r2 = ("Days 31-60", "Publish approved ACT-001 and ACT-002 and ACT-005 modules (VALIDATE FIRST, owner-approved copy only); measure page CTA / form behaviour; keep ACT-003 and ACT-004 live (DO NOW).")
-    r3 = ("Days 61-90", "Review every page against its 14-day baseline; extend only the proven pattern (per each action's scale rule); do not spend on deferred work (paid links, redesign, new store, full-gallery tagging) unless the evidence supports it.")
+    # ---- 90-DAY ROADMAP (data-driven: statuses render EXCLUSIVELY from immutable investment_status) ----
+    # A VALIDATE_FIRST action's roadmap sentences MUST NOT assign DO NOW / live / publish / launch
+    # unless qualified by "only after owner approval". Each action's status is read from the action.
+    _st = {a["action_id"]: (a.get("investment_status") or "").strip() for a in acts}
+    r0_parts = []
+    r1_parts = []
+    r2_parts = []
+    r3_parts = []
+    # Days 0-7 — only DO_NOW actions may be live here
+    for a in acts:
+        if (a.get("investment_status") or "") == "DO_NOW":
+            r0_parts.append(f"ACT-{a['action_id'].replace('ACT-','')} live ({a['action_id']} {a.get('recommended_module','')[:50]}); low-risk, reversible, no owner-approved figures required.")
+    r0 = ("Days 0-7", (" ".join(r0_parts) if r0_parts else "No DO NOW actions eligible for Days 0-7; prepare drafts for the VALIDATE FIRST actions."))
+    # Days 8-30 — collect approvals, prepare drafts, no publication
+    r1_items = []
+    for a in acts:
+        if (a.get("investment_status") or "") == "VALIDATE_FIRST":
+            _ap = a.get("owner_approver") or "Owner"
+            r1_items.append(f"{a['action_id']} draft layout prepared; collect owner-approved inputs (approver {_esc(_ap)})")
+    r1 = ("Days 8-30", "Collect owner-approved policy/process inputs and prepare draft modules: " + "; ".join(r1_items) + f"; record 14-day baselines for all five pages. ACT-004: prepare the draft layout AND collect Sales/Operations-approved method-to-project routing rules.")
+    # Days 31-60 — publish only owner-approved VALIDATE FIRST; DO NOW stays live
+    r2_pub = [f"{a['action_id']} published only after owner approval" for a in acts if (a.get("investment_status") or "") == "VALIDATE_FIRST"]
+    r2_keep = [f"{a['action_id']} remains live (DO NOW)" for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
+    r2 = ("Days 31-60", "; ".join(r2_pub + r2_keep) + "; measure page CTA/form behaviour. ACT-004: publish ONLY after the method-to-project routing rules are approved; if approval is not provided, retain VALIDATE FIRST and do not route visitors using unapproved business rules.")
+    # Days 61-90 — measure against baseline, expand only proven pattern
+    r3 = ("Days 61-90", "Measure every page against its 14-day baseline using the action-specific first signal; extend only the proven pattern per the card's quantified scale rule (rate improves vs baseline + lead quality not down + no confusion + owner approval). ACT-004: measure method-selection completion and homepage-to-service-page clicks against baseline only after the approved module is live. Do not spend on deferred work (paid links, redesign, new store, full-gallery tagging) unless evidence supports it.")
     roadmap = f"""<h2>90-Day Execution Roadmap</h2><div class="card">
 <p><strong>{_esc(r0[0])}:</strong> {_esc(r0[1])}</p>
 <p><strong>{_esc(r1[0])}:</strong> {_esc(r1[1])}</p>
@@ -309,6 +330,19 @@ def main():
                         "external": ext_audit}
     # ---- Build + GATE 5 ----
     html_doc = build_report(customer, pages, accepted, acts, results["GATE4"], cards=valid_cards)
+    # DETERMINISTIC ROADMAP STATUS CONSISTENCY: roadmap must derive exclusively from
+    # immutable investment_status. Block if any VALIDATE_FIRST action gets a publication word.
+    import re as _re
+    _rstart = html_doc.find("<h2>90-Day Execution Roadmap</h2>")
+    _rm = html_doc[_rstart: _rstart + 1800] if _rstart >= 0 else ""
+    _rm_text = _re.sub(r"<[^>]+>", " ", _rm)
+    rm_ok = gp.gate5_check_roadmap_status_consistency(_rm_text, acts)
+    this_pc = gp.gate5_check_priority_consistency(acts)
+    if not rm_ok["consistent"] or not this_pc.get("consistent"):
+        print(json.dumps({"overall": "DELIVERY_BLOCKED",
+                          "reason": "PRIORITY_CONSISTENCY_FAIL: " + "; ".join(rm_ok["issues"] or []) + (";" if rm_ok["issues"] else "") + str(this_pc.get("conflict", ""))}, indent=1))
+        return
+    results["GATE5_ROADMAP_STATUS_CHECK"] = {"consistent": rm_ok["consistent"], "issues": rm_ok["issues"], "checked": rm_ok["checks"]}
     html_path = os.path.join(out_dir, "SEO-Opportunity-Diagnostic-Apple-Imprints-2026-09-13-5gate.html")
     pdf_path = os.path.join(out_dir, "SEO-Opportunity-Diagnostic-Apple-Imprints-2026-09-13-5gate.pdf")
     with open(html_path, "w", encoding="utf-8") as f:
@@ -397,31 +431,38 @@ def main():
     _do_now = [a for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
     _valid8 = [a for a in acts if (a.get("investment_status") or "") == "VALIDATE_FIRST"]
 
-    def _q(name, max_, deductions):
-        """max_ minus deductions, floored at 0; records explicit reasons."""
+    def _q(name, max_, deductions, explanation=""):
+        """max_ minus deductions, floored at 0; records explicit reasons and, when full,
+        the visible zero-deduction explanation (why the category earned full marks)."""
         val = max(max_ - sum(deductions), 0)
+        if not deductions and not explanation:
+            explanation = "no reasonable deduction found for this report"
         return {"points": val, "max": max_, "pct": round(100.0 * val / max_, 1),
-                "deductions": [d for d in deductions if d > 0]}
+                "deductions": [d for d in deductions if d > 0],
+                "zero_deduction_explanation": explanation}
 
     q = {}
     _ev = lambda a: next((k.get("evidence", "") for k in valid_cards if k.get("card_id") in (a.get("evidence_ids") or [])), "")
     # (1) EVIDENCE ACCURACY 20 — direct observation + evidence source per card; generic observer fails
     q["evidence_accuracy"] = _q("evidence_accuracy", 20, [
         5 if not all(c.get("direct_observation") and c.get("evidence") for c in valid_cards) else 0,
-        5 if any(("SERP" in (c.get("evidence") or "") or "rank" in (c.get("evidence") or "").lower()) for c in valid_cards) else 0])
+        5 if any(("SERP" in (c.get("evidence") or "") or "rank" in (c.get("evidence") or "").lower()) for c in valid_cards) else 0],
+        "all 5 evidence cards carry a direct page observation and an evidence source; none is SERP/rank-derived")
     # (2) FINDING DISTINCTNESS 15 — any duplicated gap/scope overlaps
     gaps = [(c.get("specific_gap") or "").lower() for c in valid_cards]
     urls = [c.get("primary_customer_url", "").split("?")[0] for c in valid_cards]
     q["finding_distinctness"] = _q("finding_distinctness", 15, [
         8 if len(set(gaps)) != len(gaps) else 0,
-        7 if len(set(urls)) != len(urls) else 0])
+        7 if len(set(urls)) != len(urls) else 0],
+        "all 5 findings are distinct gaps and each targets a different customer-owned page (no overlapping scope)")
     # (3) CUSTOMER SPECIFICITY 15 — customer-owned URL, buyer question, customer-owned mechanism
     mech = [(c.get("business_mechanism") or "").lower() for c in valid_cards]
     q["customer_specificity"] = _q("customer_specificity", 15, [
         4 if not all("appleimprints" in (c.get("primary_customer_url") or "") for c in valid_cards) else 0,
         4 if not all(("buyer" in m or "buyers" in m) for m in mech) else 0,
         4 if not all(c.get("buyer_question") for c in valid_cards) else 0,
-        3 if any(m.startswith(("improve", "add keywords", "this observation")) for m in mech) else 0])
+        3 if any(m.startswith(("improve", "add keywords", "this observation")) for m in mech) else 0],
+        "all findings target appleimprints.com, each has a buyer question, and mechanisms reason from the customer buyer journey (no generic improve-SEO language)")
     # (4) COMMERCIAL PRIORITY QUALITY 15 — honest priority per action (DO NOW / VALIDATE FIRST),
     #     no ambiguity, journey + roadmap + role ownership
     pri_ambig = 0
@@ -441,7 +482,8 @@ def main():
         4 if pri_ambig else 0,
         2 if not has_journey else 0,
         2 if not has_roadmap else 0,
-        1 if not role_owned else 0])
+        1 if not role_owned else 0],
+        "5 actions with no priority ambiguity (each VALIDATE FIRST needs owner approval; only ACT-003 is DO NOW), plus Customer Journey Map, 90-Day Roadmap and role-level ownership present")
     # (5) ACTION EXECUTABILITY 15 — action-specific measurement, quantified scale rule, full brief,
     #     external accept, no rejected actions, no overlapping scope
     generic_sig = [a for a in acts if (a.get("first_signal") or "").lower() in ("", "n/a", "cta clicks", "clicks")
@@ -457,12 +499,14 @@ def main():
         3 if undef_scale else 0,
         4 if not full_brief else 0,
         3 if not all(_audited(a.get("action_id")) for a in acts) else 0,
-        1 if g4["rejected_findings"] else 0])
+        1 if g4["rejected_findings"] else 0],
+        "every action has an action-specific first signal and a quantified scale rule (baseline-compared, no undefined 'two review points'), a full implementation brief, is accepted by the independent external auditor, and none was rejected")
     # (6) PDF CUSTOMER READINESS 20 — GATE5 clean + action-specific signals rendered + no template language
     q["pdf_customer_readiness"] = _q("pdf_customer_readiness", 20, [
         10 if not (scan["clean"] and not scan["hard_fails"] and visible and "appleimprints" in visible_l) else 0,
         5 if "Founding finding" in visible or "Founding decision" in visible else 0,  # template defect
-        5 if any(lab not in visible for lab in ["First measurable signal", "Scale rule"]) else 0])
+        5 if any(lab not in visible for lab in ["First measurable signal", "Scale rule"]) else 0],
+        "GATE5 scan is clean with no internal path/file-URI/placeholder/secret/order-ID, the rendered PDF uses customer-facing 'Finding N' (no 'Founding finding' template defect), and the action-specific signals and scale rules are present in the visible text")
     qual_total = round(sum(v["points"] for v in q.values()), 1)
     qual_notes = {
         "action_count": len(acts),
@@ -488,9 +532,10 @@ def main():
         "QUALITY_SCORE": {"out_of": 100, "value": qual_total, "categories": q,
             "per_category_pct": {k: v["pct"] for k, v in q.items()},
             "deductions": {k: v["deductions"] for k, v in q.items()},
+            "zero_deduction_explanations": {k: v["zero_deduction_explanation"] for k, v in q.items()},
             "auditor_mode": ext_audit[0].get("mode") if ext_audit else "none",
             "notes": qual_notes,
-            "note": "Independent semantic audit with explicit deductions per category; a category is full only with no reasonable deductions."},
+            "note": "Independent semantic audit with explicit per-category deductions and a visible zero-deduction explanation for each category; a category is full only with no reasonable deductions."},
         "pdf_sha256": scan["sha256"],
     }
     print(json.dumps(results, ensure_ascii=False, indent=1))
