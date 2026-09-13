@@ -47,4 +47,4 @@ These Terms are governed by the laws of the Hong Kong Special Administrative Reg
 
 ## 9. Contact
 
-For any questions, please email: legal@[your-domain].com
+For any questions, please email: legal@seoscanaudit.com

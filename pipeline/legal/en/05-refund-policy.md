@@ -24,7 +24,7 @@ Users may apply for a full or partial refund in the following circumstances:
 
 ## 4. Application Procedure
 
-1. Email your application to refund@[your-domain].com within **7 days** after delivery;
+1. Email your application to refund@seoscanaudit.com within **7 days** after delivery;
 2. Provide the order number, proof of payment, and the reason for the refund;
 3. The Company will make its best effort to respond within **5 working days** of receiving the application.
 

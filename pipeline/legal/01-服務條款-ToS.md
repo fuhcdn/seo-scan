@@ -47,4 +47,4 @@
 
 ## 9. 聯絡
 
-如有疑問，請電郵至：legal@[你的域名].com
+如有疑問，請電郵至：legal@seoscanaudit.com

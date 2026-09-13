@@ -48,7 +48,7 @@ Under the PDPO, you have the right to:
 2. **Correct** inaccurate personal data;
 3. Make inquiries or complaints regarding our processing.
 
-Please email privacy@[your-domain].com to exercise these rights. We will respond within 40 days of receiving the request.
+Please email privacy@seoscanaudit.com to exercise these rights. We will respond within 40 days of receiving the request.
 
 ## 8. Security
 
@@ -70,6 +70,6 @@ If there are material changes, we will publish the update on the website and not
 
 For any questions or complaints regarding privacy, please contact:
 
-**Privacy Officer:** privacy@[your-domain].com
+**Privacy Officer:** privacy@seoscanaudit.com
 
 If you believe we have breached the PDPO, you have the right to lodge a complaint with the Office of the Privacy Commissioner for Personal Data, Hong Kong.
