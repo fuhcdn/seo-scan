@@ -1,0 +1,53 @@
+{
+  "customer": {
+    "company": "Apple Imprints",
+    "primary_domain": "appleimprints.com",
+    "owned_domains": ["appleimprints.com"],
+    "business_goal": "more sales-revenue",
+    "market": "USA (Buffalo, NY + ship nationally)",
+    "offers": ["Screen printing", "Embroidery", "DTG", "DTF", "Debossing", "Custom apparel & promo products"],
+    "primary_customer_action": "quote",
+    "tier": "US$497",
+    "report_language": "en",
+    "vertical": "custom apparel decoration / quote-based service SME",
+    "known_competitors": ["apparelglobe.com", "radprint.co", "kustomimprints.com"]
+  },
+  "golden_evidence_cards": [
+    {
+      "card_id": "EC-001",
+      "primary_customer_url": "https://appleimprints.com/screen-printing/",
+      "page_type": "service page",
+      "page_heading": "Apple Imprint's Screen Printing Services",
+      "direct_observation": "Page describes methods (spot color, four-color process, simulated process, specialty printing) but shows the heading and method names repeatedly across the page; page does not state any minimum order quantity, any price range, any per-piece price, or any turnaround time anywhere in the visible text. CTA is the global 'Get a Quote' nav link.",
+      "buyer_question": "How many pieces must I order and roughly what will screen printing cost me before I contact you?",
+      "specific_gap": "No minimum-order, price, or turnaround information on the screen-printing service page, so a comparison-minded buyer cannot pre-qualify their order.",
+      "business_mechanism": "The buyer question 'minimums + price' is a pre-sales qualification step; a page that omits it forces every visitor to submit a quote form before they can even self-qualify, which filters out smaller or price-sensitive buyers and lowers the pool of qualified enquiries that reach the goal (more sales-revenue).",
+      "recommended_module": "Add a 'Pricing & Minimums' section to this exact page with stated minimum quantity, indicative per-piece price range, setup fee, and typical turnaround time, plus a link to the Get-a-Quote form.",
+      "evidence": "Direct page read on 2026-09-13 (headings + body verified; no price/minimum/turnaround tokens present)."
+    },
+    {
+      "card_id": "EC-002",
+      "primary_customer_url": "https://appleimprints.com/get-a-quote-2/",
+      "page_type": "conversion/quote page",
+      "page_heading": "Get A Quote!",
+      "direct_observation": "Quote form is present ('First Name * Last Name * Email Address * Phone') with the line 'Within 24 hours or less! If rush is needed, please call us!' There is no statement describing what happens after submission, no reference to any past work/proof, and no expectation-setting about the next step, pricing, or samples.",
+      "buyer_question": "After I submit this form, what happens next and why should I trust Apple Imprints to do my order?",
+      "specific_gap": "Quote page collects contact details but gives no post-submission expectation, no proof/reference (gallery exists elsewhere but is not linked here), and no reason for a wary first-time buyer to trust a small shop.",
+      "business_mechanism": "Trust is a decision-stage blocker for a small, lesser-known decorator; a quote page that sends no trust signal (proof, process, timeline) makes hesitant first-time buyers more likely to abandon rather than submit the form, directly suppressing the quote submissions that drive the goal (more sales-revenue).",
+      "recommended_module": "On this exact page add a 'What happens next' 3-step trust/process explainer with expected reply time, plus a link to the Gallery as proof, immediately under the form.",
+      "evidence": "Direct page read on 2026-09-13 (form fields + 'Within 24 hours or less!' string verified)."
+    },
+    {
+      "card_id": "EC-003",
+      "primary_customer_url": "https://appleimprints.com/gallery/",
+      "page_type": "proof/portfolio page",
+      "page_heading": "Our Works",
+      "direct_observation": "Gallery page exists with heading 'Our Works' and text 'browse our gallery of completed orders that have satisfied...' but it is a single image wall with no captions, no per-item service/technique tag, no link back to the matching service pages, and no testimonial text or case detail.",
+      "buyer_question": "Which of these pieces were done with screen printing vs embroidery, and can I see a completed example of my specific project type?",
+      "specific_gap": "Gallery images are unlabelled so a decoration buyer cannot map a completed piece to the service they are considering, and the page does not feed the relevant service page or quote page.",
+      "business_mechanism": "Proof works only if a buyer can connect it to their intended service; unlabelled, un-linked gallery images do not build that connection, so the trust/proof asset fails to move evaluation-stage buyers toward the quote, limiting the goal (more sales-revenue).",
+      "recommended_module": "Add captions/technique tags to each gallery item and link each to its service page and to the Get-a-Quote form.",
+      "evidence": "Direct page read on 2026-09-13 (heading + body verified; no captions/links/tags present)."
+    }
+  ]
+}
