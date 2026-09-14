@@ -187,7 +187,8 @@ def review(candidate_pdf, job, cards, acts, attempt):
             "perfect; 100 requires concrete evidence it is fully met. Also list ordered, concrete repair "
             "instructions (file/section-level). Be strict: if evidence is missing, generic, stale or "
             "unverifiable, deduct.\n\n"
-            "Reply ONLY as JSON: {\"categories\":{\"<name>\":{\"score\":N,\"deduction\":\"...\"}},"
+            "Reply ONLY as JSON: {\"categories\":{\"<name>\":{\"score\":N,\"deduction\":\"...\",\"ledger\":{\"pdf_page\":N,\"section\":\"...\",\"action_or_card_id\":\"...\",\"evidence_text\":\"...\",\"validation\":\"...\",\"result\":\"PASS|FAIL\"}}},"
+            "\"repair_instructions\":[\"...\"]}. EVERY category MUST include a ledger entry with pdf_page, section, action_or_card_id, evidence_text (quoted verbatim from the PDF), validation performed, and result; a category without a complete ledger entry is scored 0. "
             "\"repair_instructions\":[\"...\"]}\n\nPDF TEXT (truncated):\n" + visible[:14000])
         payload = {"model": REVIEWER_MODEL, "messages": [
             {"role": "system", "content": "You are a strict independent quality reviewer. Never self-approve; grade only visible evidence."},
@@ -198,8 +199,18 @@ def review(candidate_pdf, job, cards, acts, attempt):
         parsed = json.loads(js)
         llm_scores = parsed.get("categories", {})
         llm_repair = parsed.get("repair_instructions", []) or []
+        # EVIDENCE LEDGER enforcement: every category needs a complete ledger entry
+        _ledger_incomplete = []
+        for _cn in REQUIRED_CATEGORIES:
+            _le = (llm_scores.get(_cn) or {}).get("ledger") or {}
+            _need = ("pdf_page", "section", "evidence_text", "validation", "result")
+            if not _le or any(not str(_le.get(k) or "").strip() for k in _need):
+                _ledger_incomplete.append(_cn)
+        if _ledger_incomplete:
+            hard_fails.append("REVIEWER_EVIDENCE_INCOMPLETE:" + ",".join(_ledger_incomplete))
     except Exception as e:
         hard_fails.append("REVIEWER_LLM_AUDIT_UNAVAILABLE:" + str(e)[:80])
+        _ledger_incomplete = list(REQUIRED_CATEGORIES)  # no ledger without successful LLM audit
 
     # category scores: min(deterministic-driven floor, LLM score); unknown -> 0 until evidenced
     categories = {}
@@ -253,6 +264,16 @@ def review(candidate_pdf, job, cards, acts, attempt):
                                "why": "multi-page action hiding under one primary URL", "points": 8,
                                "improvement": "restrict every scope/placement/CTA/rollout reference to the "
                                               "primary URL page; move other pages to a separate future action"})
+    # 2b. PDF-visible multi-URL scope: the rendered artifact itself must not contain
+    # other-page rollout language tied to a single-URL action
+    _vis_dev = [m.start() for m in re.finditer(r"development pages ['']?enquire|per-development enquiry form|contact us \+ development pages", vlow)]
+    if _vis_dev and any((a.get("primary_url") or "").lower().rstrip("/").endswith("/contact-us") for a in acts):
+        hard_fails.append("NO_MULTI_URL_ACTION_SCOPE:ACT-001(rendered)")
+        deductions.append({"location": "rendered action rows", "section": "ACT-001 scope",
+                           "action_id": "ACT-001",
+                           "issue": "rendered PDF still contains development-pages 'Enquire' / rollout language under a /contact-us-only action",
+                           "why": "multi-page action hiding under one primary URL", "points": 8,
+                           "improvement": "remove all development-page references from ACT-001 rendering; regenerate the PDF"})
     # 3. unsupported market/performance claims as fact
     _claim_pats = [("largest research-heavy segment", "customer's largest segment"),
                    ("largest segment", "customer segment size"),
@@ -294,6 +315,7 @@ def review(candidate_pdf, job, cards, acts, attempt):
             h.startswith("DO_NOW_REQUIRES_NO_UNRESOLVED_APPROVAL") for h in hard_fails),
         "inspected_entire_visible_pdf_not_only_json": len(visible) > 1000,
         "quoted_candidate_sha_and_page_section_evidence": bool(csha),
+        "review_ledger_complete_for_every_category": not _ledger_incomplete,
         "found_zero_contradictions": not any(
             h.startswith(("STATUS_TEXT_CONTRADICTION", "JOURNEY_MAP_ACTION_ID_MISMATCH",
                           "NO_MULTI_URL_ACTION_SCOPE")) for h in hard_fails),
@@ -343,6 +365,7 @@ def review(candidate_pdf, job, cards, acts, attempt):
         "pdf_safety_scan": {"hard_fails": scan["hard_fails"], "sha256": scan["sha256"]},
         "semantic_cross_checks": "performed across all customer-visible sections",
         "reviewer_self_audit": self_audit,
+        "review_ledger": {k: ((llm_scores.get(k) or {}).get("ledger") or {}) for k in REQUIRED_CATEGORIES},
     }
     record["reviewer_signature"] = sign({k: v for k, v in record.items() if k != "reviewer_signature"})
     return record
