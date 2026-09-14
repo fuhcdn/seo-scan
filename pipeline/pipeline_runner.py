@@ -315,6 +315,27 @@ def step_research(status, order):
                             if "//" in res["customer_domain"] else res["customer_domain"].lstrip("www.")
                         res["customer_owned_domains"] = [_cd2]
                         res["customer_domain"] = _cd2
+                    # EVIDENCE→COMPETITOR BRIDGE: derive competitor_examples from injected
+                    # SERP observations (non-customer domains) so the competitor minimum
+                    # is satisfied by REAL public search data, not fabricated entries.
+                    if not (res.get("competitor_examples") or []):
+                        _comps, _seen = [], set()
+                        for _s in _serp_ext:
+                            _u = _s.get("url") or ""
+                            _dom = _u.split("/")[2] if "://" in _u else ""
+                            _dom = _dom.lower().lstrip("www.")
+                            if not _dom or _dom == res.get("customer_domain") or _dom in _seen:
+                                continue
+                            _seen.add(_dom)
+                            _comps.append({
+                                "competitor_domain": _dom,
+                                "source_url": _u,
+                                "title": (_s.get("title") or "")[:80],
+                                "direct_observation": (_s.get("direct_observation") or "")[:160],
+                                "counts_toward_competitor": True,
+                            })
+                        res["competitor_examples"] = _comps[:4]
+                        res["competitors"] = _comps[:4]
         except Exception as _inj_err:
             print("SERP injection skipped:", str(_inj_err)[:80])
         rp = _research.save(res, status["order_id"])
@@ -974,6 +995,30 @@ def run_pipeline(order):
         pdf_path = step_report(status, audit_path)
 
     # deliver：done 且有 marker 先唔重寄（上面已 return），否則由 deliver 續落去。
+    # LEGACY_REPORT_DELIVERY_BLOCKED (owner directive 2026-09-14): this legacy
+    # runner must never deliver a real paid customer order. Fail-closed BEFORE
+    # step_deliver: only the evidence_v1 runner (gates/) may produce a customer
+    # email artifact. A paid order hitting this path is a hard failure.
+    import verified_pdf_delivery as _vpd_gate
+    _pgate = _vpd_gate.enforce_pipeline_gate(
+        os.environ.get("REPORT_PIPELINE_VERSION", "legacy"), status.get("order_id", ""))
+    if not _pgate["allowed"]:
+        if order.get("payment_ref"):
+            mark_step(status, "deliver", "failed",
+                      error=_pgate["reason"],
+                      delivery_state="LEGACY_REPORT_DELIVERY_BLOCKED")
+            status["status"] = "failed"
+            status["delivery_state"] = "LEGACY_REPORT_DELIVERY_BLOCKED"
+            status["last_error"] = _pgate["reason"]
+            save_status(status)
+            raise RuntimeError(_pgate["reason"])
+        # no payment_ref (manual/test invocation): mark blocked, skip deliver
+        status["delivery_state"] = "LEGACY_REPORT_DELIVERY_BLOCKED"
+        mark_step(status, "deliver", "failed",
+                  error=_pgate["reason"] + " (no payment_ref; non-customer run)",
+                  delivery_state="LEGACY_REPORT_DELIVERY_BLOCKED")
+        save_status(status)
+        return status
     if not (_step_is(status, "deliver", "done") and status.get("delivery_marker")):
         step_deliver(status, pdf_path)
 

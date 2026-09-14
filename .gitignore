@@ -54,3 +54,6 @@ extract*.py
 # canonical delivery runtime records
 *.delivery-record.json
 *.for-email.pdf.delivery-record.json
+
+.cf_email_routing_creds
+/opt/data/.cf_*.creds

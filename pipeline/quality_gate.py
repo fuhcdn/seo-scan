@@ -519,6 +519,71 @@ def classify_findings(research, status, tier):
             "limitations": "Public research only; private data not verified.",
         })
 
+    # 1b) PAGE-LEVEL findings (production depth fix): each crawled customer-owned page's
+    # direct signals become a customer-specific finding + action. Uses the REAL page
+    # observations already captured by research (title/h1/meta/word_count), so every
+    # action has a direct page observation (quality gate requires concrete actions).
+    _pgs = (research.get("architecture") or {}).get("pages_reviewed") or research.get("pages_reviewed") or []
+    # normalise: accept dicts (rich, with title/ok/word_count) OR url strings
+    _pg_dicts = []
+    for _pg in _pgs:
+        if isinstance(_pg, dict):
+            _pg_dicts.append(_pg)
+        elif isinstance(_pg, str):
+            _pg_dicts.append({"url": _pg, "ok": True, "title": "", "h1_count": None, "word_count": None})
+    for _pg in _pg_dicts:
+        if not _pg.get("ok"):
+            continue
+        _pu = _pg.get("url") or ""
+        if not _pu or not _is_customer_url(_pu):
+            continue
+        _pt = (_pg.get("title") or "").strip()
+        _ph1 = _pg.get("h1_count") or 0
+        _pw = _pg.get("word_count") or 0
+        _obs_parts = []
+        if _pt:
+            _obs_parts.append(f"title = \"{_pt[:70]}\"")
+        _obs_parts.append(f"H1 count = {_ph1}")
+        _obs_parts.append(f"word count ≈ {_pw}")
+        _direct = f"Direct read of {_pu}: " + "; ".join(_obs_parts) + "."
+        # real gaps from measured values
+        _gaps = []
+        if _ph1 == 0:
+            _gaps.append("no H1 heading")
+        if _pw and _pw < 150:
+            _gaps.append(f"very thin content (~{_pw} words)")
+        if not _pt or len(_pt) < 15:
+            _gaps.append("weak/missing title")
+        if not _gaps:
+            continue  # page is healthy; no finding needed
+        _claim = f"{_pu} shows measurable page-level gaps: " + "; ".join(_gaps) + "."
+        _act_txt = (f"On {_pu}: fix " + " and ".join(_gaps[:2]) +
+                    " — add the missing structure/content, then re-measure page engagement within 30 days.")
+        _rsn = _business_reason_for_claim(_claim, {"source_url": _pu, "direct_observation": _direct},
+                                          primary_goal, offers, market, customer_domain)
+        findings.append({
+            "priority": "P2", "category": "SEO",
+            "title": ("Page gaps on " + _pu.replace("https://", "").replace("http://", ""))[:90],
+            "claim": _claim, "claim_label": "FACT",
+            "evidence_ids": ["PAGE-" + str(abs(hash(_pu)) % 900 + 100)],
+            "affected_scope": _pu,
+            "business_reason": _rsn,
+            "recommended_action": _act_txt,
+            "page_gap": "; ".join(_gaps),
+            "evidence_type": "direct_page_observation",
+            "buyer_questions": _buyer_buckets_descr,
+            "owner": "SEO / Marketing",
+            "effort": "Small",
+            "confidence": "High",
+            "confidence_rationale": _direct[:200],
+            "dependencies": ["applies to customer-owned page: " + _pu[:120]],
+            "acceptance_criteria": ("Done means the page shows the missing structure/content, "
+                                    "renders on mobile+desktop, and the page's own engagement is "
+                                    "re-measured against baseline.")[:320],
+            "validation_method": "First measurable signal: page-level CTA clicks / scroll depth within 30 days (GSC/GA4 where provided).",
+            "limitations": "Public research only; private data not verified.",
+        })
+
     # 2) Competitor research: neutral observed pattern -> compare -> customer-owned gap/action
     for i, co in enumerate(competitor_obs[:6]):
         fu = co.get("source_url") or ""

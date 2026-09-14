@@ -197,13 +197,46 @@ def scan_final_pdf(pdf_bytes: bytes, expected_domain: str = "",
             "visible_text": visible}
 
 
+def enforce_pipeline_gate(pipeline_version: str, job_id: str = "") -> dict:
+    """LEGACY_REPORT_DELIVERY_BLOCKED — fail-closed gate (owner directive 2026-09-14).
+
+    ORD-BRIDGE-TEST proved the legacy pipeline can produce a quality-FAILED report
+    (generic SERP-template findings, multi-URL scope, generic wording, truncated
+    customer text, weak page evidence) yet still reach VERIFIED_READY_TO_SEND and
+    a real email. Until further owner approval:
+
+      - pipeline_version='legacy' may NEVER: generate .for-email.pdf,
+        become VERIFIED_READY_TO_SEND, call Resend/SMTP, or process a
+        real paid customer order.
+      - ONLY pipeline_version='evidence_v1' may proceed past this gate.
+    """
+    v = (pipeline_version or "").strip().lower()
+    if v == "evidence_v1":
+        return {"allowed": True, "pipeline_version": v}
+    return {"allowed": False, "pipeline_version": v or "unspecified",
+            "state": "LEGACY_REPORT_DELIVERY_BLOCKED",
+            "reason": ("LEGACY_REPORT_DELIVERY_BLOCKED: only evidence_v1 with all "
+                       "semantic gates passing may create a customer email artifact "
+                       f"(got pipeline_version={v!r}, job_id={job_id!r})")}
+
+
 def prepare_verified_artifact(final_pdf_path: str, job_id: str,
                               pipeline_version: str = "legacy",
                               report_language: str = "en",
                               expected_domain: str = "",
                               wrong_customer_terms=None) -> dict:
     """Steps 1-8: scan exact artifact, create immutable .for-email.pdf copy,
-    verify 3-way SHA. Returns record dict; state=DELIVERY_BLOCKED on any fail."""
+    verify 3-way SHA. Returns record dict; state=DELIVERY_BLOCKED on any fail.
+
+    Fail-closed: non-evidence_v1 pipelines are blocked BEFORE any artifact is
+    created (LEGACY_REPORT_DELIVERY_BLOCKED)."""
+    _gate = enforce_pipeline_gate(pipeline_version, job_id)
+    if not _gate["allowed"]:
+        return {"job_id": job_id, "pipeline_version": pipeline_version,
+                "report_language": report_language, "service": "verified_pdf_delivery",
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "state": "LEGACY_REPORT_DELIVERY_BLOCKED",
+                "reason": _gate["reason"]}
     rec = {"job_id": job_id, "pipeline_version": pipeline_version,
            "report_language": report_language, "service": "verified_pdf_delivery",
            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
@@ -260,7 +293,17 @@ def send_verified_pdf(job_id: str, final_pdf_path: str, expected_sha256: str,
                       send_fn=None) -> dict:
     """THE one canonical send path. Both pipeline/ and gates/ must call this.
     Sends ONLY the verified .for-email.pdf; re-checks its SHA immediately
-    before send. Any mismatch -> DELIVERY_BLOCKED, nothing is sent."""
+    before send. Any mismatch -> DELIVERY_BLOCKED, nothing is sent.
+
+    Fail-closed: non-evidence_v1 pipelines are blocked before any SHA check or
+    send (LEGACY_REPORT_DELIVERY_BLOCKED)."""
+    _gate = enforce_pipeline_gate(pipeline_version, job_id)
+    if not _gate["allowed"]:
+        return {"job_id": job_id, "pipeline_version": pipeline_version,
+                "report_language": report_language, "service": "verified_pdf_delivery",
+                "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                "state": "LEGACY_REPORT_DELIVERY_BLOCKED",
+                "reason": _gate["reason"], "sent": False}
     rec = prepare_verified_artifact(final_pdf_path, job_id,
                                     pipeline_version=pipeline_version,
                                     report_language=report_language,

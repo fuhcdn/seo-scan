@@ -43,10 +43,14 @@
 - 呢個檔案唔可以代替真 commit message;兩邊都要寫
 
 
-## 2026-09-14 — 真卡 Bridge E2E 全鏈驗證完成（ORD-BRIDGE-TEST）
-- Owner 以真卡完成 US$0.50 ×2 test-mode 付款（CHECKOUT_TEST_PRICE override）
-- 全鏈 9 步 done：payment_verified → crawl (persimmonhomes.com 12頁) → SERP research (6 queries) → actions (5 concrete) → quality gate → PDF render (SHA a644734c... 242KB) → canonical 3-way verify VERIFIED_READY_TO_SEND → real email via Resend (id 64cb2609-465e-424b-9dce-f5c7ba10be9e) 至 owner test inbox cylee717@gmail.com
-- Owner 已確認收到 email（2026-09-14）
-- 過程修復 production 缺口 5 項：SERP injection hook 時序、research minimum competitor_examples bridge、page-level findings (classify_findings 1b block)、SERP query dedupe、pages_reviewed string/dict 格式
-- CHECKOUT_TEST_PRICE 已確認清走（production env 無此變數），checkout 回復真價 PRICE_397
-- 狀態：**first real-card end-to-end delivery VERIFIED**。剩：owner 自行開 Resend domain+信箱、真價 E2E 一單；呢兩樣未做前唔推大 outreach 量
+## 2026-09-14 — ORD-BRIDGE-TEST：TECHNICAL_EMAIL_DELIVERY_TEST only（owner 裁定，非產品驗證）
+- **Owner 裁定（2026-09-14，推翻之前「驗證完成」結論）**：
+  - TECHNICAL_EMAIL_DELIVERY_TEST = RECEIVED / PROVIDER_ACCEPTED（僅此而已）
+  - REPORT_QUALITY = FAILED（generic SERP-template findings、multi-URL action scope、generic remediation wording、truncated customer text、weak/incomplete page evidence、invalid current-market logic）
+  - LEGACY_EMAIL_PATH = SECURITY/QUALITY REGRESSION
+  - 呢個 artifact 係 DELIVERY_BLOCKED / NOT_A_CUSTOMER_SAMPLE / NOT_A_PRODUCT_READINESS_TEST；唔得當 evidence_v1 quality validation
+- 技術事實保留：真卡 US$0.50 ×2 test-mode 付款 → legacy pipeline_runner 全鏈行畢 → Resend id 64cb2609 寄出 → owner 收到。過程修復 production bridge 缺口 5 項（SERP injection hook 時序、research minimum competitor_examples、page-level findings 1b block、SERP query dedupe、pages_reviewed string/dict）
+- CHECKOUT_TEST_PRICE 已確認清走，checkout 回復真價 PRICE_397
+- **Root cause**：webhook `spawn_delivery_pipeline` 永遠 spawn `pipeline_runner.py`（REPORT_PIPELINE_VERSION default='legacy'）→ evidence_v1 完全被 bypass；legacy gate 全 100 分照過（blind auditor 俾 A_evidence 20/20 基於「references customer URLs」，唔檢測 generic/truncated/multi-URL scope）；`.for-email.pdf` 由 `prepare_verified_artifact` 對任何過 scan 嘅 PDF 無條件生成
+- **Fail-closed 已實施（LEGACY_REPORT_DELIVERY_BLOCKED）**：`verified_pdf_delivery.enforce_pipeline_gate` — pipeline_version≠'evidence_v1' 一律 blocked，唔會生成 .for-email.pdf、唔會 VERIFIED_READY_TO_SEND、唔會 call Resend/SMTP；`pipeline_runner.run_pipeline` 有 payment_ref 嘅單直接 hard-fail。Tests：`pipeline/test_legacy_delivery_block.py` 10/10 PASS（local+VPS）；regression 32+7+12+15 全綠；prod server 重啟後 live gate 確認 legacy→blocked、site 200
+- **產品狀態更正**：first real-card E2E 交付鏈 = 只證明技術 email 鏈；產品 readiness 依然 UNVERIFIED，evidence_v1 唔可以咁樣被 bypass
