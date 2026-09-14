@@ -124,7 +124,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
                             if approval else "")
             q_block = (f"<p><strong>Owner confirmation questions:</strong></p><ol>{q_html}</ol>" if q_html else "")
             rf_block = (f"<p><strong>Required page-module fields:</strong></p><ul>{rf_html}</ul>" if rf_html else "")
-            ph_block = (f"<p><strong>Approved-copy placeholder:</strong> {_esc(approved_ph)}</p>" if approved_ph else "")
+            ph_block = ""  # never show copy placeholders to the customer
             placed = ib.get("exact_module_placement") or ""
             scope_note = ib.get("scope_note") or ""
             cta = ib.get("exact_quote_cta_destination") or ""
@@ -152,7 +152,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
     #   If at least one action is DO_NOW  -> select the highest-priority eligible DO_NOW
     #   If zero DO_NOW actions           -> NEVER pick a VALIDATE_FIRST action; render a
     #        customer-facing "First 7-Day Preparation Plan" with safe, non-publication
-    #        activities only (collect owner/attorney-approved inputs, prepare drafts with
+    #        activities only (collect owner-approved inputs, prepare drafts with
     #        placeholders, record baselines, confirm boundaries, schedule approver review).
     _do_now_list = [a for a in acts if (a.get("investment_status") or "") == "DO_NOW"]
     if _do_now_list:
@@ -166,10 +166,10 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
         prep_items = []
         for a in acts:
             _ap = a.get("owner_approver") or "Owner"
-            _prep = (a.get("roadmap_preparation") or "").strip() or f"prepare the {a.get('action_id')} draft module with approved-copy placeholders"
+            _prep = (a.get("roadmap_preparation") or "").strip() or f"prepare the {a.get('action_id')} draft module pending owner-approved copy"
             prep_items.append(f"<li><strong>{_esc(a['action_id'])}</strong> ({_esc(_ap)}): {_esc(_prep)}</li>")
         quick = f"""<div class="card"><h4>First 7-Day Preparation Plan</h4>
-<p>No action is eligible to go live in Days 0-7: every action in this report requires owner/attorney-approved content before publication (all are <span class="src">VALIDATE FIRST</span>). Days 0-7 are used to prepare, not to publish.</p>
+<p>No action is eligible to go live in Days 0-7: every action in this report requires owner-approved content before publication (all are <span class="src">VALIDATE FIRST</span>). Days 0-7 are used to prepare, not to publish.</p>
 <ul>{''.join(prep_items)}</ul>
 <p><strong>Day 7:</strong> the approver reviews each prepared draft — approves, rejects or requests changes. No public website action is labelled DO NOW until approval exists.</p></div>"""
     # Investment Decision Matrix — read statuses from the single source
@@ -278,7 +278,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
     for a in acts:
         if (a.get("investment_status") or "") == "DO_NOW":
             r0_parts.append(f"{a['action_id']} live ({a.get('recommended_module','')}); low-risk, reversible, no owner-approved figures required.")
-    r0 = ("Days 0-7", (" ".join(r0_parts) if r0_parts else "No action is eligible to go live in Days 0-7. Use Days 0-7 to prepare: this report has no DO NOW action because every published module requires owner/attorney-approved content first (see First 7-Day Preparation Plan)."))
+    r0 = ("Days 0-7", (" ".join(r0_parts) if r0_parts else "No action is eligible to go live in Days 0-7. Use Days 0-7 to prepare: this report has no DO NOW action because every published module requires owner-approved content first (see First 7-Day Preparation Plan)."))
     # Days 8-30 — collect approvals, prepare drafts, record baselines (no publication) —
     #   rendered ONLY from each action's own business-context fields (roadmap_preparation).
     for a in acts:
@@ -286,7 +286,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
             _ap = a.get("owner_approver") or "Owner"
             _prep = (a.get("roadmap_preparation") or "").strip()
             if not _prep:
-                _prep = f"prepare the {a['action_id']} draft module with approved-copy placeholders"
+                _prep = f"prepare the {a['action_id']} draft module pending owner-approved copy"
             r1_parts.append(f"{a['action_id']} ({_ap}): {_prep}")
     r1 = ("Days 8-30", "Collect owner-approved policy/process inputs and prepare draft modules (no publication yet): " + ("; ".join(r1_parts) if r1_parts else "prepare draft modules.") + "; record 14-day baselines for all pages.")
     # Days 31-60 — publish only owner-approved VALIDATE FIRST (per action publication_condition);
