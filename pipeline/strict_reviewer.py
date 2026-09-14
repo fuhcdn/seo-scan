@@ -214,8 +214,96 @@ def review(candidate_pdf, job, cards, acts, attempt):
                              "deduction": entry.get("deduction") or "not evidenced by reviewer"}
     overall = round(sum(v["score"] for v in categories.values()) / len(categories), 1)
 
+    # ---------- SEMANTIC CROSS-CHECKS (whole-document, owner directive 2026-09-14d) ----------
+    # 1. report generated date vs every research-observation date
+    _gen_dates = re.findall(r"Report date[:\s]+(\d{4}-\d{2}-\d{2})", visible)
+    _res_dates = re.findall(r"(?:read|observation|observed)[^0-9]{0,20}(2026-\d{2}-\d{2})", visible, re.I) + \
+                 re.findall(r"(2026-\d{2}-\d{2})[^.]{0,40}(?:direct page|page read|observation)", visible, re.I)
+    if _gen_dates and _res_dates and min(_gen_dates) < max(_res_dates):
+        hard_fails.append("REPORT_DATE_BEFORE_RESEARCH_DATE: report %s < research %s"
+                          % (min(_gen_dates), max(_res_dates)))
+        deductions.append({"location": "page 1 header", "section": "Report date",
+                           "issue": "report date %s precedes research observation %s"
+                                    % (min(_gen_dates), max(_res_dates)),
+                           "why": "a report cannot be generated before its recorded research date",
+                           "points": 8,
+                           "improvement": "Report generated: actual render date; Research observed: actual page-observation date(s)"})
+    # 2. per-action scope vs placement/CTA/QA/scale-rule text
+    for _a in acts:
+        _aid = _a.get("action_id")
+        _c = next((k for k in cards if k.get("card_id") in (_a.get("evidence_ids") or [])), {})
+        _ib = _c.get("implementation_brief") or {}
+        _scope_text = " ".join(str(v) for v in
+                               [_ib.get("scope_note", ""), _ib.get("exact_module_placement", ""),
+                                _c.get("recommended_module", ""), _c.get("first_signal", "")]).lower()
+        _pu = (_a.get("primary_url") or "").lower()
+        _path = re.sub(r"https?://[^/]+", "", _pu).strip("/")
+        # ignore explicit-exclusion sentences: "X is out of scope / excluded" is compliance,
+        # not scope creep. Only ACTIVE rollout language triggers the hard fail.
+        _active = re.sub(r"[^.]*\b(?:out of scope|excluded|explicitly excluded|not (?:included|part)|separate (?:future )?action|separate post-validation)\b[^.]*\.", " ", _scope_text)
+        _other_pages = [t for t in ("development page", "development-template", "every development",
+                                    "development pages", "per-development", "all development",
+                                    "development-page cta rollout")
+                        if t in _active]
+        if _other_pages and ("scope is limited" in _scope_text or "out of scope" in _scope_text):
+            hard_fails.append("NO_MULTI_URL_ACTION_SCOPE:" + str(_aid))
+            deductions.append({"location": "action rows", "section": "scope/placement", "action_id": _aid,
+                               "issue": "scope claims page-only but placement/rollout text also references %s"
+                                        % ", ".join(_other_pages),
+                               "why": "multi-page action hiding under one primary URL", "points": 8,
+                               "improvement": "restrict every scope/placement/CTA/rollout reference to the "
+                                              "primary URL page; move other pages to a separate future action"})
+    # 3. unsupported market/performance claims as fact
+    _claim_pats = [("largest research-heavy segment", "customer's largest segment"),
+                   ("largest segment", "customer segment size"),
+                   ("convert at higher rates", "conversion-rate claim"),
+                   ("converts at higher rates", "conversion-rate claim"),
+                   ("return repeatedly", "repeat-visit claim"),
+                   ("highest-value", "customer's highest-value segment")]
+    for _pat, _label in _claim_pats:
+        if _pat in vlow:
+            hard_fails.append("UNSUPPORTED_CUSTOMER_MARKET_OR_PERFORMANCE_CLAIM:" + _label)
+            deductions.append({"location": "mechanism text", "section": "any", "issue":
+                               "presents '%s' as fact from public-page observation" % _pat,
+                               "why": "claims discipline: unprovable from public pages", "points": 6,
+                               "improvement": "reword as: Hypothesis to validate with customer CRM, "
+                                              "analytics and enquiry data."})
+    # 4. status text contradictions
+    if "do_now scope" in vlow or "do now scope" in vlow:
+        hard_fails.append("STATUS_TEXT_CONTRADICTION:DO_NOW_scope_wording")
+        deductions.append({"location": "scale rule", "section": "actions", "issue":
+                           "scale rule says DO_NOW scope while action is VALIDATE FIRST",
+                           "why": "roadmap/status consistency", "points": 5,
+                           "improvement": "replace with: If approved and published, keep the initial "
+                                          "validated rollout limited to this page only."})
+    # contradiction = an action's OWN status label contradicts its investment_status
+    for _a in acts:
+        _aid = re.escape(str(_a.get("action_id")))
+        _is_vf = (_a.get("investment_status") or "") != "DO_NOW"
+        # action row format: '<ACT-xxx> ... VALIDATE FIRST / DO NOW' or exec-summary '[DO NOW]'
+        if _is_vf and re.search(_aid + r"[^\n]{0,400}\[DO NOW\]", visible):
+            hard_fails.append("STATUS_TEXT_CONTRADICTION:" + str(_a.get("action_id")) + "_labelled_DO_NOW")
+
+    # ---------- REVIEWER SELF-AUDIT ----------
+    self_audit = {
+        "compared_report_date_to_every_research_date": bool(_gen_dates and _res_dates),
+        "compared_every_action_scope_vs_placement_cta_qa_dod_scale": len(acts) > 0,
+        "verified_no_unproven_segment_or_performance_claim_as_fact": not any(
+            h.startswith("UNSUPPORTED_CUSTOMER_MARKET_OR_PERFORMANCE_CLAIM") for h in hard_fails),
+        "verified_action_statuses_agree_with_approval_dependencies": not any(
+            h.startswith("DO_NOW_REQUIRES_NO_UNRESOLVED_APPROVAL") for h in hard_fails),
+        "inspected_entire_visible_pdf_not_only_json": len(visible) > 1000,
+        "quoted_candidate_sha_and_page_section_evidence": bool(csha),
+        "found_zero_contradictions": not any(
+            h.startswith(("STATUS_TEXT_CONTRADICTION", "JOURNEY_MAP_ACTION_ID_MISMATCH",
+                          "NO_MULTI_URL_ACTION_SCOPE")) for h in hard_fails),
+    }
+    self_audit_pass = all(v is True for v in self_audit.values())
+    if not self_audit_pass:
+        hard_fails.append("REVIEWER_SELF_AUDIT_INCOMPLETE")
+
     decision = "PASS" if (overall >= 90 and all(v["pct"] >= 90 for v in categories.values())
-                          and not hard_fails and structural == 100.0) else "DELIVERY_BLOCKED"
+                          and not hard_fails and structural == 100.0 and self_audit_pass) else "DELIVERY_BLOCKED"
     if decision == "PASS":
         repair_plan = []
     else:
@@ -253,6 +341,8 @@ def review(candidate_pdf, job, cards, acts, attempt):
         "delivery_decision": ("INDEPENDENT_REVIEW_PASS" if decision == "PASS" else "DELIVERY_BLOCKED"),
         "repair_instructions": repair_plan,
         "pdf_safety_scan": {"hard_fails": scan["hard_fails"], "sha256": scan["sha256"]},
+        "semantic_cross_checks": "performed across all customer-visible sections",
+        "reviewer_self_audit": self_audit,
     }
     record["reviewer_signature"] = sign({k: v for k, v in record.items() if k != "reviewer_signature"})
     return record

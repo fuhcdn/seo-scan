@@ -312,7 +312,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
         obs = (c.get("direct_observation") or "")
         src_rows += f"<tr><td>{_esc(c.get('card_id',''))}</td><td>{_esc(c.get('primary_customer_url',''))}</td><td>{_esc(obs)}</td></tr>"
     title = f"SEO Opportunity Diagnostic — {customer.get('company','Customer')}"
-    today = "2026-09-13"
+    today = time.strftime("%Y-%m-%d")  # actual render date (REPORT_DATE_BEFORE_RESEARCH_DATE fix)
     html_doc = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>{_esc(title)}</title>
 <style>
  body{{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#172b4d;background:#faf8f2;margin:28px auto;max-width:980px}}
@@ -325,7 +325,7 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
  <div class="callout"><h1>{_esc(title)}</h1>
  <p>Prepared for {_esc(customer.get('company',''))} · {_esc(customer.get('primary_domain',''))} · Report date {today}</p>
  <p>Public-web research and direct page observation on customer-owned pages. Goal: {_esc(customer.get('business_goal',''))}. This is an evidence-led decision report; nothing is guaranteed.</p></div>
- <h2>Executive Summary — Highest-Value Decisions</h2>{exec_cards or '<p>No evidence-led decisions passed audit.</p>'}
+ <h2>Executive Summary — Key Decisions</h2>{exec_cards or '<p>No evidence-led decisions passed audit.</p>'}
  {briefs or ''}
  {quick or ''}
  {whatnot}
