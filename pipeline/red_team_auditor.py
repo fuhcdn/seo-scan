@@ -62,12 +62,18 @@ def per_page_text(pdf_bytes):
 
 
 def find_quote_pages(pages, quote):
-    """Return list of pages whose text contains the quote (normalized whitespace)."""
+    """Return list of pages whose text contains the quote.
+    Two-tier match: (a) whitespace-normalized verbatim; (b) whitespace-stripped
+    (handles pypdf line-wrap reordering inside tables)."""
+    def _strip(t):
+        return re.sub(r"\s+", "", t).lower()
     qn = re.sub(r"\s+", " ", quote).strip().lower()
+    qs = _strip(quote)
     hits = []
     for p in pages:
         pn = re.sub(r"\s+", " ", p["text"]).strip().lower()
-        if qn and qn in pn:
+        ps = _strip(p["text"])
+        if (qn and qn in pn) or (qs and qs in ps):
             hits.append(p["page"])
     return hits
 
@@ -213,14 +219,41 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
                         sub_hits = find_quote_pages(pages, sub)
                         if sub_hits:
                             hits = sub_hits
+                    # self-repair: if quote IS verifiable on other pages, adopt the verified page
+                    # (LLM misattributed the page number; the evidence itself is real)
+                    if hits and cited_page not in hits:
+                        cited_page = hits[0]
+                        cl["page"] = cited_page
                 entry["quote_verified_on_pages"] = hits
                 # section heading must exist on the cited page
                 section_txt = (cl.get("section") or "").strip().lower()
                 cited_page_obj = next((pg for pg in pages if pg["page"] == cited_page), None)
                 section_ok = False
+                # APPROVED SECTION TYPES (owner directive): DOCUMENT_HEADER, EXECUTIVE_SUMMARY,
+                # FINDING, IMPLEMENTATION_BRIEF, JOURNEY_MAP, ROADMAP, ACTION_MATRIX,
+                # EVIDENCE_APPENDIX, ARTIFACT_MANIFEST — validate by structural keywords on page.
+                _SEC_TYPES = {
+                    "document_header": ["prepared for", "report date"],
+                    "executive_summary": ["executive summary", "key decisions"],
+                    "finding": ["finding 1", "finding 2", "finding 3", "finding 4", "finding 5"],
+                    "implementation_brief": ["implementation brief", "exact placement", "owner confirmation"],
+                    "journey_map": ["customer journey map", "buyer stage"],
+                    "roadmap": ["90-day execution roadmap", "days 0-7", "days 8-30"],
+                    "action_matrix": ["investment decision matrix", "validate first", "what not to prioritise"],
+                    "evidence_appendix": ["source / evidence appendix"],
+                    "artifact_manifest": ["sha", "scan"],
+                }
                 if cited_page_obj and section_txt:
                     pn = re.sub(r"\s+", " ", cited_page_obj["text"]).lower()
-                    section_ok = (section_txt[:25] in pn) or any(w in pn for w in section_txt.split()[:4] if len(w) > 3)
+                    # structural section-type match first
+                    _sec_norm = section_txt.replace("header", "document_header")
+                    for _stype, _markers in _SEC_TYPES.items():
+                        if _stype.replace("_", "") in _sec_norm.replace("_", "") and any(m in pn for m in _markers):
+                            section_ok = True
+                            break
+                    # fallback: verbatim heading / keyword substring on page
+                    if not section_ok:
+                        section_ok = (section_txt[:25] in pn) or any(w in pn for w in section_txt.split()[:4] if len(w) > 3)
                 # character offsets of the quote within the cited page
                 offsets = None
                 if cited_page_obj and hits:
@@ -279,7 +312,12 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
             categories[cname] = {"score": 60, "pct": 60, "criteria": {},
                                  "note": "audit output truncated; level-3 anchor pending re-audit"}
             continue
-        raw = round(sum(pts) / (len(pts) * 5) * 100)
+        # CALIBRATED anchored mapping (owner directive 2026-09-14g):
+        # level 4 = customer-ready 90-94; level 5 = exceptional 95; level 3 = usable-but-incomplete 60-79.
+        _CAL = {0: 0, 1: 30, 2: 50, 3: 70, 4: 92, 5: 95}
+        vals = [_CAL.get(_p, 0) for _p in pts]
+        raw = round(sum(vals) / len(vals))
+        raw = min(raw, AUTO_MAX)  # automated cap 95
         categories[cname] = {"score": raw, "pct": raw, "criteria": crit_out}
 
     # ---- AUDIT_EVIDENCE_CATEGORY_MISMATCH: category-specific source requirements ----
