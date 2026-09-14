@@ -54,3 +54,19 @@
 - **Root cause**：webhook `spawn_delivery_pipeline` 永遠 spawn `pipeline_runner.py`（REPORT_PIPELINE_VERSION default='legacy'）→ evidence_v1 完全被 bypass；legacy gate 全 100 分照過（blind auditor 俾 A_evidence 20/20 基於「references customer URLs」，唔檢測 generic/truncated/multi-URL scope）；`.for-email.pdf` 由 `prepare_verified_artifact` 對任何過 scan 嘅 PDF 無條件生成
 - **Fail-closed 已實施（LEGACY_REPORT_DELIVERY_BLOCKED）**：`verified_pdf_delivery.enforce_pipeline_gate` — pipeline_version≠'evidence_v1' 一律 blocked，唔會生成 .for-email.pdf、唔會 VERIFIED_READY_TO_SEND、唔會 call Resend/SMTP；`pipeline_runner.run_pipeline` 有 payment_ref 嘅單直接 hard-fail。Tests：`pipeline/test_legacy_delivery_block.py` 10/10 PASS（local+VPS）；regression 32+7+12+15 全綠；prod server 重啟後 live gate 確認 legacy→blocked、site 200
 - **產品狀態更正**：first real-card E2E 交付鏈 = 只證明技術 email 鏈；產品 readiness 依然 UNVERIFIED，evidence_v1 唔可以咁樣被 bypass
+
+
+## 2026-09-14 — EVIDENCE_V1 ROUTING LIVE（owner HIGHEST PRIORITY directive）
+- **新 paid order routing = evidence_v1 ONLY**：`server.spawn_delivery_pipeline` → `evidence_v1_router.spawn_evidence_v1_job`（durable job `pipeline_version=evidence_v1`，immutable pin + pin_audit；zero legacy fallback）
+- **`evidence_v1_pipeline.py`**：durable job 狀態機 payment_received → intake_validated → research → 5 gates（gate1-4 + gate5 final-artifact scan）→ shared scorecard（structural=100 + 每類≥90 + 總分≥90 先准發）→ canonical verified delivery（pypdf exact scan + immutable .for-email.pdf + 3-way SHA + pre-send recheck）→ email_sent；auditor outage／任何 gate fail = DELIVERY_BLOCKED（never pass-open）；delivery marker 防重複寄信；test recipients／無 ALLOW_REAL_SEND 強制 mock send
+- **gate4_external_auditor 修復**：OpenRouter 400（缺 max_tokens）→ 加 `max_tokens:1500`（呢個係之前 golden runner 都會中嘅 latent bug）
+- **gate5 新 hard fail `EMPTY_PDF_TEXT`**：PDF 提取唔到文字（<200 chars）一律 DELIVERY_BLOCKED — 唔可以静默過
+- **Docker reproducibility fix**：`deploy/Dockerfile` 加 `pip install pypdf==6.18.1` + `COPY gates/ tests/`（之前 pypdf 係人手裝落 prod container，image 冇 — staging rebuild 即爆；而家 fresh build 自帶全部依賴）
+- **驗證（staging + prod 都係真 docker compose build，唔係 docker cp）**：
+  - actual-entry-point E2E（server.spawn_delivery_pipeline）：**18/18 PASS**（staging + prod）
+  - prod 證據：JOB E2E-ENTRY-1789399456 → email_sent；rendered=scanned=email SHA=`f04df9cb1b1c02a0...`；scanner hard_fails=[]；pypdf 提取 35,476 chars；scorecard 100/100 全類 100%；auditor=external；mock sender 只收 .for-email.pdf
+  - Persimmon legacy-style fixture：legacy artifact + send 全被 LEGACY_REPORT_DELIVERY_BLOCKED（10/10）
+  - Golden A（Apple Imprints）PASS 100/100；Golden B（Brunner Law）PASS 100/100
+  - 回歸：32/32 + 7/7 + 12/12 + 15/15 全綠
+- **Website/checkout/pricing/Stripe 完全冇掂**：site 200、/ 顯示 US$397、PRICE_397/PRICE_997/PRICE_497 price IDs 原封不動
+- Rollback：`docker tag app-seo-scan:latest app-seo-scan:rollback-<ts>`（rebuild 前 tag）

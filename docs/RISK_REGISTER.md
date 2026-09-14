@@ -32,3 +32,10 @@
 ## R-? 2026-09-14 Resolved — legacy pipeline delivery chain
 - ORD-BRIDGE-TEST 揭露 legacy pipeline 與 canonical delivery 之間 bridge 缺口（pypdf 未裝、SERP hook 時序）→ 全部已修，全鏈 done + verified
 - Residual risk: production 每單都會行呢條 bridge，任何 Stripe→pipeline hook 改動要先跑 E2E test order 先准 deploy
+
+
+## R-2026-09-14b — evidence_v1 routing live（mitigations in place）
+- 新 paid order 全部入 evidence_v1；legacy 完全唔會出 customer email artifact（double lock：router pin + verified_pdf_delivery.enforce_pipeline_gate + pipeline_runner payment_ref hard-fail）
+- evidence_v1 臨時故障 → job 保持 durable（payment 冇 lose）、watchdog reconcile、retry 後 manual_support_required；客永遠唔會收 legacy/generic PDF
+- Live job monitor fields：order_*.json 入面 status / pipeline_version / quality_scorecard / hard_fails / verified_delivery SHAs / email_delivery / evidence_v1_retry_count
+- 注意：客入 evidence_v1 需要 research inputs（gate1 pages + evidence cards）— 現階段 fixture-only 已驗證；真客 research 生成路徑要喺第一單真單時密切 monitor（research_blocked = 安全 blocked，唔會寄嘢）
