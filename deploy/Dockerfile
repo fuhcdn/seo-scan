@@ -1,7 +1,7 @@
 FROM python:3.11-slim
 WORKDIR /app
 # headless Chromium for HTML->PDF report generation
-RUN pip install --no-cache-dir pypdf==6.18.1
+RUN pip install --no-cache-dir pypdf==6.18.1 pdfplumber==0.11.4
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         chromium \

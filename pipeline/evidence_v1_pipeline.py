@@ -148,6 +148,19 @@ def _generate(job, attempt, repair_instructions):
     if not html_to_pdf(html_path, pdf_path):
         return save(job, status="pdf_repairing", delivery_state="DELIVERY_BLOCKED",
                     last_error="pdf render failed")
+    # BUILD RENDERER TABLE MANIFEST (immutable, SHA-bound)
+    import hashlib as _hl
+    import table_manifest as _tm
+    _csha = _hl.sha256(open(pdf_path, 'rb').read()).hexdigest()
+    _jm = _tm.build_journey_manifest(
+        candidate_sha=_csha,
+        pages_text=[{'page': i+1, 'text': vis} for i, vis in enumerate([gp.extract_visible_text_mature(open(pdf_path, 'rb').read())])],
+        acts=acts,
+        journey_rows=journey)
+    _mf_path = pdf_path.replace('.pdf', '.table_manifest.json')
+    with open(_mf_path, 'w') as _mf:
+        json.dump(_jm, _mf, indent=1, ensure_ascii=False)
+
     return pdf_path
 
 

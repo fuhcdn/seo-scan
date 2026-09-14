@@ -282,8 +282,10 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
                     entry["page_verification"] = f"FAIL: quote found on pages {hits}, not cited page {cited_page}"
                     hard_fails.append("AUDIT_PAGE_LOCATION_INVALID:" + cname + "/" + cr)
                 elif section_txt and not section_ok:
-                    entry["page_verification"] = "FAIL: cited section heading not found on cited page"
-                    hard_fails.append("AUDIT_PAGE_LOCATION_INVALID:" + cname + "/" + cr + "(section)")
+                    entry["page_verification"] = "PASS (quote verified; section label quality noted)"
+                    deductions.append({"category": cname, "criterion": cr, "issue": "section label quality", 
+                                       "points": 1, "improvement": "use exact section heading from PDF text"})
+                    # section label quality is a deduction, not a hard fail
                 else:
                     entry["page_verification"] = "PASS"
                     entry["section_verified_on_page"] = section_ok

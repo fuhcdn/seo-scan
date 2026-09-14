@@ -2,4 +2,4 @@
 # pypdf 係 final-artifact PDF visible-text 驗證嘅成熟 extractor（用戶指定，唔准自訂 regex/blocklist）。
 # 安裝：pip install -r requirements.txt
 pypdf>=6.0.0
-# 其餘執行期依賴（report_engine render 經 Chromium，API/SMTP key 由 env 注入）：無第三方純 Python 硬依賴。
+pdfplumber>=0.10.0
