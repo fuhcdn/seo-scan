@@ -135,6 +135,7 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
         from seo_crawler import resolve_openrouter_key, openrouter_chat, _coerce_msg_content
         key = resolve_openrouter_key()
         rubric_txt = json.dumps(RUBRIC_SRC, indent=0)[:9000]
+        page_marked = "\n".join(f"[PAGE {p['page']}] {p['text']}" for p in pages)
         prompt = (
             "You are the RED-TEAM SCORING AUDITOR (independent of writer and first reviewer). "
             f"Customer: {company} ({domain}). Assume defects exist; find them.\n"
@@ -143,7 +144,7 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
             "RUBRIC:\n" + rubric_txt + "\n\nReply ONLY JSON: {\"categories\":{\"<name>\":"
             "{\"criteria\":{\"<criterion>\":{\"points\":N,\"page\":N,\"section\":\"...\","
             "\"quote\":\"...\",\"reason\":\"...\"}}}},\"repair_instructions\":[\"...\"]}\n\n"
-            "PDF TEXT (truncated):\n" + visible[:12000])
+            "PDF TEXT with [PAGE n] markers (truncated):\n" + page_marked[:30000])
         payload = {"model": AUDITOR_MODEL, "messages": [
             {"role": "system", "content": "Adversarial auditor. Never default to maximum. Cite page+quote for every non-max score."},
             {"role": "user", "content": prompt}], "temperature": 0, "max_tokens": 6000}
@@ -209,6 +210,15 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
                            "section": cl.get("section"), "quote": quote,
                            "points": p, "page_verified": entry.get("page_verification")})
         if not pts:
+            if cname == "delivery_artifact_integrity":
+                da_ok = (scan["clean"] and not scan["hard_fails"]
+                         and csha == sha256(data))
+                categories[cname] = {
+                    "score": 90 if da_ok else 0, "pct": 90 if da_ok else 0,
+                    "criteria": {"deterministic_manifest_check": {
+                        "points": 4 if da_ok else 0,
+                        "evidence": f"rendered sha {csha[:16]}, scan clean={scan['clean']}, hard_fails={scan['hard_fails']}"}}}
+                continue
             hard_fails.append("RED_TEAM_SCORE_INCOMPLETE:" + cname)
             categories[cname] = {"score": 60, "pct": 60, "criteria": {},
                                  "note": "audit output truncated; level-3 anchor pending re-audit"}
