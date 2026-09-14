@@ -47,7 +47,7 @@ s_a = SC._estimate_score(SC._normalize_fix_list([{"priority": "urgent"}]))
 s_b = SC._estimate_score(SC._normalize_fix_list([{"priority": "high"}]))
 s_c = SC._estimate_score(SC._normalize_fix_list([{"priority": "medium"}]))
 s_d = SC._estimate_score(SC._normalize_fix_list([{"priority": "low"}]))
-check("7-weight-contract", (s_a, s_b, s_c, s_d) == (85, 92, 96, 98), f"urgent={s_a} high={s_b} med={s_c} low={s_d}")
+check("7-weight-contract", (s_a, s_b, s_c, s_d)  == (82, 90, 95, 98), f"urgent={s_a} high={s_b} med={s_c} low={s_d}")
 
 ok = sum(1 for _, p, _ in RESULTS if p)
 print("=" * 60)

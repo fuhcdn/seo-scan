@@ -438,6 +438,7 @@ def extract_signals(html_str, base_url):
         "h1": h1_texts,
         "h1_count": len(h1_texts),
         "h2_count": len(p.h2),
+        "internal_link_count": len(p.internal_links),
         "img_total": total_imgs,
         "img_missing_alt": missing_alt,
         "internal_link_count": len(p.internal_links),
@@ -876,6 +877,72 @@ def rule_based_fixes(result):
             "Set cache-control and expires on static assets.",
             "Cache-Control: public, max-age=604800")
 
+    # --- v2 STRICT coverage rules (owner directive: 分數要真實反映 SEO 強度) ---
+    # These check decision-relevant SEO surfaces the free scan previously skipped.
+    html = sigs.get("html_raw") or ""
+    if not html:
+        # fallback: signals dict only — use what's there
+        pass
+    # OG / social meta
+    if not (sigs.get("open_graph") or {}).get("og:title"):
+        add("medium", "ONPAGE", "quick",
+            "No Open Graph meta tags (og:title / og:site_name)",
+            "Measured: no og:title or og:site_name meta tags were found on "
+            "this page.",
+            "When your page is shared on WhatsApp/LinkedIn/Facebook it renders "
+            "as a bare link. B2B buyers share vendor pages internally before "
+            "deciding — a bare link loses the click and looks unpolished.",
+            "Add og:title, og:description and og:image meta tags matching the "
+            "page's main content.",
+            '<meta property="og:title" content="Page title here" />')
+    # Schema.org structured data
+    if not sigs.get("json_ld"):
+        add("medium", "SCHEMA", "half-day",
+            "No Schema.org structured data (JSON-LD)",
+            "Measured: no application/ld+json block was found on this page.",
+            "Rich results (stars, FAQ, product info) come from structured "
+            "data. Competitors with schema win the extra SERP real estate "
+            "that plain listings cannot show.",
+            "Add Organization + Service/Product JSON-LD at minimum; extend "
+            "with FAQPage where relevant.",
+            '<script type="application/ld+json">{"@context":"https://schema.org","@type":"Organization"}</script>')
+    # Internal links
+    _ilinks = len(sigs.get("internal_links") or []) if isinstance(sigs.get("internal_links"), list) else sigs.get("internal_link_count")
+    if _ilinks is not None and _ilinks < 5:
+        add("medium", "LINKS", "half-day",
+            f"Only {_ilinks or 0} internal links found",
+            f"Measured: {_ilinks or 0} internal links on this page.",
+            "Internal links spread authority and help crawlers find your "
+            "service pages. Too few means orphaned pages that never rank.",
+            "Link every important page from at least two other pages using "
+            "descriptive anchor text.")
+    # Mobile viewport
+    if not sigs.get("viewport"):
+        add("high", "ONPAGE", "quick",
+            "No mobile viewport meta tag",
+            "Measured: no viewport meta tag detected.",
+            "Google indexes mobile-first. Without a viewport tag the page "
+            "renders as a desktop page on phones, failing mobile usability.",
+            "Add <meta name=viewport content=\"width=device-width, "
+            "initial-scale=1.0\"> to the <head>.",
+            '<meta name="viewport" content="width=device-width, initial-scale=1.0" />')
+    # HTTPS
+    if (sigs.get("url") or "").startswith("http://"):
+        add("high", "CRAWLABILITY", "quick",
+            "Site is served over HTTP, not HTTPS",
+            "Measured: the URL starts with http:// (no TLS).",
+            "Browsers mark HTTP pages 'Not secure', which kills buyer trust "
+            "directly at the conversion point, and Google uses HTTPS as a "
+            "ranking signal.",
+            "Install a TLS certificate (Let's Encrypt is free) and redirect "
+            "all HTTP traffic to HTTPS.")
+    # Sitemap presence (server-side probe)
+    if srv.get("http_status") == 200 and robots.get("has_sitemap_directive") is None \
+            and not (robots.get("error") or "").strip():
+        # only flag if we couldn't confirm a sitemap exists via robots
+        pass  # sitemap handled by robots rule above; direct probe is staged next
+
+
     # --- robots / crawl ---
     robots_err = robots.get("error")
     if robots_err:
@@ -935,16 +1002,23 @@ def _dollar_for(pattern, priority, site_type):
 
 def _estimate_score(fixes):
     """喺 AI 失效時，用修復項優先次序粗估 0-100 基準分（由 100 扣）。
-    只係 fallback 估算，等報告唔會冇分數。"""
+    只係 fallback 估算，等報告唔會冇分數。
+
+    v2 STRICT weights (owner directive: 新網站唔應該輕易 90+;分數要真實反映
+    實際 SEO 強度，對齊 Lighthouse/Semrush 嘅嚴格度):
+      urgent −18 / high −10 / medium −5 / low −2
+    同時加一個「coverage penalty」: 個 site 若有重大類別完全未檢測到
+    （OG/schema/internal links 齋零），扣分會自然由 rules 產生。
+    """
     penalty = 0
     for f in fixes:
         p = f.get("priority")
         if p == "urgent":
-            penalty += 15
+            penalty += 18
         elif p == "high":
-            penalty += 8
+            penalty += 10
         elif p == "medium":
-            penalty += 4
+            penalty += 5
         else:
             penalty += 2
     return max(0, min(100, 100 - penalty))
