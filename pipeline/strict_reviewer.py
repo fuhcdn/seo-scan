@@ -223,7 +223,7 @@ def review(candidate_pdf, job, cards, acts, attempt):
         s = max(0, min(100, s))
         categories[cname] = {"score": s, "max": 100, "pct": s,
                              "deduction": entry.get("deduction") or "not evidenced by reviewer"}
-    overall = round(sum(v["score"] for v in categories.values()) / len(categories), 1)
+    overall = min(95, round(sum(v["score"] for v in categories.values()) / len(categories), 1))  # auto-max 95 (owner directive)
 
     # ---------- SEMANTIC CROSS-CHECKS (whole-document, owner directive 2026-09-14d) ----------
     # 1. report generated date vs every research-observation date
