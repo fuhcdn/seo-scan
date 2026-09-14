@@ -322,6 +322,45 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
 
     # ---- AUDIT_EVIDENCE_CATEGORY_MISMATCH: category-specific source requirements ----
     # delivery_artifact_integrity must cite artifact-manifest items, not generic prose
+
+    # CATEGORY_EVIDENCE_INSUFFICIENT (owner directive 2026-09-14h): a category marked
+    # with high scores must have SUBSTANTIVELY relevant evidence, not just page-verified quotes.
+    def _cat_citation_text(cname):
+        c = categories.get(cname) or {}
+        return " ".join(json.dumps(v, ensure_ascii=False) for v in (c.get("criteria") or {}).values()).lower()
+
+    # A. delivery_artifact_integrity: PDF header text is NOT valid evidence (SHAs live in manifest)
+    _da = _cat_citation_text("delivery_artifact_integrity")
+    if "seo opportunity diagnostic" in _da and "sha" not in _da and "scan" not in _da:
+        hard_fails.append("CATEGORY_EVIDENCE_INSUFFICIENT:delivery_artifact_integrity_used_pdf_header")
+
+    # B. customer_context_integrity: needs whole-report foreign/domain scan evidence, not header quote
+    _cc = _cat_citation_text("customer_context_integrity")
+    if ("foreign" not in _cc and "domain" not in _cc and "scan" not in _cc) or "prepared for" in _cc and "scan" not in _cc:
+        hard_fails.append("CATEGORY_EVIDENCE_INSUFFICIENT:customer_context_integrity_header_only_no_whole_report_scan")
+
+    # C. finding_distinctness: one finding quote cannot prove all findings distinct
+    _fd = _cat_citation_text("finding_distinctness")
+    _fd_finding_refs = len(re.findall(r"finding [1-5]", _fd))
+    if _fd_finding_refs < 3:
+        hard_fails.append("CATEGORY_EVIDENCE_INSUFFICIENT:finding_distinctness_needs_all_findings_pairwise")
+
+    # D. roadmap_consistency: needs roadmap rows + action IDs + status + scale rule citations
+    _rc = _cat_citation_text("roadmap_consistency")
+    if "act-" not in _rc or "status" not in _rc:
+        hard_fails.append("CATEGORY_EVIDENCE_INSUFFICIENT:roadmap_consistency_needs_action_rows")
+
+    # E. business_logic_integrity: needs mechanism + hypothesis/limitation + validation source
+    _bl = _cat_citation_text("business_logic_integrity")
+    if "hypothesis" not in _bl and "limitation" not in _bl and "validation" not in _bl:
+        hard_fails.append("CATEGORY_EVIDENCE_INSUFFICIENT:business_logic_integrity_needs_hypothesis_or_limitation_links")
+
+    # F. journey_map_integrity: needs all journey rows, not one
+    _jm = _cat_citation_text("journey_map_integrity")
+    _jm_rows = len(re.findall(r"act-\d{3}", _jm))
+    if _jm_rows < 3:
+        hard_fails.append("CATEGORY_EVIDENCE_INSUFFICIENT:journey_map_needs_all_row_citations")
+
     da = categories.get("delivery_artifact_integrity", {}).get("criteria", {})
     da_text = " ".join(json.dumps(v) for v in da.values()).lower()
     if not any(t in da_text for t in ("sha", "scan", "verified", "for-email", "chain")):
