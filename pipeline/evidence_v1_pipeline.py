@@ -225,7 +225,12 @@ def run_job(job_id, send_mode="auto"):
                 open(path, "rb").read()).hexdigest(), "mock": True}
         send_fn = _send_fn
     else:
-        send_fn = vpd.default_smtp_send  # real customer send — evidence_v1 only
+        backend = (os.environ.get("EMAIL_BACKEND", "") or "").strip().lower()
+        if backend == "resend":
+            import resend_send
+            send_fn = resend_send.resend_send  # real send via Resend (production config)
+        else:
+            send_fn = vpd.default_smtp_send  # real SMTP send — evidence_v1 only
     srec = vpd.send_verified_pdf(
         job_id=job_id, final_pdf_path=pdf_path,
         expected_sha256=rec["rendered_sha256"], recipient_email=customer_email,
