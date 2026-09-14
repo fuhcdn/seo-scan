@@ -248,8 +248,15 @@ def prepare_verified_artifact(final_pdf_path: str, job_id: str,
                     "reason": f"cannot read final pdf: {e}"})
         return rec
     rendered_sha = sha256_of(pdf_bytes)
-    scan = scan_final_pdf(pdf_bytes, expected_domain=expected_domain,
-                          wrong_customer_terms=wrong_customer_terms)
+    try:
+        scan = scan_final_pdf(pdf_bytes, expected_domain=expected_domain,
+                              wrong_customer_terms=wrong_customer_terms)
+    except Exception as e:
+        # fail-closed: unreadable/corrupt PDF must never pass silently
+        rec.update({"state": "DELIVERY_BLOCKED",
+                    "reason": f"FINAL_PDF_UNREADABLE: {type(e).__name__}: {str(e)[:120]}"})
+        _persist(rec, final_pdf_path)
+        return rec
     rec["rendered_sha256"] = rendered_sha
     rec["scanned_sha256"] = scan["sha256"]
     rec["scanner"] = {k: v for k, v in scan.items() if k != "visible_text"}
