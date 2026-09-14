@@ -646,10 +646,11 @@ def ai_score(sigs, model="deepseek/deepseek-v4-flash-0731", profile=None):
     messages = [{"role": "user", "content": prompt}]
 
     # try with explicit JSON mode first, fall back to plain chat if content=null
+    # temperature=0 for deterministic scoring: same site + same signals = same score
     attempts = [
-        {"model": model, "messages": messages, "temperature": 0.2,
+        {"model": model, "messages": messages, "temperature": 0,
          "max_tokens": 2400, "response_format": {"type": "json_object"}},
-        {"model": model, "messages": messages, "temperature": 0.2,
+        {"model": model, "messages": messages, "temperature": 0,
          "max_tokens": 2400},
     ]
     last_txt = None
@@ -979,7 +980,22 @@ def run(url, pinned_ip=None, skip_ai=False):
         else:
             status, headers, body, ttf, _enc = http_get(url)
         result["server_signals"]["http_status"] = status
-        result["server_signals"]["ttfb_ms"] = int(ttf * 1000)
+        # TTFB: take the MEDIAN of 3 samples to remove network jitter so the same
+        # site scores consistently across scans (owner requirement: 次次同分).
+        _ttfb_samples = [ttf]
+        for _ in range(2):
+            try:
+                if pinned_ip and orig_host:
+                    _s2, _h2, _b2, _t2 = http_get_pinned(url, pinned_ip, orig_host=orig_host)
+                else:
+                    _s2, _h2, _b2, _t2, _e2 = http_get(url)
+                _ttfb_samples.append(_t2)
+            except Exception:
+                continue
+        _ttfb_samples.sort()
+        _ttfb_median = _ttfb_samples[len(_ttfb_samples) // 2]
+        result["server_signals"]["ttfb_ms"] = int(_ttfb_median * 1000)
+        result["server_signals"]["ttfb_samples_ms"] = [int(t * 1000) for t in _ttfb_samples]
         result["server_signals"]["page_size_bytes"] = len(body.encode("utf-8", "replace"))
         result["server_signals"].update(header_speed_signals(headers))
         result["server_signals"]["head_response_ms"] = head_speed(url, pinned_ip=pinned_ip,
