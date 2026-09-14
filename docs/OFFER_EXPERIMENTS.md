@@ -30,3 +30,10 @@
 - ❌ Fake countdown/scarcity/former price
 - ❌ 未經批改 live price
 - ❌ Misleading claim
+
+
+## ✅ OWNER APPROVED（2026-09-13晚）：US$397 Limited Offer 開頭用
+- 用字:**"Limited Launch Offer: US$397"**——唔用「first 10 customers」數字式講法
+- 誠實條款(可講出口):launch-period price,會於一段時間後返回 US$497;品質同一套 90 閘,唔會因價而降
+- 網站/outreach copy 全部用「Limited Launch Offer US$397 ~~US$497~~」表述
+- Owner 亦確認:真卡 E2E 已由 owner 親自跑過 → RB-6 resolved(owner 聲明)
