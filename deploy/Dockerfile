@@ -1,6 +1,8 @@
 FROM python:3.11-slim
 WORKDIR /app
 # headless Chromium for HTML->PDF report generation
+RUN pip install --no-cache-dir pypdf==6.18.1
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         chromium \
         chromium-driver \
@@ -20,6 +22,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         xdg-utils \
     && rm -rf /var/lib/apt/lists/*
 COPY pipeline/ ./pipeline/
+COPY gates/ ./gates/
+COPY tests/ ./tests/
 WORKDIR /app/pipeline
 EXPOSE 8000
 CMD ["python3", "server.py"]
