@@ -85,11 +85,24 @@ def get_price_id(selected_product_id=None):
     """Best-effort: find the Stripe price id for the selected product (HERMES A2).
     - If a product is given, read its price env (PRICE_397/497/997) from product_catalog.
     - CHECKOUT_TEST_PRICE (env) overrides to a low test price when set.
+    - LAUNCH_PRICE_397=1 (owner-approved Limited Launch Offer): ENTRY reports check out
+      at the US$397 launch price while the flag is set; remove/unset to return to 497.
     Returns a price id or raises StripeError."""
     # Test-mode override: 驗證收款鏈用 $0.5，測完 delenv 即轉返正價
     test_price = os.environ.get("CHECKOUT_TEST_PRICE", "").strip()
     if test_price:
         return test_price
+    # Owner-approved Limited Launch Offer (US$397) for ENTRY during launch period.
+    # Flag-gated so rollback is a single env change. PREMIUM (997) is unaffected.
+    if os.environ.get("LAUNCH_PRICE_397", "").strip() == "1" and selected_product_id:
+        try:
+            import product_catalog as _pc397
+            if _pc397.get_tier(selected_product_id) == "ENTRY_REPORT":
+                launch_pid = _pc397.price_id_for(selected_product_id, early=True)
+                if launch_pid:
+                    return launch_pid
+        except Exception:
+            pass
     # 產品路由優先：由 selected_product_id 讀對應 env
     if selected_product_id:
         try:
