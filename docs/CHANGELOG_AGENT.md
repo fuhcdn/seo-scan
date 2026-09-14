@@ -70,3 +70,12 @@
   - 回歸：32/32 + 7/7 + 12/12 + 15/15 全綠
 - **Website/checkout/pricing/Stripe 完全冇掂**：site 200、/ 顯示 US$397、PRICE_397/PRICE_997/PRICE_497 price IDs 原封不動
 - Rollback：`docker tag app-seo-scan:latest app-seo-scan:rollback-<ts>`（rebuild 前 tag）
+
+
+## 2026-09-14 (b) — LEGACY ENGINE PERMANENTLY DELETED（retire-legacy-report-engine）
+- **DELETED executables**: pipeline_runner.py / quality_gate.py / autonomous_gate.py / research.py / pdf_scanner.py / tests that only tested them / copy/2026-09-12 stale source snapshot
+- **EXTRACTED**: smtp_send.py（唯一真 SMTP sender，只可以由 evidence_v1 post-gate delivery 觸達）
+- **SCRUBBED**: REPORT_PIPELINE_VERSION env flag（legacy feature flag 已不存在）；所有 webhook/worker 註釋改指 evidence_v1
+- **Backup tag**: pre-legacy-retirement-backup = 51da50290cbd22364315c427c8d1e1a22caf9afd
+- **Post-deletion verification（staging + prod，docker build --no-cache 乾淨 build）**: entry E2E 18/18（新增反證 checks：legacy 檔案不存在、import=ModuleNotFoundError、歷史 legacy record 拒絕重跑、legacy artifact/send 請求=LEGACY_REPORT_DELIVERY_BLOCKED）；Golden A/B PASS 100/100；7/7+12/12+15/15；site 200；US$397 不變
+- Repo search：executable code 入面 legacy engine terms 只剩 blocker 常數名（LEGACY_REPORT_DELIVERY_BLOCKED）＋反證測試＋smtp_send provenance 註釋 — 冇任何可執行 legacy 路徑
