@@ -27,3 +27,8 @@
 - 所有 agent 可安全修嘅(Phase 1 目標):R-A2/A3/A4/A7/A10/R-B5/R-B6
 - 全部 R-B 同 R-A1/R-A5/R-A9 需 owner 決定/批准
 - 更新規則:任何新發現立即加行;唔好隱藏 unresolved
+
+
+## R-? 2026-09-14 Resolved — legacy pipeline delivery chain
+- ORD-BRIDGE-TEST 揭露 legacy pipeline 與 canonical delivery 之間 bridge 缺口（pypdf 未裝、SERP hook 時序）→ 全部已修，全鏈 done + verified
+- Residual risk: production 每單都會行呢條 bridge，任何 Stripe→pipeline hook 改動要先跑 E2E test order 先准 deploy

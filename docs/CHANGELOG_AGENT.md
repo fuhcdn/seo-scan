@@ -41,3 +41,12 @@
 - 每次 R1/R2 改動:branch → test → staging → verify → deploy → monitor → document
 - 所有 autonomous 改動必須有 test 證據 + rollback reference
 - 呢個檔案唔可以代替真 commit message;兩邊都要寫
+
+
+## 2026-09-14 — 真卡 Bridge E2E 全鏈驗證完成（ORD-BRIDGE-TEST）
+- Owner 以真卡完成 US$0.50 ×2 test-mode 付款（CHECKOUT_TEST_PRICE override）
+- 全鏈 9 步 done：payment_verified → crawl (persimmonhomes.com 12頁) → SERP research (6 queries) → actions (5 concrete) → quality gate → PDF render (SHA a644734c... 242KB) → canonical 3-way verify VERIFIED_READY_TO_SEND → real email via Resend (id 64cb2609-465e-424b-9dce-f5c7ba10be9e) 至 owner test inbox cylee717@gmail.com
+- Owner 已確認收到 email（2026-09-14）
+- 過程修復 production 缺口 5 項：SERP injection hook 時序、research minimum competitor_examples bridge、page-level findings (classify_findings 1b block)、SERP query dedupe、pages_reviewed string/dict 格式
+- CHECKOUT_TEST_PRICE 已確認清走（production env 無此變數），checkout 回復真價 PRICE_397
+- 狀態：**first real-card end-to-end delivery VERIFIED**。剩：owner 自行開 Resend domain+信箱、真價 E2E 一單；呢兩樣未做前唔推大 outreach 量
