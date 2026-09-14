@@ -101,6 +101,14 @@ def run_job(job_id, send_mode="auto"):
         cards = cards_file.get("golden_evidence_cards") or cards_file.get("evidence_cards") or []
         customer = cards_file.get("customer") or {
             "company": job.get("company_name"), "primary_domain": job.get("url")}
+        # CUSTOMER CONTEXT LOCK: bind goal/language/order from the durable job so no
+        # report section renders from stale or foreign fixture context (EMPTY_GOAL_FIELD gate).
+        if not (customer.get("business_goal") or "").strip():
+            customer["business_goal"] = (job.get("primary_business_goal")
+                                         or job.get("primary_business_goal_text")
+                                         or "more " + (job.get("company_name") or "customer") + " enquiries")
+        customer.setdefault("report_language", job.get("report_language") or "en")
+        customer.setdefault("order_id", job.get("order_id"))
         journey = cards_file.get("customer_journey", [])
         import importlib.util
         sp = importlib.util.spec_from_file_location("g1p", pages_py)
@@ -194,11 +202,12 @@ def run_job(job_id, send_mode="auto"):
     qual = scorecard["QUALITY_SCORE"]
     cats_ok = all(v["pct"] >= 90 for v in qual["categories"].values())
     qual_ok = qual["value"] >= 90 and cats_ok and structural == 100.0
-    if not (scan["clean"] and not scan["hard_fails"] and qual_ok):
-        fails = list(scan.get("hard_fails") or [])
+    semantic_fails = scorecard.get("semantic_hard_fails") or []
+    if not (scan["clean"] and not scan["hard_fails"] and qual_ok and not semantic_fails):
+        fails = list(scan.get("hard_fails") or []) + list(semantic_fails)
         if not qual_ok:
-            fails.append(f"SCORECARD: structural={structural} quality={qual['value']} "
-                         f"cats>=90={cats_ok}")
+            fails.append("SCORECARD: structural=%s quality=%s cats>=90=%s" % (
+                structural, qual["value"], cats_ok))
         save(job, status="quality_repairing", delivery_state="DELIVERY_BLOCKED",
              hard_fails=fails)
         return job

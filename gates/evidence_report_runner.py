@@ -214,13 +214,41 @@ def build_report(customer, pages, findings, acts, auditor_output, cards=None, jo
     for _a in acts:
         for _cid in (_a.get("evidence_ids") or []):
             _c2a[_cid] = _a.get("action_id", "ACT-?")
-    jd = journey_rows_data or [
-        ("Service evaluation", "/screen-printing/", "price/minimum/turnaround clarity missing", "ACT-001", "quote-form submissions / CTA clicks on the screen-printing page"),
-        ("Proof / evaluation", "/gallery/", "unlabelled proof, no service mapping", "ACT-003", "gallery-to-quote link clicks"),
-        ("Quote conversion", "/get-a-quote-2/", "unclear next-step and proof route", "ACT-002", "form-start / form-submit rate"),
-        ("Method selection (awareness)", "/", "no method-selection guidance, generic quote CTA", "ACT-004", "homepage-to-service-page and homepage-to-quote clicks"),
-        ("Embroidery evaluation", "/embroidery/", "no on-page proof, no gallery link, no minimum/price context", "ACT-005", "embroidery-page-to-quote clicks"),
-    ]
+    # ROOT-CAUSE FIX (2026-09-14 foreign Journey Map contamination): the old code
+    # fell back to a HARD-CODED Apple-Imprints journey (screen-printing/gallery/
+    # embroidery paths) when journey_rows_data was empty — foreign customer content
+    # leaked into every report without an explicit journey file. There is NO
+    # fallback journey: rows are validated against the customer domain and the
+    # current action set; foreign rows are dropped and flagged.
+    jd = journey_rows_data or []
+    _customer_domain = ((customer.get("primary_domain") or customer.get("domain") or "").lower()
+                        .replace("https://", "").replace("http://", "").replace("www.", "").rstrip("/"))
+    _FOREIGN_PATH_TERMS = ("screen-printing", "embroidery", "/gallery/", "get-a-quote",
+                           "quote-form", "apparel", "garment", "printing")
+    _valid_act_ids = {(_a.get("action_id") or "") for _a in acts}
+    _dropped_foreign = []
+    _validated_jd = []
+    for jr in jd:
+        if isinstance(jr, dict):
+            stage, page, friction, aid, sig = (jr.get("stage") or ""), (jr.get("page") or ""), (jr.get("friction") or ""), (jr.get("action") or "—"), (jr.get("first_signal") or "")
+        else:
+            stage, page, friction, aid, sig = jr
+        row_text = f"{stage} {page} {friction} {sig}".lower()
+        # foreign-customer path/product terms -> drop + record
+        if any(t in row_text for t in _FOREIGN_PATH_TERMS):
+            _dropped_foreign.append((stage, page))
+            continue
+        # journey-map page must belong to the customer domain (root-relative OK) or be
+        # an explicit customer-owned absolute URL
+        if page.startswith("http") and _customer_domain not in page.lower():
+            _dropped_foreign.append((stage, page))
+            continue
+        # journey action ID must map exactly to a current action
+        if aid and aid != "—" and aid.startswith("ACT-") and aid not in _valid_act_ids:
+            _dropped_foreign.append((stage, f"ACTION-ID-MISMATCH:{aid}"))
+            continue
+        _validated_jd.append((stage, page, friction, aid, sig))
+    jd = _validated_jd
     for jr in jd:
         if isinstance(jr, dict):
             stage, page, friction, aid, sig = (jr.get("stage") or ""), (jr.get("page") or ""), (jr.get("friction") or ""), (jr.get("action") or "—"), (jr.get("first_signal") or "")
@@ -422,8 +450,41 @@ def evaluate_scorecard(scan, visible, acts, valid_cards, ext_audit, g4_rejected,
         5 if any(lab not in visible for lab in ["First measurable signal", "Scale rule"]) else 0,
         6 if _re2.search(r"\b(?:GB|EC)-\d{3}\b", _cust_visible) else 0],
         "GATE5 scan is clean with no internal path/file-URI/placeholder/secret/order-ID; the rendered PDF uses customer-facing 'Finding N' (no 'Founding finding'), has no internal Evidence Card IDs (GB-/EC-) in the customer-visible text (source appendix excluded), and the action-specific signals and scale rules are present")
+    # ---- MANDATORY SEMANTIC HARD FAILS (owner directive 2026-09-14b) ----
+    # Any one of these -> hard_fails entry -> DELIVERY_BLOCKED upstream.
+    semantic_hard_fails = []
+    # foreign-customer path/product terms anywhere customer-visible
+    for _t in ("screen-printing", "embroidery", "/gallery/", "get-a-quote", "quote-form"):
+        if _t in visible_l:
+            semantic_hard_fails.append("NO_FOREIGN_CUSTOMER_PATH:" + _t)
+            semantic_hard_fails.append("FOREIGN_JOURNEY_MAP_CONTENT:" + _t)
+    # foreign domain URLs in customer-visible text
+    _urls_in_visible = set(_re2.findall(r"https?://([a-zA-Z0-9.\-]+)/", visible))
+    for _u in _urls_in_visible:
+        if _owned not in _u and _u not in ("seoscanaudit.com", "www.w3.org"):
+            semantic_hard_fails.append("NO_FOREIGN_CUSTOMER_URL:" + _u)
+    # journey-map action IDs must map to current action set (visible rows carry ACT-xxx)
+    _journey_acts = set(_re2.findall(r"ACT-\d{3}", visible))
+    _current_acts = {(a.get("action_id") or "") for a in acts}
+    if not _journey_acts.issubset(_current_acts):
+        semantic_hard_fails.append("JOURNEY_MAP_ACTION_ID_MISMATCH:" + ",".join(sorted(_journey_acts - _current_acts)))
+    # empty Goal field
+    if _re2.search(r"Goal:\s*(\.|</|$)", visible) or "Goal: ." in visible:
+        semantic_hard_fails.append("EMPTY_GOAL_FIELD")
+    # DO NOW actions must have no unresolved approval dependency
+    for _a in acts:
+        if (_a.get("investment_status") or "") == "DO_NOW":
+            _br = (_card_of(_a).get("implementation_brief") or {})
+            if _br.get("approval_dependency") or _br.get("owner_confirmation_required"):
+                semantic_hard_fails.append("DO_NOW_REQUIRES_NO_UNRESOLVED_APPROVAL:" + str(_a.get("action_id")))
+    # multi-URL action scope
+    for _a in acts:
+        _pu = (_a.get("primary_url") or "")
+        if ";" in _pu or ("," in _pu and "http" in _pu):
+            semantic_hard_fails.append("NO_MULTI_URL_ACTION_SCOPE:" + str(_a.get("action_id")))
     qual_total = round(sum(v["points"] for v in q.values()), 1)
     qual_notes = {
+        "semantic_hard_fails": semantic_hard_fails,
         "action_count": len(acts),
         "priority_ambiguity": pri_ambig,
         "generic_first_signal_count": len(generic_sig),
@@ -446,6 +507,7 @@ def evaluate_scorecard(scan, visible, acts, valid_cards, ext_audit, g4_rejected,
             "notes": qual_notes,
             "note": "Independent semantic audit with explicit per-category deductions and a visible zero-deduction explanation for each category; a category is full only with no reasonable deductions."},
         "pdf_sha256": scan["sha256"],
+        "semantic_hard_fails": semantic_hard_fails,
     }
 
 
