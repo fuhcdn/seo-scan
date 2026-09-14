@@ -3,7 +3,7 @@
 Canonical verified-PDF artifact / delivery service — the ONLY component allowed
 to prepare, verify and send a customer-facing report PDF.
 
-Used by BOTH production (pipeline_runner.py) and golden/staging
+Used by BOTH production (evidence_v1_pipeline.py) and golden/staging
 (gates/evidence_report_runner.py). No other code path may attach a mutable
 pdf_path to an email; senders receive ONLY the verified .for-email.pdf.
 
@@ -24,7 +24,7 @@ Flow (hard rules, per handover spec §3/§10):
 
 Env inputs read at send time (values never logged):
   SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / SMTP_SSL (or legacy
-  SMTP_* names used by pipeline_runner) and EMAIL_FROM / EMAIL_SENDER.
+  SMTP_* env names) and EMAIL_FROM / EMAIL_SENDER.
 A caller may instead pass send_fn=callable(pdf_path, to, subject, from_) for
 mock/safe-test senders.
 """
@@ -342,25 +342,17 @@ def send_verified_pdf(job_id: str, final_pdf_path: str, expected_sha256: str,
 
 
 def default_smtp_send(pdf_path, to_addr, subject, from_addr):
-    """Default real sender: reuse pipeline_runner._smtp_send (the EXISTING
-    production sender — no third sender is created). Values come from env,
-    never logged."""
-    from pipeline_runner import _smtp_send  # noqa: circular-safe (top-level import of constants only)
-    import config as _cfg
+    """Default real sender: the shared smtp_send module (evidence_v1 delivery only —
+    reached only after every quality gate has passed on the evidence_v1 route)."""
+    import smtp_send as _ss
     smtp_host = os.environ.get("SMTP_HOST", "").strip()
     smtp_port = int(os.environ.get("SMTP_PORT", "587") or 587)
     smtp_user = os.environ.get("SMTP_USER", os.environ.get("SMTP_USERNAME", "")).strip()
     smtp_pass = os.environ.get("SMTP_PASSWORD", os.environ.get("SMTP_PASS", "")).strip()
-    implicit = os.environ.get("SMTP_SSL", "1").strip() == "1"
-    from_addr = from_addr or os.environ.get("EMAIL_FROM", os.environ.get("EMAIL_SENDER", "")).strip()
-    if not smtp_host:
-        raise RuntimeError("SMTP_HOST not set")
-    ok = _smtp_send(pdf_path, to_addr, subject, from_addr,
-                    smtp_host, smtp_port, smtp_user, smtp_pass,
-                    implicit_ssl=implicit)
-    if not ok:
-        raise RuntimeError("smtp send returned failure")
+    from_addr = from_addr or os.environ.get("EMAIL_FROM", "").strip()
+    implicit_ssl = (os.environ.get("SMTP_IMPLICIT_SSL", "1").strip() != "0")
+    _ss.smtp_send(pdf_path, to_addr, subject, from_addr,
+                  smtp_host or "localhost", smtp_port,
+                  smtp_user, smtp_pass, implicit_ssl=implicit_ssl)
 
 
-if __name__ == "__main__":
-    print("verified_pdf_delivery: import this module; do not run directly.")

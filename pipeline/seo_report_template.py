@@ -38,7 +38,7 @@ Chips: Pattern / Priority / Impact / Uplift.
 Compatibility
 -------------
 build_html(), load_audit() and html_to_pdf() keep their signatures so
-pipeline_runner.py and server.py pass audit JSON through unchanged. The
+evidence_v1_pipeline and server.py pass report data through unchanged. The
 generator tolerates audit JSONs missing the new fields (effort, dollar_impact,
 pattern, evidence) by defaulting/churning them from priority + site_type, so
 old JSONs and rule-based fallback output both render. A None score renders a

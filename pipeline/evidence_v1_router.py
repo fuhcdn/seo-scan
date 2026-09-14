@@ -91,8 +91,7 @@ def spawn_evidence_v1_job(order: dict) -> dict:
     with open(durable_job_path(order_id), "w", encoding="utf-8") as fh:
         json.dump(state, fh, indent=1, ensure_ascii=False)
     env = dict(os.environ)
-    env["REPORT_PIPELINE_VERSION"] = PIPELINE_VERSION   # belt-and-braces pin
-    env["EVIDENCE_V1_JOB_ID"] = order_id
+    env["EVIDENCE_V1_JOB_ID"] = order_id   # job file pin is authoritative
     cmd = [sys.executable, os.path.join(_HERE, "evidence_v1_pipeline.py"),
            "--job-id", order_id]
     try:

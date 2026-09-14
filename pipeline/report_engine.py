@@ -5,7 +5,7 @@
 出 HTML → PDF。每條 finding 有 evidence_id + label（FACT/INFERENCE/HYPOTHESIS...），
 優先次序 P0-P3 由 (BusinessImpact x Confidence x Reach x TimeSens) / (Effort x DepRisk)。
 
-輸出 JSON 報告結構 + HTML，再由 pipeline_runner 轉 PDF + 按語言交付。
+輸出 JSON 報告結構 + HTML，再由 evidence_v1_pipeline 轉 PDF 交付。
 """
 import html as _html
 import json

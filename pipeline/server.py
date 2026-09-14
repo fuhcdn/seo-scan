@@ -15,7 +15,8 @@ Routes:
                                    stripe_lib.create_checkout_session and returns
                                    its redirect_url (product-routed price id).
   POST /webhook/stripe       -> verifies the Stripe signature, confirms paid via
-                                   re-retrieve, then spawns pipeline_runner to
+                                   re-retrieve, then spawns the evidence_v1
+                                   pipeline to
                                    deliver the report automatically.
 
 Run:
@@ -40,7 +41,7 @@ sys.path.insert(0, _HERE)  # so `import seo_crawler` works regardless of cwd
 import seo_crawler  # noqa: E402
 
 LANDING_PATH = os.path.join(_HERE, "landing_page.html")
-OUTPUT_DIR = os.path.join(os.path.dirname(_HERE), "output")  # 同 pipeline_runner 一致
+OUTPUT_DIR = os.path.join(os.path.dirname(_HERE), "output")  # 同 evidence_v1_pipeline 一致
 
 # Round11：多語言 landing —— `/` (EN master)、`/landing` 用 landing_page.html；
 # 子路徑 /en /zh-Hant /zh-Hans /ja /es 各自 serve 對應語言檔案。
@@ -698,7 +699,7 @@ h1{font-size:22px}h2{font-size:16px;border-bottom:1px solid #d9d2c0;padding-bott
                 self._send(429, {"error": "rate limited —— 請稍後再試"},
                            extra_headers={"Retry-After": str(retry)})
                 return
-            # 真 Stripe webhook：驗證簽名 → paid 後 spawn pipeline_runner 自動交報告。
+            # 真 Stripe webhook：驗證簽名 → paid 後 spawn evidence_v1 pipeline 自動交報告。
             from stripe_lib import load_env, handle_webhook
             load_env()
             try:

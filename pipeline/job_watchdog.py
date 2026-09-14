@@ -4,10 +4,10 @@ Durable job watchdog / reconcile — AP-1.
 
 Design (per owner approval):
 - Durable state = the per-order status JSON (output/order_<id>.json) already
-  persisted by pipeline_runner; nothing depends on Popen/process memory.
+  persisted by evidence_v1_pipeline; nothing depends on Popen/process memory.
 - On worker/container restart, jobs in non-terminal states are recovered
   by re-running the IDEMPOTENT pipeline entry from its last completed step
-  (pipeline_runner already supports step-level resume via status["steps"]).
+  (durable order_*.json supports recovery via evidence_v1_pipeline run_job).
 - Jobs running longer than WATCHDOG_STUCK_HOURS (default 6) are inspected;
   idempotent steps are safely retried; email is NEVER duplicated (a delivery
   marker + verified-delivery record gate re-send); charges are never touched.
