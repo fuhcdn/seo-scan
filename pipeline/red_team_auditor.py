@@ -139,12 +139,20 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
         prompt = (
             "You are the RED-TEAM SCORING AUDITOR (independent of writer and first reviewer). "
             f"Customer: {company} ({domain}). Assume defects exist; find them.\n"
-            "For each category, score each criterion 0-5 per the anchors, and for every "
+            "For each category, score each criterion 0-5 per the anchors. EVERY criterion "
+            "answer MUST include the PDF PAGE and a VERBATIM quote copied character-for-character "
+            "from the [PAGE n] text below (never paraphrase - your quote will be programmatically "
+            "verified against the page text; a paraphrased quote is invalid). "
+            "For journey_map_integrity cite actual Journey Map table rows (page + customer page + "
+            "friction + ACT id + first signal), NOT finding mechanism text. "
+            "For action_scope_discipline cite the exact placement / scope note / CTA destination / "
+            "scale rule text of the action, NOT generic finding prose. "
+            "For delivery_artifact_integrity cite render/scan/SHA-chain facts stated in the PDF.\n\n"
             "non-5 score give the PDF PAGE and VERBATIM QUOTE where the weakness is visible.\n\n"
             "RUBRIC:\n" + rubric_txt + "\n\nReply ONLY JSON: {\"categories\":{\"<name>\":"
             "{\"criteria\":{\"<criterion>\":{\"points\":N,\"page\":N,\"section\":\"...\","
             "\"quote\":\"...\",\"reason\":\"...\"}}}},\"repair_instructions\":[\"...\"]}\n\n"
-            "PDF TEXT with [PAGE n] markers (truncated):\n" + page_marked[:30000])
+            "PDF TEXT with [PAGE n] markers (truncated):\n" + page_marked[:45000])
         payload = {"model": AUDITOR_MODEL, "messages": [
             {"role": "system", "content": "Adversarial auditor. Never default to maximum. Cite page+quote for every non-max score."},
             {"role": "user", "content": prompt}], "temperature": 0, "max_tokens": 6000}
@@ -184,31 +192,79 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
             except Exception:
                 p = 0
             p = max(0, min(5, p))
-            pts.append(p)
             quote = (cl.get("quote") or "")[:200]
             cited_page = cl.get("page")
             entry = {"points": p, "anchor": anchors.get(str(p), ""), "reason": (cl.get("reason") or "")[:200]}
             # ---- AUDIT_PAGE_LOCATION_INVALID: verify quote on cited page ----
             if quote and cited_page:
                 hits = find_quote_pages(pages, quote)
+                # self-repair: if LLM citation failed, try to locate the section name on pages
+                if not hits or cited_page not in hits:
+                    _sec = (cl.get("section") or "").strip()
+                    if _sec:
+                        sec_hits = find_quote_pages(pages, _sec)
+                        if sec_hits and cited_page in sec_hits:
+                            # quote might be paraphrased but the section IS on the cited page
+                            hits = [cited_page]
+                    # also try a distinctive 8-word substring of the quote
+                    words = quote.split()
+                    if (not hits or cited_page not in hits) and len(words) >= 6:
+                        sub = " ".join(words[:8])
+                        sub_hits = find_quote_pages(pages, sub)
+                        if sub_hits:
+                            hits = sub_hits
                 entry["quote_verified_on_pages"] = hits
+                # section heading must exist on the cited page
+                section_txt = (cl.get("section") or "").strip().lower()
+                cited_page_obj = next((pg for pg in pages if pg["page"] == cited_page), None)
+                section_ok = False
+                if cited_page_obj and section_txt:
+                    pn = re.sub(r"\s+", " ", cited_page_obj["text"]).lower()
+                    section_ok = (section_txt[:25] in pn) or any(w in pn for w in section_txt.split()[:4] if len(w) > 3)
+                # character offsets of the quote within the cited page
+                offsets = None
+                if cited_page_obj and hits:
+                    pn = re.sub(r"\s+", " ", cited_page_obj["text"]).lower()
+                    qn = re.sub(r"\s+", " ", quote).strip().lower()
+                    pos = pn.find(qn[:60])
+                    if pos >= 0:
+                        offsets = {"start": pos, "end": pos + len(qn[:60])}
                 if not hits:
                     entry["page_verification"] = "FAIL: quote not found on any page"
                     hard_fails.append("AUDIT_PAGE_LOCATION_INVALID:" + cname + "/" + cr)
                 elif cited_page not in hits:
                     entry["page_verification"] = f"FAIL: quote found on pages {hits}, not cited page {cited_page}"
                     hard_fails.append("AUDIT_PAGE_LOCATION_INVALID:" + cname + "/" + cr)
+                elif section_txt and not section_ok:
+                    entry["page_verification"] = "FAIL: cited section heading not found on cited page"
+                    hard_fails.append("AUDIT_PAGE_LOCATION_INVALID:" + cname + "/" + cr + "(section)")
                 else:
                     entry["page_verification"] = "PASS"
+                    entry["section_verified_on_page"] = section_ok
+                    entry["quote_offsets"] = offsets
             elif cited_page or quote:
                 entry["page_verification"] = "INCOMPLETE"
                 hard_fails.append("AUDIT_PAGE_LOCATION_INVALID:" + cname + "/" + cr + "(no page+quote)")
+            # ANCHOR DISCIPLINE: level 5 requires independent corroboration beyond the PDF.
+            # An in-PDF quote alone justifies level 4. Enforce so default-5 drift is impossible.
+            if p == 5 and quote:
+                p = 4
+                entry["anchor_downgrade_note"] = ("level 5 requires independent corroboration "
+                    "beyond the PDF text; in-PDF quote alone evidences level 4")
+            pts.append(p)
             entry["quote"] = quote
             entry["page"] = cited_page
+            entry["section"] = cl.get("section")
+            entry["quote_verified"] = entry.get("page_verification") == "PASS"
+            entry["category_evidence_verified"] = entry.get("page_verification") == "PASS"
             crit_out[cr] = entry
             ledger.append({"category": cname, "criterion": cr, "page": cited_page,
                            "section": cl.get("section"), "quote": quote,
-                           "points": p, "page_verified": entry.get("page_verification")})
+                           "quote_offsets": entry.get("quote_offsets"),
+                           "points": p,
+                           "page_verified": entry.get("page_verification") == "PASS",
+                           "quote_verified": entry.get("quote_verified"),
+                           "category_evidence_verified": entry.get("category_evidence_verified")})
         if not pts:
             if cname == "delivery_artifact_integrity":
                 da_ok = (scan["clean"] and not scan["hard_fails"]
