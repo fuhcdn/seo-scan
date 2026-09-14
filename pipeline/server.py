@@ -264,33 +264,27 @@ def shape_scan_response(result):
 
 
 def spawn_delivery_pipeline(order):
-    """Spawn pipeline_runner for a paid order (auto-delivery entry point).
+    """Spawn the evidence_v1 pipeline for a paid order (auto-delivery entry point).
+
+    OWNER DIRECTIVE 2026-09-14 (HIGHEST PRIORITY): every new paid customer order
+    must be handled by the evidence_v1 high-quality report engine. The legacy
+    pipeline is LEGACY_REPORT_DELIVERY_BLOCKED — it can never create an email
+    artifact, become VERIFIED_READY_TO_SEND, call SMTP/Resend, or process a new
+    paid customer report. No fallback to legacy.
 
     Called by /webhook/stripe once a Checkout Session is verified as paid.
     Requires a real payment_ref; otherwise it returns a note (no-op).
-    Runs pipeline_runner.py in a detached subprocess so the HTTP request
-    returns immediately; the runner does crawl → PDF → email delivery.
+    The job is durably pinned to pipeline_version=evidence_v1 (immutable) and
+    run in a detached subprocess; failure recovery is owned by job_watchdog
+    reconcile (payment/job never lost, never duplicated email, never legacy).
     """
     if not order.get("payment_ref"):
         return {"spawned": False,
                 "note": "no paid Stripe payment_ref — nothing to deliver"}
     if not order.get("url") or order["url"] in ("", "demo"):
         return {"spawned": False, "error": "missing order url to scan"}
-    _runner = os.path.join(_HERE, "pipeline_runner.py")
-    cmd = [sys.executable, _runner, order["url"],
-           "--payment-ref", order["payment_ref"],
-           "--order-id", order.get("order_id", ""),
-           "--customer-email", order.get("customer_email", ""),
-           "--product-id", order.get("selected_product_id", ""),
-           "--report-language", order.get("report_language", "en")]
-    env = dict(os.environ)
-    try:
-        subprocess.Popen(cmd, cwd=_HERE, env=env,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         start_new_session=True)
-        return {"spawned": True, "cmd": cmd}
-    except Exception as e:
-        return {"spawned": False, "error": f"{type(e).__name__}: {e}"}
+    import evidence_v1_router
+    return evidence_v1_router.spawn_evidence_v1_job(order)
 
 
 class Handler(BaseHTTPRequestHandler):

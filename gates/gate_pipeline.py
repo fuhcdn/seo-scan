@@ -328,6 +328,14 @@ def gate5_scan_final_pdf(pdf_bytes: bytes) -> Dict[str, Any]:
     customer-visible text blocks, regardless of raw-byte scanning."""
     sha256 = hashlib.sha256(pdf_bytes).hexdigest()
     visible_text = extract_visible_text_mature(pdf_bytes).lower()
+    # FAIL-CLOSED: an un-extractable/empty PDF must NEVER pass silently —
+    # pypdf missing/unreadable artifact => hard fail (EMPTY_PDF_TEXT).
+    if len(visible_text.strip()) < 200:
+        return {"clean": False,
+                "hard_fails": ["EMPTY_PDF_TEXT"],
+                "hits": [{"rule": "EMPTY_PDF_TEXT", "extracted_len": len(visible_text.strip())}],
+                "sha256": sha256, "bytes": len(pdf_bytes),
+                "visible_text": visible_text}
     L = _extract_pdf_layers(pdf_bytes)
     layer_hay = (" ".join(u.decode("utf-8", "replace") for u in L["uris"]) + " " +
                  " ".join(l.decode("utf-8", "replace") for l in L["launches"]) + " " +
