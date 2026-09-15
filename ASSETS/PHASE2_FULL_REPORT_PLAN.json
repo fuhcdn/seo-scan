@@ -1,0 +1,50 @@
+{
+  "policy": {
+    "mock_recipient_only": true,
+    "no_real_charge": true,
+    "no_real_email": true,
+    "accessible_sites_only": true
+  },
+  "pipeline": [
+    "website research",
+    "evidence cards",
+    "report generation",
+    "strict review",
+    "Red-Team review",
+    "final PDF scan",
+    "SHA chain",
+    "mock delivery"
+  ],
+  "sites": [
+    "M4 mailchimp.com (SaaS)",
+    "M7 waitbutwhy.com (content-heavy)",
+    "M8 ikea.com (multilingual)",
+    "M9 figma.com (JS-heavy)",
+    "M5 booking.com (property)",
+    "M10 boots.com (regulated)"
+  ],
+  "escalation_states": {
+    "crawl_blocked_timeout": [
+      "M1 mckinsey",
+      "M3 muji"
+    ],
+    "waf_403": [
+      "M2 pimlico"
+    ],
+    "content_light": [
+      "M6 example.com"
+    ],
+    "mapping": {
+      "crawl timeout/403": "enhanced_research_required + alternative_fetch_required",
+      "content-light": "customer_context_required",
+      "all unresolved": "manual_quality_escalation_required",
+      "test-matrix endpoint": "NO_TEST_REPORT_GENERATED",
+      "never": [
+        "customer_rejected",
+        "order_abandoned",
+        "legacy_fallback",
+        "generic_report_sent"
+      ]
+    }
+  }
+}

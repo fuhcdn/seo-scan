@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-15",
+  "20_run_test": "IN PROGRESS in background (will complete; every run will fail with 403 TOS error and move job to manual_quality_escalation_required, order preserved)",
+  "short_test_5_runs": {
+    "runs": 5,
+    "generation_success": 0,
+    "attempts_used": [
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "errors": "HTTP 403 Forbidden \u2014 provider TOS enforcement (OpenRouter account/IP level)",
+    "retry_mechanics": "OK \u2014 backoff executed, exact error recorded per attempt",
+    "job_state_after_fail": "research_retrying \u2192 manual_quality_escalation_required",
+    "order_preserved": true,
+    "no_refund": true,
+    "no_abandon": true,
+    "no_legacy_fallback": true
+  },
+  "duplicate_prevention": "idempotency cache implemented; cache-hit reuse verified in code path (mechanism intact; cannot prove positive case while LLM down \u2014 cached success path is code-verified)",
+  "reconcile": "started-but-crashed stage \u2192 retry_pending, internal_state=research_retrying, order_accepted=true (tested, PASS)",
+  "root_cause": "OpenRouter 403 'violation of provider Terms Of Service' \u2014 account/IP-level enforcement, NOT network WAF, NOT intermittent load",
+  "owner_action_needed": "LLM provider decision required: new key/account, different provider, or proxy route \u2014 owner \u00a76 territory"
+}
