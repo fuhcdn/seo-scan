@@ -68,7 +68,7 @@ def dup_check(target):
             rec = json.loads(line)
         except json.JSONDecodeError:
             continue
-        if rec.get("event") != "SEND":
+        if rec.get("event") not in ("SEND", "DRY_RUN_WOULD_SEND"):
             continue
         n += 1
         if t_email and rec.get("target", {}).get("email", "").lower() == t_email:
@@ -144,7 +144,8 @@ def volume_cap_check(cfg):
                 rec = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if rec.get("event") == "SEND" and rec.get("campaign_id") == cfg.get("campaign_id"):
+            if (rec.get("event") in ("SEND", "DRY_RUN_WOULD_SEND")
+                    and rec.get("campaign_id") == cfg.get("campaign_id")):
                 sent += 1
     if sent >= int(cap):
         return True, f"cap_reached:{sent}/{cap}"

@@ -17,6 +17,7 @@ RESEND_CALLS = 0  # test-visible counter (real call only in non-dry-run)
 
 def _real_resend(from_name, from_addr, to_addr, subject, text):
     """Same API shape as pipeline.resend_send but for cold-email From config."""
+    assert not oc.DRY_RUN, "FAIL-CLOSED: real transport invoked in dry-run mode"
     import urllib.request
     key = os.environ.get("RESEND_API_KEY", "").strip()
     if not key:
@@ -80,16 +81,21 @@ def send_cold_email(target, footer_text, approval_ref, subject, body_text):
 
     # 7 Resend (only here; dry-run counts without calling)
     result = {"sent": False, "stage": "SEND", "resend_calls": RESEND_CALLS}
+    if oc.DRY_RUN:
+        # dry-run records are deliberately distinct from SEND so downstream
+        # duplicate suppression can never mistake them for a real send
+        oc._append(LOG_PATH, {**log_base, "event": "DRY_RUN_WOULD_SEND",
+            "campaign_id": cfg["campaign_id"],
+            "owner_approval_reference": cfg["owner_approval_reference"],
+            "resend_id": None, "dry_run": True})
+        result.update({"would_send": True, "resend_calls": RESEND_CALLS})
+        return result
     oc._append(LOG_PATH, {**log_base, "event": "SEND",
         "campaign_id": cfg["campaign_id"],
         "owner_approval_reference": cfg["owner_approval_reference"],
-        "resend_id": None, "dry_run": oc.DRY_RUN})
-    if oc.DRY_RUN:
-        RESEND_CALLS += 0  # stub: dry-run never calls API; counter recorded as WOULD_SEND
-        result.update({"would_send": True, "resend_calls": RESEND_CALLS})
-    else:
-        status, resp = _real_resend("SEO Scan Audit", cfg["approved_sender"],
-                                    target["email"], subject, body_text + "\n\n" + footer_text)
-        RESEND_CALLS += 1
-        result.update({"http_status": status, "resend_calls": RESEND_CALLS})
+        "resend_id": None, "dry_run": False})
+    status, resp = _real_resend("SEO Scan Audit", cfg["approved_sender"],
+                                target["email"], subject, body_text + "\n\n" + footer_text)
+    RESEND_CALLS += 1
+    result.update({"http_status": status, "resend_calls": RESEND_CALLS})
     return result
