@@ -57,3 +57,15 @@ extract*.py
 
 .cf_email_routing_creds
 /opt/data/.cf_*.creds
+
+# ---- outbound campaign runtime data (v1.2) ----
+# mounted-volume / owner-managed config, never in repo
+pipeline/output/campaign_approval.json
+pipeline/output/dnc.jsonl
+pipeline/output/campaign_log.jsonl
+pipeline/output/stop_conditions.json
+pipeline/output/template_test.txt
+data/
+config/campaign_approval.json
+config/campaign_approval.json.sha256
+config/template.txt

@@ -1,0 +1,17 @@
+# Release base compose — immutable image deployment (no build:, no source context)
+# Image identity: seoscanaudit/outbound:phase1-<COMMIT_SHA> via OUTBOUND_IMAGE env var.
+# All host paths are explicit absolute variables — no relative paths, no ambiguity.
+# Project name must be explicit: -p seo-staging or -p seo-production (never auto).
+services:
+  seo-scan:
+    image: ${OUTBOUND_IMAGE}
+    restart: unless-stopped
+    env_file:
+      - ${HOST_SECRETS_FILE}
+    environment:
+      - PORT=8000
+    volumes:
+      - ${HOST_DATA_DIR}:/app/data
+      - ${HOST_CONFIG_DIR}:/app/config:ro
+    expose:
+      - "8000"

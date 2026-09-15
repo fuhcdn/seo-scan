@@ -1,0 +1,15 @@
+# PRODUCTION override — port 8000, Traefik enabled with existing seoscanaudit.com labels.
+# ⛔ NOT AUTHORISED until explicit Phase-2 owner approval.
+# Usage: HOST_PORT=8000 OUTBOUND_IMAGE=seoscanaudit/outbound:phase1-<COMMIT_SHA> \
+#        docker compose -f deploy/docker-compose.release.yml \
+#                       -f deploy/docker-compose.release.production.yml up -d
+services:
+  seo-scan:
+    ports:
+      - "${HOST_PORT:-8000}:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.seoscan.rule=Host(`seoscanaudit.com`) || Host(`www.seoscanaudit.com`)"
+      - "traefik.http.routers.seoscan.entrypoints=websecure"
+      - "traefik.http.routers.seoscan.tls.certresolver=letsencrypt"
+      - "traefik.http.services.seoscan.loadbalancer.server.port=8000"
