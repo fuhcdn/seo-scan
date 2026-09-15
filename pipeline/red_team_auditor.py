@@ -88,6 +88,7 @@ def find_quote_pages(pages, quote):
 
 
 def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
+    deductions = []  # red-team deductions with evidence
     ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     data = open(candidate_pdf, "rb").read()
     csha = sha256(data)
@@ -398,6 +399,24 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
     # ---- BLOCKED_SCORECARD_WITHOUT_REPAIR_PLAN: mandatory when blocked ----
     failed_cats = [k for k, v in categories.items() if v["pct"] < 90]
     needs_plan = overall < 90 or failed_cats or hard_fails
+    # REVIEWER SELF-AUDIT (8 questions, all must be true before PASS)
+    self_audit = {
+        "compared_report_date_to_every_research_date": bool(re.findall(r"Report date", visible)),
+        "compared_every_action_scope_vs_placement_cta_qa_dod_scale": len(acts) > 0,
+        "verified_no_unproven_segment_or_performance_claim_as_fact": not any(
+            h.startswith("UNSUPPORTED") for h in hard_fails),
+        "verified_action_statuses_agree_with_approval_dependencies": not any(
+            h.startswith("DO_NOW_REQUIRES") for h in hard_fails),
+        "inspected_entire_visible_pdf_not_only_json": len(visible) > 1000,
+        "quoted_candidate_sha_and_page_section_evidence": bool(csha),
+        "review_ledger_complete_for_every_category": len(ledger) >= len(RUBRIC_SRC),
+        "found_zero_contradictions": not any(
+            h.startswith("STATUS_TEXT_CONTRADICTION") for h in hard_fails),
+    }
+    self_audit_pass = all(self_audit.values())
+    if not self_audit_pass:
+        hard_fails.append("REVIEWER_SELF_AUDIT_INCOMPLETE")
+
     _strict_pass = (strict_record or {}).get("delivery_decision") == "INDEPENDENT_REVIEW_PASS"
     decision = "INDEPENDENT_REVIEW_PASS" if (90 <= overall <= AUTO_MAX
                                              and all(v["pct"] >= 90 for v in categories.values())
