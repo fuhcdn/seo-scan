@@ -606,7 +606,7 @@ def _extract_json_obj(text):
     return None
 
 
-def ai_score(sigs, model="deepseek/deepseek-v4-flash-0731", profile=None):
+def ai_score(sigs, model="z-ai/glm-4.5-air", profile=None):
     """Call OpenRouter. Returns (score:int|None, fix_list:list, error:str|None)."""
     key = resolve_openrouter_key()
     if not key:

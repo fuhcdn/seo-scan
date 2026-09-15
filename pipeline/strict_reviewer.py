@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(_HERE), "gates"))
 import gate_pipeline as gp  # noqa: E402
 
 REVIEWER_AGENT_ID = "strict-quality-reviewer-v1"
-REVIEWER_MODEL = "deepseek/deepseek-chat-v3-0324"
+REVIEWER_MODEL = "z-ai/glm-4.6"
 
 REQUIRED_CATEGORIES = [
     "evidence_accuracy", "finding_distinctness", "customer_specificity",

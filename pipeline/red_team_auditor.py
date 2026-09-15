@@ -30,7 +30,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(_HERE), "gates"))
 import gate_pipeline as gp  # noqa: E402
 
 AUDITOR_AGENT_ID = "red-team-scoring-auditor-v1"
-AUDITOR_MODEL = "deepseek/deepseek-chat-v3-0324"
+AUDITOR_MODEL = "z-ai/glm-5.3-flash"
 AUTO_MAX = 95
 
 FOREIGN_TERMS = ("screen-printing", "embroidery", "/gallery/", "get-a-quote",

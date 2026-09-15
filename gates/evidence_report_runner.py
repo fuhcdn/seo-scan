@@ -58,7 +58,7 @@ def gate4_external_auditor(findings, cards):
         + card_blob + "\n\nCANDIDATES:\n" + cand_blob +
         "\n\nReply ONLY as JSON: {\"decisions\":[{\"action_id\":\"ACT-001\",\"accept\":true,\"reason\":\"...\"}]}")
     try:
-        payload = {"model": "deepseek/deepseek-chat-v3-0324", "messages": [
+        payload = {"model": "z-ai/glm-4.6", "messages": [
             {"role": "system", "content": "You are a strict, evidence-based report quality auditor."},
             {"role": "user", "content": prompt}], "temperature": 0, "max_tokens": 1500}
         env = openrouter_chat(key, payload)
