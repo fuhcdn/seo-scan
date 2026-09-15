@@ -1,0 +1,83 @@
+{
+  "phase": "PHASE 2 CONTROLLED CROSS-SITE TESTING (first full-pipeline run batch)",
+  "date": "2026-09-15",
+  "model_route": "deepseek/deepseek-v4-flash-0731 (cards) + deepseek/deepseek-chat-v3-0324 (reviewer) \u2014 all via OpenRouter, no OpenAI models, no VPN/proxy/bypass",
+  "sites_attempted": 4,
+  "results": {
+    "M4_mailchimp_SaaS": {
+      "generation": "SUCCESS (3 attempts)",
+      "retries": 2,
+      "timeouts": 0,
+      "cards": 3,
+      "gate2_pass": "3/3",
+      "gate4_accept": "3/3",
+      "strict_reviewer": {
+        "overall": 92.3,
+        "hard_fails": [
+          "STRUCTURAL_COMPLETENESS_BELOW_100"
+        ],
+        "weak_categories": {
+          "customer_specificity": 85,
+          "action_executability": 80
+        }
+      },
+      "final_state": "MANUAL_QUALITY_ESCALATION_REQUIRED (3 attempts failed independent review; order preserved; no weak PDF sent; mock-only)"
+    },
+    "M7_waitbutwhy_content_heavy": {
+      "generation": "SUCCESS (3 attempts)",
+      "retries": 2,
+      "timeouts": 0,
+      "strict_reviewer": {
+        "overall": 92.7,
+        "hard_fails": [
+          "STRUCTURAL_COMPLETENESS_BELOW_100"
+        ],
+        "weak_categories": {
+          "business_logic_integrity": 85,
+          "journey_map_integrity": 80
+        }
+      },
+      "final_state": "MANUAL_QUALITY_ESCALATION_REQUIRED (order preserved)"
+    },
+    "M8_ikea_multilingual": {
+      "generation": "SUCCESS (3 attempts)",
+      "retries": 2,
+      "timeouts": 0,
+      "strict_reviewer": {
+        "overall": 95.0,
+        "all_categories_95": true,
+        "hard_fails": [
+          "PDF_SAFETY:TRUNCATED_CUSTOMER_TEXT",
+          "STRUCTURAL_COMPLETENESS_BELOW_100"
+        ]
+      },
+      "final_state": "MANUAL_QUALITY_ESCALATION_REQUIRED (order preserved) \u2014 closest to pass: score threshold met, blocked on structural hard fail"
+    },
+    "M9_figma_JS_heavy": {
+      "generation": "NOT REACHED \u2014 v1 schema cards rejected at semantic audit; v2 regeneration still in progress at session end",
+      "final_state": "ENHANCED_RESEARCH_REQUIRED / retry pending"
+    }
+  },
+  "crawl_blocked_sites": {
+    "M1_mckinsey": "crawl timeout \u2192 alternative_fetch_required",
+    "M2_pimlico": "WAF 403 \u2192 alternative_fetch_required",
+    "M3_muji": "crawl timeout \u2192 alternative_fetch_required",
+    "M6_example_com": "content-light \u2192 customer_context_required; NO_TEST_REPORT_GENERATED (correct: no fabricated findings)"
+  },
+  "customer_protection_proof": {
+    "orders_preserved": true,
+    "no_auto_reject": true,
+    "no_auto_refund": true,
+    "no_silent_abandon": true,
+    "no_legacy_fallback": true,
+    "no_weak_generic_pdf_sent": true,
+    "mock_recipient_only": true,
+    "resend_not_called": true,
+    "no_real_charge": true
+  },
+  "cross_site_reliability": "NOT YET PROVEN \u2014 0/5 distinct business models completed full pipeline with strict+redteam PASS. Root cause of blocks: STRUCTURAL_COMPLETENESS_BELOW_100 (structural template completeness) + thin gate1 research inputs from public extracts. IKEA reached 95/95 on all 13 categories \u2014 quality chain itself works cross-site.",
+  "next_repair_for_owner_approval": [
+    "enrich gate1 page inputs (full-text captures instead of 3000-char excerpts) to satisfy structural completeness",
+    "reviewer repair instructions (timestamps, buyer-context specificity, journey stages) fed back into v3 card generation"
+  ]
+}
