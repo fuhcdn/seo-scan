@@ -1,0 +1,22 @@
+{
+ "phase": "phase2-clean-build",
+ "date": "2026-09-15",
+ "commit": "600ea0a26121827e8171a4ab3e6725318756870d",
+ "isolated_worktree": "/opt/seo-build-600ea0a (git worktree, porcelain=0)",
+ "image_id": "sha256:41a74d56d208f624760329fdd2842225a14b50feda0ce8e8b978c1acc7f1e3f5",
+ "image_tag": "seoscanaudit/outbound:phase1-600ea0a-clean",
+ "artifact": "/deploy/images/outbound-phase1-600ea0a-clean.tar.gz",
+ "artifact_sha256": "b99d83342d1c65c9f744339d953ea0be5ad591389ca8a6c55cf84482b33b501e",
+ "untracked_in_image": 0,
+ "four_way": {
+  "git": "515fee0a24cd155b94da7c445c82f6f4a2890e7710917f47ec65c25ad6a8b119",
+  "worktree": "515fee0a24cd155b94da7c445c82f6f4a2890e7710917f47ec65c25ad6a8b119",
+  "image": "515fee0a24cd155b94da7c445c82f6f4a2890e7710917f47ec65c25ad6a8b119",
+  "container": "515fee0a24cd155b94da7c445c82f6f4a2890e7710917f47ec65c25ad6a8b119"
+ },
+ "run1": "16/16 PASS, Resend=0, transport=0",
+ "run2_after_restart": "16/16 PASS, Resend=0, transport=0",
+ "mounts": "data rw / config :ro, zero prod paths, traefik labels 0",
+ "prod_baseline": "app-seo-scan-1 Up (legacy 57f5c9b9), health 200, outbound_send.py absent",
+ "accounting": "12 Card-v3 required cases + 5 parity + errno30 + config-writable + transport-fail-closed = 20 assertions (16 test rows + 4 preflight)"
+}
