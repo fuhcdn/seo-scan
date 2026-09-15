@@ -1,0 +1,24 @@
+{
+  "status": "GOLDEN_REFERENCE_CONTROLLED_PILOT_BASELINE",
+  "report_run_id": "ORD-70CBB7D9301D-R6B",
+  "candidate_sha256": "c6b2e03cf9202799aa3b6eb4e3ffb182591e07c4536082a89a23efe11b96634c",
+  "strict_reviewer": {
+    "decision": "INDEPENDENT_REVIEW_PASS",
+    "score": 95,
+    "sig": "e957fe1087c47ea58f9d39baf8d75d41ff0f92d2b566fdbd6b55fb8d8f8b6ce6"
+  },
+  "red_team": {
+    "decision": "INDEPENDENT_REVIEW_PASS",
+    "overall": 92,
+    "hard_fails": [],
+    "sig": "b03d53499a2d1ceb9c838f01489e36f3"
+  },
+  "frozen": true,
+  "caveats": [
+    "not claimed perfect; not automatic 100/100",
+    "not proven universally applicable to every website type",
+    "not proof of business-market fit",
+    "not proof the product is worth US$2,000",
+    "one strong evidence-led reference report"
+  ]
+}

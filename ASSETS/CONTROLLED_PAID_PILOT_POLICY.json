@@ -1,0 +1,24 @@
+{
+  "website": "LIVE",
+  "checkout": "LIVE",
+  "price_397": "LIVE AND UNCHANGED",
+  "price_997": "UNCHANGED",
+  "new_paid_orders": "EVIDENCE_V1_ONLY",
+  "legacy_delivery": "IMPOSSIBLE",
+  "customer_auto_delivery": "NOT ENABLED",
+  "first_10_paid_orders": {
+    "generator": "evidence_v1",
+    "strict_reviewer": "required",
+    "red_team": "required",
+    "overall": "90-95",
+    "every_category": ">=90",
+    "hard_fails": 0,
+    "sha_chain": "exact six-point",
+    "artifact": "verified .for-email.pdf only",
+    "owner_approval": "PER ORDER before real-customer delivery",
+    "legacy_fallback": "NEVER",
+    "weak_generic_pdf": "NEVER SENT",
+    "on_quality_fail": "preserve paid order; enhanced research / owner-led escalation; no auto-reject; no auto-refund; no silent abandonment",
+    "max_autonomous_attempts_per_order": 3
+  }
+}

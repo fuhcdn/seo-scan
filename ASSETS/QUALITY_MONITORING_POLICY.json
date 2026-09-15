@@ -1,0 +1,32 @@
+{
+  "record_fields": [
+    "report_run_id",
+    "candidate_sha256",
+    "customer_domain",
+    "business_type",
+    "site_complexity",
+    "selected_language",
+    "selected_tier",
+    "strict_reviewer_score",
+    "red_team_score",
+    "category_scores",
+    "hard_fails",
+    "quality_attempts",
+    "enhanced_research_required",
+    "owner_approval_status",
+    "delivery_status",
+    "customer_feedback",
+    "support_escalation_time"
+  ],
+  "owner_review_flags": [
+    "all 13 categories identical score without tier-based explanation",
+    "scores appear default rather than evidence-derived",
+    "report passes without meaningful citations",
+    "more than one correction attempt needed",
+    "manual quality escalation entered",
+    "customer context/domain inconsistency",
+    "generic language detected",
+    "unsupported claim detected",
+    "customer feedback: generic / not useful / wrong business context"
+  ]
+}

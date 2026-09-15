@@ -1,0 +1,435 @@
+{
+  "policy": {
+    "real_email": false,
+    "real_charge": false,
+    "mock_only": true,
+    "recipient": "mock@safe-test.invalid",
+    "pass_rule": {
+      "overall": "90-95",
+      "every_category": ">=90",
+      "hard_fails": 0,
+      "sha_chain": "exact",
+      "owner_approval_per_order": true
+    }
+  },
+  "sites": [
+    {
+      "id": "M1",
+      "type": "B2B professional-service lead gen",
+      "url": "https://www.mckinsey.com",
+      "website_structure": "large corporate site; page fetch timed out during crawl",
+      "observed_limitations": [
+        "TimeoutError on page fetch \u2014 0 evidence signals collected",
+        "needs longer crawl timeout / retry"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": true,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl incomplete (timeout) \u2014 no direct observations collected"
+      ],
+      "verdict": "CRAWL_TIMEOUT \u2014 retry with extended timeout required"
+    },
+    {
+      "id": "M2",
+      "type": "Local service / quote-request",
+      "url": "https://www.pimlicoplumbers.com",
+      "website_structure": "corporate site; full crawl blocked by WAF (403 Forbidden on page fetch)",
+      "observed_limitations": [
+        "HTTP 403 bot-wall \u2014 crawler could not fetch interior pages",
+        "AI scoring unavailable \u2192 rule-based fallback, score=2 (estimate)",
+        "unique_evidence_count=0 \u2014 no verifiable page-level friction observations possible",
+        "report quality would fail gate1 (no direct page observations) \u2014 correctly not attempted"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": true,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "bot-walled site \u2014 public-web evidence_v1 pipeline cannot collect direct observations",
+        "correct behaviour: no fabricated generic findings; escalation path required"
+      ],
+      "verdict": "CRAWL_BLOCKED_BY_WAF \u2014 known limitation (same 403 class as container urllib WAF issue); needs browser-based research path or manual evidence collection"
+    },
+    {
+      "id": "M3",
+      "type": "Ecommerce product",
+      "url": "https://www.muji.com"
+    },
+    {
+      "id": "M4",
+      "type": "SaaS demo/trial",
+      "url": "https://mailchimp.com",
+      "website_structure": "corporate/SaaS marketing site; crawl succeeded (0 crawl errors); 12 unique evidence signals collected",
+      "observed_limitations": [
+        "AI scoring returned empty (OpenRouter) \u2192 rule-based fallback; score 76 is an ESTIMATE not AI-derived",
+        "rule-based crawl signals exist (12 unique evidence items) but full evidence-card generation not yet run for this site",
+        "site_type classified 'corporate' \u2014 persona note may need SaaS-specific tuning"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": false,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl succeeded with usable signals \u2014 evidence cards + full report CAN be generated, but attempt budget and LLM availability needed",
+        "AI LLM call returned empty this run (OpenRouter issue) \u2014 report generation would fail without AI; needs retry in a stable-LLM window"
+      ],
+      "verdict": "CRAWL_OK_12_SIGNALS \u2014 candidate for full evidence_v1 run when LLM stable; most promising non-Persimmon site so far"
+    },
+    {
+      "id": "M5",
+      "type": "Property/booking/enquiry",
+      "url": "https://www.booking.com"
+    },
+    {
+      "id": "M6",
+      "type": "Content-light",
+      "url": "https://example.com",
+      "website_structure": "1-page domain, no navigation, no CTAs, no forms, no buyer journey",
+      "observed_limitations": [
+        "single page with no business flow \u2014 no material for evidence cards",
+        "AI scoring returned empty \u2192 rule-based estimate fallback (score_is_estimate=true)",
+        "no buyer questions can be posed; no journey map possible",
+        "evidence_v1 requires customer-owned pages with real friction observations \u2014 none exist"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": true,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "no report generated \u2014 content-light site has no actionable friction to evidence",
+        "correct behaviour: pipeline should escalate to owner rather than fabricate generic findings"
+      ],
+      "verdict": "PIPELINE_CORRECTLY_CANNOT_PRODUCE_REPORT \u2014 enhanced research / owner escalation required per pilot policy"
+    },
+    {
+      "id": "M7",
+      "type": "Content-heavy",
+      "url": "https://waitbutwhy.com"
+    },
+    {
+      "id": "M8",
+      "type": "Multilingual",
+      "url": "https://www.ikea.com"
+    },
+    {
+      "id": "M9",
+      "type": "JavaScript-heavy",
+      "url": "https://www.figma.com",
+      "website_structure": "JS-heavy SaaS site; crawl succeeded (0 errors), 12 unique evidence signals",
+      "observed_limitations": [
+        "server-rendered content fetchable \u2014 JS rendering NOT required for crawl (favourable surprise)",
+        "rule-based score 83 (estimate); AI unavailable this run",
+        "evidence cards + full report not yet generated for this site"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": false,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl OK; full evidence_v1 run pending stable LLM window"
+      ],
+      "verdict": "CRAWL_OK_12_SIGNALS \u2014 strong candidate for full run"
+    },
+    {
+      "id": "M10",
+      "type": "Higher-claim/regulated",
+      "url": "https://www.boots.com"
+    }
+  ],
+  "results": [
+    {
+      "id": "M6",
+      "type": "Content-light",
+      "url": "https://example.com",
+      "website_structure": "1-page domain, no navigation, no CTAs, no forms, no buyer journey",
+      "observed_limitations": [
+        "single page with no business flow \u2014 no material for evidence cards",
+        "AI scoring returned empty \u2192 rule-based estimate fallback (score_is_estimate=true)",
+        "no buyer questions can be posed; no journey map possible",
+        "evidence_v1 requires customer-owned pages with real friction observations \u2014 none exist"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": true,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "no report generated \u2014 content-light site has no actionable friction to evidence",
+        "correct behaviour: pipeline should escalate to owner rather than fabricate generic findings"
+      ],
+      "verdict": "PIPELINE_CORRECTLY_CANNOT_PRODUCE_REPORT \u2014 enhanced research / owner escalation required per pilot policy"
+    },
+    {
+      "id": "M2",
+      "type": "Local service / quote-request",
+      "url": "https://www.pimlicoplumbers.com",
+      "website_structure": "corporate site; full crawl blocked by WAF (403 Forbidden on page fetch)",
+      "observed_limitations": [
+        "HTTP 403 bot-wall \u2014 crawler could not fetch interior pages",
+        "AI scoring unavailable \u2192 rule-based fallback, score=2 (estimate)",
+        "unique_evidence_count=0 \u2014 no verifiable page-level friction observations possible",
+        "report quality would fail gate1 (no direct page observations) \u2014 correctly not attempted"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": true,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "bot-walled site \u2014 public-web evidence_v1 pipeline cannot collect direct observations",
+        "correct behaviour: no fabricated generic findings; escalation path required"
+      ],
+      "verdict": "CRAWL_BLOCKED_BY_WAF \u2014 known limitation (same 403 class as container urllib WAF issue); needs browser-based research path or manual evidence collection"
+    },
+    {
+      "id": "M4",
+      "type": "SaaS demo/trial",
+      "url": "https://mailchimp.com",
+      "website_structure": "corporate/SaaS marketing site; crawl succeeded (0 crawl errors); 12 unique evidence signals collected",
+      "observed_limitations": [
+        "AI scoring returned empty (OpenRouter) \u2192 rule-based fallback; score 76 is an ESTIMATE not AI-derived",
+        "rule-based crawl signals exist (12 unique evidence items) but full evidence-card generation not yet run for this site",
+        "site_type classified 'corporate' \u2014 persona note may need SaaS-specific tuning"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": false,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl succeeded with usable signals \u2014 evidence cards + full report CAN be generated, but attempt budget and LLM availability needed",
+        "AI LLM call returned empty this run (OpenRouter issue) \u2014 report generation would fail without AI; needs retry in a stable-LLM window"
+      ],
+      "verdict": "CRAWL_OK_12_SIGNALS \u2014 candidate for full evidence_v1 run when LLM stable; most promising non-Persimmon site so far"
+    },
+    {
+      "id": "M1",
+      "type": "B2B professional-service lead gen",
+      "url": "https://www.mckinsey.com",
+      "website_structure": "large corporate site; page fetch timed out during crawl",
+      "observed_limitations": [
+        "TimeoutError on page fetch \u2014 0 evidence signals collected",
+        "needs longer crawl timeout / retry"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": true,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl incomplete (timeout) \u2014 no direct observations collected"
+      ],
+      "verdict": "CRAWL_TIMEOUT \u2014 retry with extended timeout required"
+    },
+    {
+      "id": "M9",
+      "type": "JavaScript-heavy",
+      "url": "https://www.figma.com",
+      "website_structure": "JS-heavy SaaS site; crawl succeeded (0 errors), 12 unique evidence signals",
+      "observed_limitations": [
+        "server-rendered content fetchable \u2014 JS rendering NOT required for crawl (favourable surprise)",
+        "rule-based score 83 (estimate); AI unavailable this run",
+        "evidence cards + full report not yet generated for this site"
+      ],
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": false,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl OK; full evidence_v1 run pending stable LLM window"
+      ],
+      "verdict": "CRAWL_OK_12_SIGNALS \u2014 strong candidate for full run"
+    },
+    {
+      "url": "https://www.muji.com",
+      "structure": "ecommerce; page fetch timeout",
+      "limitations": [
+        "TimeoutError \u2014 0 evidence signals",
+        "needs retry with longer timeout"
+      ],
+      "attempts": 0,
+      "enhanced": true,
+      "baseline": false,
+      "eligible": false,
+      "reasons": [
+        "crawl incomplete (timeout)"
+      ],
+      "verdict": "CRAWL_TIMEOUT \u2014 retry required",
+      "id": "M3",
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": true,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl incomplete (timeout)"
+      ]
+    },
+    {
+      "url": "https://www.booking.com",
+      "structure": "property/booking portal; crawl OK, 8 evidence signals",
+      "limitations": [
+        "rule-based score 15 (estimate)",
+        "evidence count lower than SaaS sites \u2014 portal structure differs from business sites"
+      ],
+      "attempts": 0,
+      "enhanced": false,
+      "baseline": false,
+      "eligible": false,
+      "reasons": [
+        "crawl OK but full evidence_v1 run pending stable LLM window"
+      ],
+      "verdict": "CRAWL_OK_8_SIGNALS \u2014 full run pending",
+      "id": "M5",
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": false,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl OK but full evidence_v1 run pending stable LLM window"
+      ]
+    },
+    {
+      "url": "https://waitbutwhy.com",
+      "structure": "content-heavy blog; crawl OK, 12 signals, AI score 60 (real AI scoring succeeded \u2014 score_is_estimate=False)",
+      "limitations": [
+        "content site \u2014 buyer-journey friction limited (no forms/quotes)",
+        "AI scoring DID work here (unlike other runs) \u2014 LLM availability is intermittent"
+      ],
+      "attempts": 0,
+      "enhanced": false,
+      "baseline": false,
+      "eligible": false,
+      "reasons": [
+        "crawl+AI OK; evidence cards not yet generated"
+      ],
+      "verdict": "CRAWL_OK_AI_OK \u2014 best pipeline-health signal so far",
+      "id": "M7",
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": false,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl+AI OK; evidence cards not yet generated"
+      ]
+    },
+    {
+      "url": "https://www.ikea.com",
+      "structure": "multilingual global site; crawl OK, 12 signals",
+      "limitations": [
+        "rule-based score 88 (estimate)",
+        "multilingual variants not yet crawled (single-locale run)",
+        "AI unavailable this run"
+      ],
+      "attempts": 0,
+      "enhanced": false,
+      "baseline": false,
+      "eligible": false,
+      "reasons": [
+        "crawl OK; full evidence_v1 run pending stable LLM window"
+      ],
+      "verdict": "CRAWL_OK_12_SIGNALS \u2014 strong candidate",
+      "id": "M8",
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": false,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl OK; full evidence_v1 run pending stable LLM window"
+      ]
+    },
+    {
+      "url": "https://www.boots.com",
+      "structure": "regulated health/retail site; crawl OK, 9 signals",
+      "limitations": [
+        "rule-based score 30 (estimate)",
+        "regulated-claim checks not yet exercised end-to-end"
+      ],
+      "attempts": 0,
+      "enhanced": false,
+      "baseline": false,
+      "eligible": false,
+      "reasons": [
+        "crawl OK; full run pending stable LLM window"
+      ],
+      "verdict": "CRAWL_OK_9_SIGNALS \u2014 regulated-claim test candidate",
+      "id": "M10",
+      "report_score": null,
+      "category_scores": null,
+      "hard_fails": null,
+      "correction_attempts": 0,
+      "enhanced_research_needed": false,
+      "baseline_reached": false,
+      "eligible_for_owner_reviewed_delivery": false,
+      "reasons_not_eligible": [
+        "crawl OK; full run pending stable LLM window"
+      ]
+    }
+  ],
+  "summary": {
+    "phase1_crawl_scan_complete": "2026-09-15",
+    "crawl_ok": [
+      "M4 mailchimp(12)",
+      "M7 waitbutwhy(12, AI worked)",
+      "M8 ikea(12)",
+      "M9 figma(12)",
+      "M5 booking(8)",
+      "M10 boots(9)"
+    ],
+    "crawl_blocked": [
+      "M1 mckinsey(timeout)",
+      "M2 pimlico(403 WAF)",
+      "M3 muji(timeout)"
+    ],
+    "no_content": [
+      "M6 example.com (1-page, nothing to report)"
+    ],
+    "key_findings": [
+      "crawler handles SaaS/JS-heavy/content-heavy/ecommerce/multilingual/regulated sites \u2014 6/10 crawl OK",
+      "AI LLM scoring intermittent \u2014 only waitbutwhy got real AI score; others rule-based estimates",
+      "evidence_v1 full report run (cards\u2192render\u2192review\u2192redteam) NOT yet run for any matrix site \u2014 needs stable LLM window",
+      "content-light M6 correctly produces NO report (no fabricated findings)",
+      "WAF-blocked M2 correctly produces NO report (no fabricated observations)"
+    ],
+    "next_phase": "full evidence_v1 generation on M4/M7/M8/M9 when LLM stable; then strict+redteam audit vs R6B baseline"
+  }
+}
