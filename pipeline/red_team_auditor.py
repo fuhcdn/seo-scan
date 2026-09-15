@@ -456,7 +456,7 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
         "review_ledger": ledger,
         "hard_fails": hard_fails,
         "repair_plan": llm_repair,
-        "delivery_decision": ("INDEPENDENT_REVIEW_PASS" if decision == "PASS"
+        "delivery_decision": ("INDEPENDENT_REVIEW_PASS" if decision == "INDEPENDENT_REVIEW_PASS"
                               else "DELIVERY_BLOCKED"),
         "strict_reviewer_decision_on_file": (strict_record or {}).get("delivery_decision"),
     }
