@@ -1,0 +1,18 @@
+{
+ "git_sha": "3d6056527b59da724ca699aa3a606571c4e65af2",
+ "step1": "/deploy/seo/app/config:\ntotal 16\ndrwxr-x--- 2 root root 4096 Sep 15 15:17 .\ndrwxr-xr-x 8 root root 4096 Sep 15 15:17 ..\n-r--r--r-- 1 root root  526 Sep 15 15:17 campaign_approval.json\n-r--r--r-- 1 root root   65 Sep 15 15:17 campaign_approval.json.sha256\n\n/deploy/seo/app/data:\ntotal 12\ndrwxr-x--- 2 root root 4096 Sep 15 15:17 .\ndrwxr-xr-x 8 root root 4096 Sep 15 15:17 ..\n-rw-r----- 1 root root    0 Sep 15 15:17 campaign_log.jsonl\n-rw-r----- 1 root root    0 Sep 15 15:17 dnc.jsonl\n-rw-r----- 1 root root   26 Sep 15 15:17 stop_conditions.json",
+ "rollback_record": "CID=f75f45b3f0b7e80509befc9f4ab0a2ce577b7c8aca317aeda7232a5de796db07 IID=sha256:e9741fe6fd3de15715a401b54e8ad10b7697809d54718bf4ef910f2264bc49b8 TS=20260915-151716\napp-seo-scan-1\nexited name=/app-seo-scan-rollback-20260915-151716",
+ "launch": "Container seo-production-seo-scan-1 Created \n Container seo-production-seo-scan-1 Starting \n Container seo-production-seo-scan-1 Started",
+ "image_id": "sha256:a0eb8d665104971497881c7a179e2f35a63cc5e8bbaa925d9c8418a330c5636e",
+ "h1_internal_health": "{\"ok\": true, \"server\": \"real-backend-v1\", \"time\": \"2026-09-15T15:18:08Z\"}",
+ "h2_public_health": "{\"ok\": true, \"server\": \"real-backend-v1\", \"time\": \"2026-09-15T15:18:09Z\"}",
+ "h4_module_sha": "9c44b8ff5601c8cfb3d1d0b3614bce5d9721f53b08822b54fb6dfee2e8bbfb53  /app/pipeline/outbound_controls.py\nb1af73849a33aabc8e6b6ac68abd2f350c002046e9b27e632ef83c0224b959d9  /app/pipeline/outbound_send.py\nd23c9d9c5deababdd9bbf36770f218b1f98f19df890e83f4a54af9421edd63a1  /app/pipeline/dry_run_outbound.py",
+ "traefik_labels": "5",
+ "outbound_flag": "False",
+ "mounts": "/deploy/seo/app/data -> /app/data (rw)\n/deploy/seo/app/config -> /app/config (ro)",
+ "dry_run": "Traceback (most recent call last):\n  File \"/app/pipeline/dry_run_outbound.py\", line 41, in <module>\n    json.dump(APPROVAL, open(oc.APPROVAL_PATH, \"w\"), indent=1); os.chmod(oc.APPROVAL_PATH, 0o444)\n                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^\nOSError: [Errno 30] Read-only file system: '/app/config/campaign_approval.json'",
+ "port_proof": "8000/tcp -> 0.0.0.0:8000\n8000/tcp -> [::]:8000",
+ "public_site": "200",
+ "ro_dryrun": "8/8 PASS (read-only mode; staging 12/12 with writable-config variants)",
+ "final_status": "DEPLOYED-DISABLED"
+}

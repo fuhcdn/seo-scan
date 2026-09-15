@@ -1,0 +1,23 @@
+{
+ "sha256": {
+  "f803_reference": "f803efee1f141668b53014a9d3bef2cff4dae1bc185c37499637a326280a94ce",
+  "current_245": "245abd156cb5cb85a86471c9dde6cfebc76c2060454f35057e35721775737a8d"
+ },
+ "bytes": {
+  "f803": 19311,
+  "current": 18432
+ },
+ "lines": {
+  "f803": 361,
+  "current": 362
+ },
+ "cmp_exit": 1,
+ "total_diff_rows_normalized": 77,
+ "executable_logic_rows": 0,
+ "diff_row_breakdown": {
+  "A_encoding_decorative_width": 77,
+  "note": "全部差異 = mojibake 裝飾字元寬度(─ ═ → 等 UTF-8 字元喺 f803 顯示為亂碼,喺 current 顯示正常)+ 尾行差異"
+ },
+ "logic_detail_analysis": "9 個初步 logic rows 經檢視全部為:(a) LEGACY_OUTBOUND_ABSENCE 字串值內裝飾字元寬度(## vs #,變數賦值語句本身一致);(b) normalize 後尾行/空白差異。零可執行邏輯差異。",
+ "verdict": "A — EXECUTABLE CONTENT IDENTICAL, BYTE DIFFERENCE NON-EXECUTABLE ONLY"
+}
