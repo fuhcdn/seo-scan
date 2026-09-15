@@ -1,26 +1,27 @@
 {
   "date": "2026-09-15",
-  "20_run_test": "IN PROGRESS in background (will complete; every run will fail with 403 TOS error and move job to manual_quality_escalation_required, order preserved)",
-  "short_test_5_runs": {
-    "runs": 5,
-    "generation_success": 0,
-    "attempts_used": [
-      2,
-      2,
-      2,
-      2,
-      2
-    ],
-    "errors": "HTTP 403 Forbidden \u2014 provider TOS enforcement (OpenRouter account/IP level)",
-    "retry_mechanics": "OK \u2014 backoff executed, exact error recorded per attempt",
-    "job_state_after_fail": "research_retrying \u2192 manual_quality_escalation_required",
-    "order_preserved": true,
-    "no_refund": true,
-    "no_abandon": true,
-    "no_legacy_fallback": true
+  "root_cause_corrected": "NOT a TOS account ban. Only OpenAI models (gpt-4o-mini) are prohibited on this OpenRouter key. ALL DeepSeek + GLM models work (HTTP 200).",
+  "owner_insight_validated": "The user correctly identified that Hermes itself runs GLM on OpenRouter fine \u2014 proving the account works.",
+  "fix": "All reliability tests were misconfigured to gpt-4o-mini. Pipeline models (deepseek family) were already correct and working. Fixed test config to deepseek/deepseek-v4-flash-0731.",
+  "reliability_20_run": {
+    "runs": 20,
+    "generation_success": 20,
+    "fail": 0,
+    "success_rate": "100% (first-attempt)",
+    "retry_recovered": 0,
+    "duplicate_pdfs": 0,
+    "timeouts": 0,
+    "duplicate_prevention": true,
+    "reconcile_test": true,
+    "order_preserved": true
   },
-  "duplicate_prevention": "idempotency cache implemented; cache-hit reuse verified in code path (mechanism intact; cannot prove positive case while LLM down \u2014 cached success path is code-verified)",
-  "reconcile": "started-but-crashed stage \u2192 retry_pending, internal_state=research_retrying, order_accepted=true (tested, PASS)",
-  "root_cause": "OpenRouter 403 'violation of provider Terms Of Service' \u2014 account/IP-level enforcement, NOT network WAF, NOT intermittent load",
-  "owner_action_needed": "LLM provider decision required: new key/account, different provider, or proxy route \u2014 owner \u00a76 territory"
+  "llm_reliability": "PASS",
+  "model_availability": {
+    "deepseek/deepseek-v4-flash-0731": 200,
+    "deepseek/deepseek-chat-v3-0324 (reviewer)": 200,
+    "deepseek/deepseek-chat": 200,
+    "z-ai/glm-4.5-air": 200,
+    "z-ai/glm-5.3-flash": 200,
+    "openai/gpt-4o-mini": "403 prohibited (TOS on this key)"
+  }
 }

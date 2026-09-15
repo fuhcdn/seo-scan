@@ -10,7 +10,7 @@ results = {"runs": 0, "ok": 0, "fail": 0, "attempts_used": [], "errors": [], "du
 for i in range(5):
     rec = job_stage_begin({"order_id": f"ORD-SHORT-{i}"}, f"short-run-{i}", f"ORD-SHORT-{i}")
     ok, content, meta = openrouter_chat_reliable(
-        key, {"model": "openai/gpt-4o-mini",
+        key, {"model": "deepseek/deepseek-v4-flash-0731",
               "messages": [{"role": "user", "content": "Reply with exactly: OK"}]},
         f"short-run-{i}", f"ORD-SHORT-{i}", max_retries=2, backoff=[2, 4], timeout=30)
     job = {"order_id": f"ORD-SHORT-{i}"}
@@ -21,9 +21,9 @@ for i in range(5):
     if meta.get("errors"): results["errors"].append(meta["errors"][-1])
 # duplicate prevention
 c1 = _cache_path("DUP-KEY-1")
-ok1, x1, m1 = openrouter_chat_reliable(key, {"model": "openai/gpt-4o-mini", "messages": [{"role":"user","content":"say DUP"}]}, "dup", "DUP-KEY-1", max_retries=1, backoff=[1], timeout=20)
+ok1, x1, m1 = openrouter_chat_reliable(key, {"model": "deepseek/deepseek-v4-flash-0731", "messages": [{"role":"user","content":"say DUP"}]}, "dup", "DUP-KEY-1", max_retries=1, backoff=[1], timeout=20)
 if ok1:
-    ok2, x2, m2 = openrouter_chat_reliable(key, {"model": "openai/gpt-4o-mini", "messages": [{"role":"user","content":"say DUP"}]}, "dup", "DUP-KEY-1", max_retries=1, backoff=[1], timeout=20)
+    ok2, x2, m2 = openrouter_chat_reliable(key, {"model": "deepseek/deepseek-v4-flash-0731", "messages": [{"role":"user","content":"say DUP"}]}, "dup", "DUP-KEY-1", max_retries=1, backoff=[1], timeout=20)
     results["duplicate_prevention"] = m2.get("reused") is True
 else:
     results["duplicate_prevention"] = "cache-only-after-first-success (LLM down — mechanism intact, untestable today)"

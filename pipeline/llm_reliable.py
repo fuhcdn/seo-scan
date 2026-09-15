@@ -110,7 +110,7 @@ if __name__ == "__main__":
         idem = f"ORD-RELIABILITY-TEST-{i}"
         rec = job_stage_begin({"order_id": idem}, stage, idem)
         ok, content, meta = openrouter_chat_reliable(
-            key, {"model": "openai/gpt-4o-mini",
+            key, {"model": "deepseek/deepseek-v4-flash-0731",
                   "messages": [{"role": "user", "content": "Reply with exactly: OK"}]},
             stage, idem)
         job = {"order_id": idem}
@@ -122,9 +122,9 @@ if __name__ == "__main__":
         results["timeouts"] += sum(1 for e in meta.get("errors", []) if "timed out" in str(e.get("error", "")).lower() or "timeout" in str(e.get("error", "")).lower())
         results["runs"] += 1
     # duplicate prevention proof: same idem key twice returns cached result, no new call
-    ok1, c1, m1 = openrouter_chat_reliable(key, {"model": "openai/gpt-4o-mini",
+    ok1, c1, m1 = openrouter_chat_reliable(key, {"model": "deepseek/deepseek-v4-flash-0731",
         "messages": [{"role": "user", "content": "Reply with exactly: DUP"}]}, "dup-test", "IDEM-DUP-KEY")
-    ok2, c2, m2 = openrouter_chat_reliable(key, {"model": "openai/gpt-4o-mini",
+    ok2, c2, m2 = openrouter_chat_reliable(key, {"model": "deepseek/deepseek-v4-flash-0731",
         "messages": [{"role": "user", "content": "Reply with exactly: DUP"}]}, "dup-test", "IDEM-DUP-KEY")
     results["duplicate_prevention"] = (m2.get("reused") is True and c1 == c2)
     # reconcile proof: started-but-crashed stage is retried, not lost
