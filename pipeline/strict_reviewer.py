@@ -220,7 +220,7 @@ def review(candidate_pdf, job, cards, acts, attempt):
             s = int(entry.get("score", 0))
         except Exception:
             s = 0
-        s = max(0, min(100, s))
+        s = max(0, min(95, s))  # auto-cap 95 (owner directive)
         categories[cname] = {"score": s, "max": 100, "pct": s,
                              "deduction": entry.get("deduction") or "not evidenced by reviewer"}
     overall = min(95, round(sum(v["score"] for v in categories.values()) / len(categories), 1))  # auto-max 95 (owner directive)

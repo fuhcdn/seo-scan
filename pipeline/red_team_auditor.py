@@ -398,9 +398,10 @@ def review(candidate_pdf, job, cards, acts, expected_sha, strict_record=None):
     # ---- BLOCKED_SCORECARD_WITHOUT_REPAIR_PLAN: mandatory when blocked ----
     failed_cats = [k for k, v in categories.items() if v["pct"] < 90]
     needs_plan = overall < 90 or failed_cats or hard_fails
+    _strict_pass = (strict_record or {}).get("delivery_decision") == "INDEPENDENT_REVIEW_PASS"
     decision = "INDEPENDENT_REVIEW_PASS" if (90 <= overall <= AUTO_MAX
                                              and all(v["pct"] >= 90 for v in categories.values())
-                                             and not hard_fails) else "DELIVERY_BLOCKED"
+                                             and not hard_fails and _strict_pass) else "DELIVERY_BLOCKED"
     repair_plan = []
     if decision == "DELIVERY_BLOCKED" or needs_plan:
         if not llm_repair:
