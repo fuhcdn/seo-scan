@@ -1,0 +1,46 @@
+{
+ "phase": "phase2-harness-alignment",
+ "date": "2026-09-15",
+ "commit_sha": "600ea0a26121827e8171a4ab3e6725318756870d",
+ "pushed": "origin/outbound-phase2",
+ "changed_files": [
+  "pipeline/dry_run_outbound.py",
+  "pipeline/outbound_controls.py",
+  "pipeline/outbound_send.py"
+ ],
+ "image_id": "sha256:c631aff75be355a38b7275fa5278a18dc371299e6c23fdeffcd86e1ccc3cc3c4",
+ "image_tag": "seoscanaudit/outbound:phase1-600ea0a26121827e8171a4ab3e6725318756870d",
+ "artifact_sha256": "0fb41b5979134060b507e391ba287ede350361102b151f8b065fa187ff3e6f6c",
+ "four_way_provenance": {
+  "git_show_head": "515fee0a24cd155b94da7c445c82f6f4a2890e7710917f47ec65c25ad6a8b119",
+  "repo_working_tree": "515fee0a24cd155b94da7c445c82f6f4a2890e7710917f47ec65c25ad6a8b119",
+  "docker_image": "515fee0a24cd155b94da7c445c82f6f4a2890e7710917f47ec65c25ad6a8b119",
+  "staging_container": "515fee0a24cd155b94da7c445c82f6f4a2890e7710917f47ec65c25ad6a8b119",
+  "all_match": true
+ },
+ "errno30": "errno 30 Read-only file system (real :ro mount write attempt)",
+ "run1": "16/16 PASS (12 cases + parity 5-variants + errno30 + transport fail-closed)",
+ "run2_after_restart": "16/16 PASS (down then up, no docker cp)",
+ "resend_calls": 0,
+ "transport_calls": 0,
+ "mount_isolation": "data rw (/deploy/seo-staging/data), config :ro (/deploy/seo-staging/config), zero prod paths",
+ "traefik_labels_staging": 0,
+ "rollback_preflight": {
+  "legacy_image_exists": "sha256:57f5c9b973996159e06898f6e2ef5863eeed4bd771daafe095272b1b6fafa034 (app-seo-scan:latest)",
+  "compose_file": "/deploy/seo/app/docker-compose.yml exists, config resolves (project: app)",
+  "paths": "/deploy/seo/app/{data,config,secrets.env} all exist",
+  "inspect_record": "/deploy/rollback/app-seo-scan-1-inspect-20260915-151716.json exists",
+  "compose_vars": [
+   "HOST_CONFIG_DIR",
+   "HOST_DATA_DIR",
+   "HOST_SECRETS_FILE",
+   "OUTBOUND_IMAGE"
+  ],
+  "rollback_recreation_tested_live": "2026-09-15 rollback used compose up --force-recreate successfully"
+ },
+ "production_baseline": {
+  "container": "app-seo-scan-1 (legacy image 57f5c9b9)",
+  "health": "internal + public 200",
+  "outbound_module": "absent"
+ }
+}
